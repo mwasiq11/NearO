@@ -131,9 +131,74 @@ function requireVerification(req, res, next) {
   next();
 }
 
+/**
+ * Require specific role(s)
+ */
+function requireRole(...allowedRoles) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ 
+        error: 'Authentication required'
+      });
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ 
+        error: 'Unauthorized',
+        message: `Only ${allowedRoles.join(' or ')} can access this resource`
+      });
+    }
+
+    next();
+  };
+}
+
+/**
+ * Require admin role (prevents moderator access)
+ */
+function requireAdmin(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ 
+      error: 'Authentication required'
+    });
+  }
+
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ 
+      error: 'Unauthorized',
+      message: 'Only admins can access this resource'
+    });
+  }
+
+  next();
+}
+
+/**
+ * Require moderator or admin role
+ */
+function requireModeration(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ 
+      error: 'Authentication required'
+    });
+  }
+
+  if (!['moderator', 'admin'].includes(req.user.role)) {
+    return res.status(403).json({ 
+      error: 'Unauthorized',
+      message: 'Only moderators and admins can access this resource'
+    });
+  }
+
+  next();
+}
+
 export {
   authenticate,
   optionalAuthenticate,
-  requireVerification
+  requireVerification,
+  requireRole,
+  requireAdmin,
+  requireModeration
 };
 

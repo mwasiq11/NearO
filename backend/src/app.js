@@ -27,6 +27,7 @@ import messageRoutes from './routes/messages.js';
 import reviewRoutes from './routes/reviews.js';
 import discoveryRoutes from './routes/discovery.js';
 import notificationRoutes from './routes/notifications.js';
+import historyRoutes from './routes/history.js';
 import { startNotificationWorker } from './workers/notificationWorker.js';
 
 const app = express();
@@ -39,7 +40,13 @@ app.use(securityMiddleware);
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
+  origin: [
+    'http://localhost:8080',
+    'http://localhost:8081',
+    'http://localhost:8082',
+    'http://localhost:8083',
+    process.env.FRONTEND_URL
+  ].filter(Boolean),
   credentials: true
 }));
 
@@ -97,6 +104,7 @@ app.use('/messages', messageRoutes);
 app.use('/reviews', reviewRoutes);
 app.use('/discover', discoveryRoutes);
 app.use('/notifications', notificationRoutes);
+app.use('/history', historyRoutes);
 
 // 404 handler
 app.use((req, res) => {

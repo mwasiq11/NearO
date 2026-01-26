@@ -44,7 +44,7 @@ const LandingPage = () => {
           </Link>
           
           <nav className="hidden md:flex items-center gap-8">
-            <Link to="/browse" className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link to="/dashboard/browse" className="text-muted-foreground hover:text-foreground transition-colors">
               Browse Services
             </Link>
             <Link to="/how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -252,7 +252,7 @@ const LandingPage = () => {
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.05 }}
                 whileHover={{ scale: 1.05 }}
-                onClick={() => navigate(`/browse?category=${category.id}`)}
+                onClick={() => navigate(`/dashboard/browse?category=${category.id}`)}
                 className="bg-card border rounded-2xl p-6 text-center hover:shadow-lg transition-all group"
               >
                 <span className="text-4xl mb-3 block">{category.icon}</span>
@@ -263,7 +263,7 @@ const LandingPage = () => {
           </div>
           
           <div className="text-center mt-8">
-            <Button variant="outline" size="lg" onClick={() => navigate('/browse')}>
+            <Button variant="outline" size="lg" onClick={() => navigate('/dashboard/browse')}>
               View All Categories
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -378,7 +378,7 @@ const LandingPage = () => {
             <div>
               <h4 className="font-semibold mb-4">For Seekers</h4>
               <ul className="space-y-2 text-muted-foreground">
-                <li><Link to="/browse" className="hover:text-foreground transition-colors">Browse Services</Link></li>
+                <li><Link to="/dashboard/browse" className="hover:text-foreground transition-colors">Browse Services</Link></li>
                 <li><Link to="/how-it-works" className="hover:text-foreground transition-colors">How It Works</Link></li>
                 <li><Link to="/safety" className="hover:text-foreground transition-colors">Safety Center</Link></li>
               </ul>

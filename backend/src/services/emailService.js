@@ -24,7 +24,7 @@ const FROM_NAME = process.env.FROM_NAME || 'NearO';
  * @returns {Promise<Object>} Email send result
  */
 async function sendVerificationEmail(to, name, verificationToken) {
-  const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${verificationToken}`;
+  const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:8080'}/verify-email?token=${verificationToken}`;
 
   const mailOptions = {
     from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
@@ -76,7 +76,7 @@ async function sendVerificationEmail(to, name, verificationToken) {
  * @returns {Promise<Object>} Email send result
  */
 async function sendPasswordResetEmail(to, name, resetToken) {
-  const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+  const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:8080'}/reset-password?token=${resetToken}`;
 
   const mailOptions = {
     from: `"${FROM_NAME}" <${FROM_EMAIL}>`,

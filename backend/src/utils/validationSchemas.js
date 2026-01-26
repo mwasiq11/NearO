@@ -24,12 +24,12 @@ const createServiceSchema = Joi.object({
   description: Joi.string().min(10).max(2000).required().trim(),
   category: Joi.string().max(100).required().trim(),
   price: Joi.number().min(0).required(),
-  availability: Joi.string().required().trim(),
-  latitude: Joi.number().min(-90).max(90).optional(),
-  longitude: Joi.number().min(-180).max(180).optional(),
-  neighborhood: Joi.string().max(255).optional().trim(),
-  city: Joi.string().max(255).optional().trim()
-}).and('latitude', 'longitude'); // If latitude is provided, longitude must be too
+  availability: Joi.string().min(1).max(1000).required().trim(),
+  latitude: Joi.number().optional().allow(null),
+  longitude: Joi.number().optional().allow(null),
+  neighborhood: Joi.string().max(255).optional().allow('').trim(),
+  city: Joi.string().max(255).optional().allow('').trim()
+})
 
 // Update profile schema
 const updateProfileSchema = Joi.object({

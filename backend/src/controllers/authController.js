@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { pool } from '../db/database.js';
 import { generateTokenPair, verifyRefreshToken, generateAccessToken } from '../utils/jwt.js';
 import { sendVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail } from '../services/emailService.js';
+import { logAudit, buildRequestContext } from '../audit/logger.js';
 import crypto from 'crypto';
 
 /**
@@ -55,6 +56,18 @@ const register = async (req, res) => {
     // Send verification email
     await sendVerificationEmail(email, name, verificationToken);
 
+    // Log signup in audit trail
+    const ctx = buildRequestContext(req);
+    await logAudit({
+      actorId: id,
+      actionType: 'user_signup',
+      entityType: 'user',
+      entityId: id,
+      metadata: { name, email, role: 'user' },
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent
+    });
+
     res.status(201).json({
       message: 'Registration successful. Please check your email to verify your account.',
       userId: id
@@ -66,7 +79,7 @@ const register = async (req, res) => {
 };
 
 /**
- * Login user
+ * Login user (for provider/seeker/user role)
  */
 const login = async (req, res) => {
   try {
@@ -87,6 +100,11 @@ const login = async (req, res) => {
     }
 
     const user = users[0];
+
+    // Prevent moderator/admin login via user endpoint
+    if (user.role !== 'user') {
+      return res.status(403).json({ error: 'Use the appropriate login portal for your role' });
+    }
 
     // Check if account is active
     if (!user.is_active) {
@@ -123,6 +141,18 @@ const login = async (req, res) => {
       [sessionId, user.id, tokenHash, expiresAt]
     );
 
+    // Log audit trail
+    const ctx = buildRequestContext(req);
+    await logAudit({
+      actorId: user.id,
+      actionType: 'user_login',
+      entityType: 'user',
+      entityId: user.id,
+      metadata: { name: user.name, email: user.email, role: user.role },
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent
+    });
+
     res.json({
       message: 'Login successful',
       user: {
@@ -136,6 +166,178 @@ const login = async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Moderator Login (no signup - only admin can create moderators)
+ */
+const moderatorLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    // Find user with moderator role
+    const [users] = await pool.execute(
+      'SELECT id, name, email, password, role, is_active FROM users WHERE email = ? AND role = ?',
+      [email, 'moderator']
+    );
+
+    if (users.length === 0) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    const user = users[0];
+
+    // Check if account is active
+    if (!user.is_active) {
+      return res.status(403).json({ error: 'Moderator account is suspended' });
+    }
+
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Update last login
+    await pool.execute(
+      'UPDATE users SET last_login_at = NOW() WHERE id = ?',
+      [user.id]
+    );
+
+    // Generate tokens
+    const tokens = generateTokenPair({
+      id: user.id,
+      email: user.email,
+      role: user.role
+    });
+
+    // Store refresh token
+    const tokenHash = await bcrypt.hash(tokens.refreshToken, 10);
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+
+    const sessionId = uuidv4();
+    await pool.execute(
+      'INSERT INTO user_sessions (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)',
+      [sessionId, user.id, tokenHash, expiresAt]
+    );
+
+    // Log audit trail
+    const ctx = buildRequestContext(req);
+    await logAudit({
+      actorId: user.id,
+      actionType: 'moderator_login',
+      entityType: 'moderator',
+      entityId: user.id,
+      metadata: { name: user.name, email: user.email },
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent
+    });
+
+    res.json({
+      message: 'Moderator login successful',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      },
+      ...tokens
+    });
+  } catch (error) {
+    console.error('Moderator login error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Admin Login (no signup - initial setup only)
+ */
+const adminLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    // Find user with admin role
+    const [users] = await pool.execute(
+      'SELECT id, name, email, password, role, is_active FROM users WHERE email = ? AND role = ?',
+      [email, 'admin']
+    );
+
+    if (users.length === 0) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    const user = users[0];
+
+    // Check if account is active
+    if (!user.is_active) {
+      return res.status(403).json({ error: 'Admin account is suspended' });
+    }
+
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Update last login
+    await pool.execute(
+      'UPDATE users SET last_login_at = NOW() WHERE id = ?',
+      [user.id]
+    );
+
+    // Generate tokens
+    const tokens = generateTokenPair({
+      id: user.id,
+      email: user.email,
+      role: user.role
+    });
+
+    // Store refresh token
+    const tokenHash = await bcrypt.hash(tokens.refreshToken, 10);
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+
+    const sessionId = uuidv4();
+    await pool.execute(
+      'INSERT INTO user_sessions (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)',
+      [sessionId, user.id, tokenHash, expiresAt]
+    );
+
+    // Log audit trail
+    const ctx = buildRequestContext(req);
+    await logAudit({
+      actorId: user.id,
+      actionType: 'admin_login',
+      entityType: 'admin',
+      entityId: user.id,
+      metadata: { name: user.name, email: user.email },
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent
+    });
+
+    res.json({
+      message: 'Admin login successful',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      },
+      ...tokens
+    });
+  } catch (error) {
+    console.error('Admin login error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -364,6 +566,8 @@ const resetPassword = async (req, res) => {
 export {
   register,
   login,
+  moderatorLogin,
+  adminLogin,
   refresh,
   logout,
   verifyEmail,

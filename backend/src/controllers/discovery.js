@@ -3,7 +3,10 @@ import { readPool } from '../db/database.js';
 const getTrendingServices = async (req, res) => {
   try {
     const { city, neighborhood, limit = 20 } = req.query;
-    const params = [];
+    
+    // Sanitize inputs
+    const limitNum = parseInt(limit, 10) || 20;
+    const safeLimit = Math.min(Math.max(limitNum, 1), 100); // Between 1 and 100
 
     let query = `
       SELECT s.*,
@@ -16,6 +19,7 @@ const getTrendingServices = async (req, res) => {
       WHERE s.is_active = TRUE
     `;
 
+    const params = [];
     if (city) {
       query += ' AND s.city = ?';
       params.push(city);
@@ -28,9 +32,8 @@ const getTrendingServices = async (req, res) => {
     query += `
       GROUP BY s.id
       ORDER BY (COUNT(b.id) * 2 + IFNULL(AVG(r.rating), 0) * 1.5) DESC
-      LIMIT ?
+      LIMIT ${safeLimit}
     `;
-    params.push(parseInt(limit));
 
     const [rows] = await readPool.execute(query, params);
     res.json({ services: rows });

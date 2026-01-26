@@ -2,6 +2,8 @@ import express from 'express';
 import {
   register,
   login,
+  moderatorLogin,
+  adminLogin,
   refresh,
   logout,
   verifyEmail,
@@ -22,8 +24,14 @@ const router = express.Router();
 // POST /auth/register - Register new user
 router.post('/register', validate(registerSchema), register);
 
-// POST /auth/login - Login user
+// POST /auth/login - Login user (provider/seeker)
 router.post('/login', validate(loginSchema), login);
+
+// POST /auth/moderator-login - Login moderator
+router.post('/moderator-login', validate(loginSchema), moderatorLogin);
+
+// POST /auth/admin-login - Login admin
+router.post('/admin-login', validate(loginSchema), adminLogin);
 
 // POST /auth/refresh - Refresh access token
 router.post('/refresh', refresh);
