@@ -1,0 +1,113 @@
+import { v4 as uuidv4 } from 'uuid';
+import { pool, readPool } from '../db/database.js';
+import { logAudit, buildRequestContext } from '../audit/logger.js';
+
+const createBooking = async (req, res) => {
+  try {
+    const { service_id, seeker_id, requested_time } = req.body;
+
+    // Validation
+    if (!service_id || !seeker_id || !requested_time) {
+      return res.status(400).json({ error: 'Service ID, seeker ID, and requested time are required' });
+    }
+
+    // Check if service exists and get provider_id
+    const [services] = await pool.execute(
+      'SELECT id, provider_id FROM services WHERE id = ?',
+      [service_id]
+    );
+
+    if (services.length === 0) {
+      return res.status(400).json({ error: 'Service does not exist' });
+    }
+
+    const service = services[0];
+
+    // Check if seeker exists
+    const [seekers] = await pool.execute(
+      'SELECT id FROM users WHERE id = ?',
+      [seeker_id]
+    );
+
+    if (seekers.length === 0) {
+      return res.status(400).json({ error: 'Seeker does not exist' });
+    }
+
+    // CRITICAL: Prevent self-booking (Stage 1 requirement)
+    if (service.provider_id === seeker_id) {
+      return res.status(400).json({ error: 'Users cannot book their own services' });
+    }
+
+    const id = uuidv4();
+
+    // Insert booking
+    await pool.execute(
+      'INSERT INTO bookings (id, service_id, seeker_id, requested_time) VALUES (?, ?, ?, ?)',
+      [id, service_id, seeker_id, requested_time]
+    );
+
+    res.status(201).json({
+      id,
+      service_id,
+      seeker_id,
+      requested_time,
+      status: 'pending'
+    });
+
+    const ctx = buildRequestContext(req);
+    await logAudit({
+      actorId: seeker_id,
+      actionType: 'booking_create',
+      entityType: 'booking',
+      entityId: id,
+      newValue: {
+        service_id,
+        seeker_id,
+        requested_time,
+        status: 'pending'
+      },
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent
+    });
+  } catch (error) {
+    console.error('Error creating booking:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getBookings = async (req, res) => {
+  try {
+    const { user_id } = req.query;
+    let query = `
+      SELECT b.*, s.title as service_title, s.category, u.name as seeker_name
+      FROM bookings b
+      JOIN services s ON b.service_id = s.id
+      JOIN users u ON b.seeker_id = u.id
+      ORDER BY b.created_at DESC
+    `;
+    let params = [];
+
+    if (user_id) {
+      query = `
+        SELECT b.*, s.title as service_title, s.category, u.name as seeker_name
+        FROM bookings b
+        JOIN services s ON b.service_id = s.id
+        JOIN users u ON b.seeker_id = u.id
+        WHERE b.seeker_id = ? OR s.provider_id = ?
+        ORDER BY b.created_at DESC
+      `;
+      params = [user_id, user_id];
+    }
+
+    const [bookings] = await readPool.execute(query, params);
+    res.json(bookings);
+  } catch (error) {
+    console.error('Error getting bookings:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export {
+  createBooking,
+  getBookings
+};

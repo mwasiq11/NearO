@@ -1,0 +1,168 @@
+import rateLimit from 'express-rate-limit';
+import dotenv from 'dotenv';
+
+if (process.env.NODE_ENV === 'test') {
+  dotenv.config({ path: '.env.test' });
+} else {
+  dotenv.config();
+}
+
+const WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW || '15') * 60 * 1000; // Convert minutes to ms
+const MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100');
+const AUTH_MAX = parseInt(process.env.AUTH_RATE_LIMIT_MAX || '5');
+const SEARCH_MAX = parseInt(process.env.SEARCH_RATE_LIMIT_MAX || '50');
+
+/**
+ * Global rate limiter - applies to all requests
+ */
+const globalLimiter = rateLimit({
+  windowMs: WINDOW_MS,
+  max: MAX_REQUESTS,
+  message: {
+    error: 'Too many requests',
+    message: 'Too many requests from this IP, please try again later.',
+    retryAfter: Math.ceil(WINDOW_MS / 1000)
+  },
+  standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
+  legacyHeaders: false, // Disable `X-RateLimit-*` headers
+  // Skip successful requests (only count errors)
+  skipSuccessfulRequests: false,
+  // Use IP address as key
+  keyGenerator: (req) => {
+    return req.ip || req.connection.remoteAddress;
+  }
+});
+
+/**
+ * Authentication rate limiter - stricter limits for login/register
+ */
+const authLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: AUTH_MAX,
+  message: {
+    error: 'Too many authentication attempts',
+    message: 'Too many authentication attempts from this IP, please try again after an hour.',
+    retryAfter: 3600
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true, // Don't count successful logins
+  keyGenerator: (req) => {
+    // Use email if available, otherwise IP
+    return req.body?.email || req.ip || req.connection.remoteAddress;
+  },
+  skip: (req) => {
+    // Skip rate limiting for successful logins
+    return false;
+  }
+});
+
+/**
+ * Search rate limiter - for location-based searches
+ */
+const searchLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: SEARCH_MAX,
+  message: {
+    error: 'Search limit exceeded',
+    message: 'Too many search requests, please try again later.',
+    retryAfter: 3600
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    // Use user ID if authenticated, otherwise IP
+    return req.user?.id || req.ip || req.connection.remoteAddress;
+  }
+});
+
+/**
+ * Admin rate limiter - higher limits for admin users
+ */
+const adminLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 1000, // Higher limit for admins
+  message: {
+    error: 'Admin rate limit exceeded',
+    message: 'Too many admin requests, please try again later.',
+    retryAfter: 3600
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    // Use user ID for admin endpoints
+    return req.user?.id || req.ip || req.connection.remoteAddress;
+  },
+  skip: (req) => {
+    // Only apply to admin routes
+    return !req.user || !['admin', 'moderator'].includes(req.user.role);
+  }
+});
+
+/**
+ * Password reset rate limiter
+ */
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3, // Very strict limit
+  message: {
+    error: 'Too many password reset requests',
+    message: 'Too many password reset attempts, please try again after an hour.',
+    retryAfter: 3600
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return req.body?.email || req.ip || req.connection.remoteAddress;
+  }
+});
+
+/**
+ * Email verification rate limiter
+ */
+const emailVerificationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  message: {
+    error: 'Too many verification requests',
+    message: 'Too many email verification requests, please try again later.',
+    retryAfter: 3600
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return req.body?.email || req.query?.email || req.ip || req.connection.remoteAddress;
+  }
+});
+
+/**
+ * Create custom rate limiter
+ * @param {Object} options - Rate limit options
+ * @returns {Function} Rate limiter middleware
+ */
+function createLimiter(options) {
+  return rateLimit({
+    windowMs: options.windowMs || WINDOW_MS,
+    max: options.max || MAX_REQUESTS,
+    message: options.message || {
+      error: 'Rate limit exceeded',
+      message: 'Too many requests, please try again later.'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: options.keyGenerator || ((req) => req.ip || req.connection.remoteAddress),
+    skip: options.skip || (() => false),
+    skipSuccessfulRequests: options.skipSuccessfulRequests || false
+  });
+}
+
+export {
+  globalLimiter,
+  authLimiter,
+  searchLimiter,
+  adminLimiter,
+  passwordResetLimiter,
+  emailVerificationLimiter,
+  createLimiter
+};
+
