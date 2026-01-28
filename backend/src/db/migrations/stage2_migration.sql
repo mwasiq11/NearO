@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS service_categories (
   INDEX idx_is_active (is_active)
 );
 
--- Insert default categories
+-- Insert default categories (expanded list)
 INSERT IGNORE INTO service_categories (id, name, description) VALUES
   (UUID(), 'Plumbing', 'Plumbing services and repairs'),
   (UUID(), 'Electrical', 'Electrical work and repairs'),
@@ -154,6 +154,17 @@ INSERT IGNORE INTO service_categories (id, name, description) VALUES
   (UUID(), 'Repair', 'General repair services'),
   (UUID(), 'Delivery', 'Delivery and pickup services'),
   (UUID(), 'Cooking', 'Cooking and meal preparation'),
+  (UUID(), 'Fitness', 'Personal training and fitness coaching'),
+  (UUID(), 'Training', 'Professional training and workshops'),
+  (UUID(), 'Computing', 'IT support and computer services'),
+  (UUID(), 'Web Development', 'Website design and development'),
+  (UUID(), 'Graphic Design', 'Design and creative services'),
+  (UUID(), 'Photography', 'Photography and videography services'),
+  (UUID(), 'Music Lessons', 'Music instruction and lessons'),
+  (UUID(), 'Beauty & Wellness', 'Beauty treatments and wellness services'),
+  (UUID(), 'Moving & Transportation', 'Moving and transportation services'),
+  (UUID(), 'Automotive', 'Car maintenance and repair services'),
+  (UUID(), 'Legal Services', 'Legal consultation and services'),
   (UUID(), 'Other', 'Other services');
 
 -- Insert default system settings

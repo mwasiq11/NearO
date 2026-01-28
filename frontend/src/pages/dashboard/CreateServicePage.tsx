@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { CategoryCombobox } from '@/components/common/CategoryCombobox';
 import { useListings } from '@/hooks/useListings';
 import { toast } from 'sonner';
 
 const CreateServicePage = () => {
   const navigate = useNavigate();
-  const { categories, createListing, isLoading } = useListings();
+  const { categories, createListing } = useListings();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -31,33 +33,40 @@ const CreateServicePage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!formData.title || !formData.description || !formData.category || !formData.price) {
       toast.error('Please fill all required fields');
       return;
     }
 
-    const tags = formData.tags
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean);
+    setIsSubmitting(true);
 
-    const created = await createListing({
-      title: formData.title,
-      description: formData.description,
-      category: formData.category,
-      price: Number(formData.price),
-      priceType: formData.priceType,
-      images: [],
-      tags,
-      radius: 10,
-      neighborhood: formData.neighborhood || undefined,
-      city: formData.city || undefined,
-      latitude: formData.latitude ? Number(formData.latitude) : undefined,
-      longitude: formData.longitude ? Number(formData.longitude) : undefined,
-    });
+    try {
+      const tags = formData.tags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
 
-    if (created) {
-      navigate('/dashboard/my-services');
+      const created = await createListing({
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        price: Number(formData.price),
+        priceType: formData.priceType,
+        images: [],
+        tags,
+        radius: 10,
+        neighborhood: formData.neighborhood || undefined,
+        city: formData.city || undefined,
+        latitude: formData.latitude ? Number(formData.latitude) : undefined,
+        longitude: formData.longitude ? Number(formData.longitude) : undefined,
+      });
+
+      if (created) {
+        navigate('/dashboard/my-services');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -75,33 +84,53 @@ const CreateServicePage = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="title">Title</Label>
-              <Input id="title" name="title" value={formData.title} onChange={handleChange} />
+              <Label htmlFor="title">Title *</Label>
+              <Input 
+                id="title" 
+                name="title" 
+                value={formData.title} 
+                onChange={handleChange}
+                disabled={isSubmitting}
+                required
+              />
             </div>
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea id="description" name="description" value={formData.description} onChange={handleChange} />
+              <Label htmlFor="description">Description *</Label>
+              <Textarea 
+                id="description" 
+                name="description" 
+                value={formData.description} 
+                onChange={handleChange}
+                disabled={isSubmitting}
+                required
+              />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <select
-                id="category"
-                name="category"
+              <Label htmlFor="category">Category *</Label>
+              <CategoryCombobox
                 value={formData.category}
-                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-              >
-                <option value="">Select category</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.name}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+                categories={categories}
+                placeholder="Select or type custom category"
+                disabled={isSubmitting}
+              />
+              <p className="text-xs text-muted-foreground">
+                Choose from predefined categories or create your own
+              </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="price">Price</Label>
-              <Input id="price" name="price" type="number" value={formData.price} onChange={handleChange} />
+              <Label htmlFor="price">Price *</Label>
+              <Input 
+                id="price" 
+                name="price" 
+                type="number" 
+                value={formData.price} 
+                onChange={handleChange}
+                disabled={isSubmitting}
+                required
+                min="0"
+                step="0.01"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="priceType">Price type</Label>
@@ -111,6 +140,7 @@ const CreateServicePage = () => {
                 value={formData.priceType}
                 onChange={(e) => setFormData(prev => ({ ...prev, priceType: e.target.value as 'fixed' | 'hourly' | 'negotiable' }))}
                 className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                disabled={isSubmitting}
               >
                 <option value="fixed">Fixed</option>
                 <option value="hourly">Hourly</option>
@@ -138,11 +168,11 @@ const CreateServicePage = () => {
               <Input id="longitude" name="longitude" value={formData.longitude} onChange={handleChange} />
             </div>
             <div className="md:col-span-2 flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+              <Button type="button" variant="outline" onClick={() => navigate(-1)} disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button type="submit" variant="hero" disabled={isLoading}>
-                {isLoading ? 'Creating...' : 'Create service'}
+              <Button type="submit" variant="hero" disabled={isSubmitting}>
+                {isSubmitting ? 'Creating...' : 'Create service'}
               </Button>
             </div>
           </form>

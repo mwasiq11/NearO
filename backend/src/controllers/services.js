@@ -38,6 +38,27 @@ const createService = async (req, res) => {
       return res.status(400).json({ error: 'Provider does not exist' });
     }
 
+    // Auto-add custom category if it doesn't exist
+    try {
+      const [existingCategory] = await pool.execute(
+        'SELECT id FROM service_categories WHERE name = ?',
+        [category]
+      );
+
+      if (existingCategory.length === 0) {
+        // Add the new custom category
+        const categoryId = uuidv4();
+        await pool.execute(
+          'INSERT INTO service_categories (id, name, description, is_active) VALUES (?, ?, ?, TRUE)',
+          [categoryId, category, `Custom category: ${category}`]
+        );
+        console.log(`✨ New custom category added: ${category}`);
+      }
+    } catch (categoryError) {
+      console.error('Error checking/adding category:', categoryError);
+      // Continue even if category addition fails
+    }
+
     const id = uuidv4();
 
     // Normalize location data if provided
@@ -155,6 +176,29 @@ const updateServiceOwn = async (req, res) => {
     const [services] = await pool.execute('SELECT id FROM services WHERE id = ?', [id]);
     if (services.length === 0) {
       return res.status(404).json({ error: 'Service not found' });
+    }
+
+    // Auto-add custom category if it doesn't exist and category is being updated
+    if (category !== undefined) {
+      try {
+        const [existingCategory] = await pool.execute(
+          'SELECT id FROM service_categories WHERE name = ?',
+          [category]
+        );
+
+        if (existingCategory.length === 0) {
+          // Add the new custom category
+          const categoryId = uuidv4();
+          await pool.execute(
+            'INSERT INTO service_categories (id, name, description, is_active) VALUES (?, ?, ?, TRUE)',
+            [categoryId, category, `Custom category: ${category}`]
+          );
+          console.log(`✨ New custom category added: ${category}`);
+        }
+      } catch (categoryError) {
+        console.error('Error checking/adding category:', categoryError);
+        // Continue even if category addition fails
+      }
     }
 
     const updates = [];

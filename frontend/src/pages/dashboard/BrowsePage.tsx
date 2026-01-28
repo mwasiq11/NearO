@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useListings } from '@/hooks/useListings';
 import { formatPrice } from '@/utils/formatters';
+import { getCategoryImage } from '@/utils/categoryImages';
 import { Search, MapPin } from 'lucide-react';
 
 const BrowsePage = () => {
@@ -75,35 +76,45 @@ const BrowsePage = () => {
       {isLoading && <div className="text-sm text-muted-foreground">Loading services...</div>}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {listings.map((listing) => (
-          <Card
-            key={listing.id}
-            className="overflow-hidden cursor-pointer hover:shadow-md transition-all"
-            onClick={() => navigate(`/dashboard/listing/${listing.id}`)}
-          >
-            <div className="aspect-video bg-muted">
-              {listing.images[0] ? (
-                <img src={listing.images[0]} alt={listing.title} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground">No image</div>
-              )}
-            </div>
-            <div className="p-4 space-y-2">
-              <h3 className="font-semibold line-clamp-1">{listing.title}</h3>
-              <p className="text-sm text-muted-foreground line-clamp-2">{listing.description}</p>
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-muted-foreground flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
-                  {listing.location.neighborhood}
+        {listings.map((listing) => {
+          const imageUrl = listing.images[0] || getCategoryImage(listing.category);
+          const locationText = listing.location.city && listing.location.neighborhood !== 'Unknown'
+            ? `${listing.location.neighborhood}, ${listing.location.city}`
+            : listing.location.city || listing.location.neighborhood;
+
+          return (
+            <Card
+              key={listing.id}
+              className="overflow-hidden cursor-pointer hover:shadow-md transition-all"
+              onClick={() => navigate(`/dashboard/listing/${listing.id}`)}
+            >
+              <div className="aspect-video bg-muted">
+                <img 
+                  src={imageUrl} 
+                  alt={listing.title} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = getCategoryImage('Other');
+                  }}
+                />
+              </div>
+              <div className="p-4 space-y-2">
+                <h3 className="font-semibold line-clamp-1">{listing.title}</h3>
+                <p className="text-sm text-muted-foreground line-clamp-2">{listing.description}</p>
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    {locationText || 'Location not specified'}
+                  </div>
+                  <Badge variant="outline">{listing.category}</Badge>
                 </div>
-                <Badge variant="outline">{listing.category}</Badge>
+                <div className="font-semibold text-primary">
+                  {formatPrice(listing.price, listing.priceType)}
+                </div>
               </div>
-              <div className="font-semibold text-primary">
-                {formatPrice(listing.price, listing.priceType)}
-              </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
 
       {!isLoading && listings.length === 0 && (

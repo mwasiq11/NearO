@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { useChat } from '@/hooks/useChat';
 import { useAuth } from '@/hooks/useAuth';
+import { MessageBubble, ConversationHeader, MessageInput } from '@/components/common/MessageComponents';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { api } from '@/lib/api';
+import { toast } from 'sonner';
 
 const MessagesPage = () => {
   const { user } = useAuth();
@@ -13,9 +17,9 @@ const MessagesPage = () => {
     currentMessages,
     openConversation,
     loadMessages,
-    sendMessage,
   } = useChat();
   const [message, setMessage] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (currentConversation) {
@@ -25,90 +29,196 @@ const MessagesPage = () => {
 
   const displayConversations = useMemo(() => conversations, [conversations]);
 
-  const handleSend = () => {
-    if (!message.trim()) return;
-    sendMessage(message.trim());
-    setMessage('');
+  const getOtherUser = (convo: any) => {
+    if (!user) return null;
+    const isSeeker = convo.seeker_id === user.id;
+    return {
+      id: isSeeker ? convo.provider_id : convo.seeker_id,
+      name: isSeeker ? convo.provider_name : convo.seeker_name,
+      email: isSeeker ? convo.provider_email : convo.seeker_email,
+      profile_picture: isSeeker ? convo.provider_picture : convo.seeker_picture,
+    };
   };
 
-  const getConversationLabel = (conversationId: string) => {
-    const convo = conversations.find(c => c.id === conversationId);
-    if (!convo || !user) return 'Conversation';
-    const otherId = convo.participants.find(p => p !== user.id);
-    const other = convo.participantDetails?.find(p => p.id === otherId);
-    return other?.name || other?.email || 'Conversation';
+  const handleSend = async () => {
+    if (!message.trim() || !currentConversation || !user) return;
+
+    try {
+      const otherUser = getOtherUser(currentConversation);
+      if (!otherUser) return;
+
+      await api.post('/messages/send', {
+        conversationId: currentConversation.id,
+        receiverId: otherUser.id,
+        content: message.trim(),
+        messageType: 'text',
+      }, { auth: true });
+
+      setMessage('');
+      loadMessages(currentConversation.id);
+    } catch (error) {
+      toast.error('Failed to send message');
+      console.error('Send message error:', error);
+    }
+  };
+
+  const handleImageSelect = async (file: File) => {
+    if (!currentConversation || !user) return;
+
+    try {
+      setIsUploading(true);
+      const otherUser = getOtherUser(currentConversation);
+      if (!otherUser) return;
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('conversationId', currentConversation.id);
+      formData.append('receiverId', otherUser.id);
+      formData.append('messageType', 'image');
+      formData.append('upload_context', 'message_image');
+
+      const response = await fetch(`${process.env.VITE_API_URL || 'http://localhost:3000'}/messages/send`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Upload failed');
+
+      loadMessages(currentConversation.id);
+      toast.success('Image sent');
+    } catch (error) {
+      toast.error('Failed to send image');
+      console.error('Image upload error:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleVoiceRecord = () => {
+    toast.info('Voice recording coming soon');
+  };
+
+  const getCurrentOtherUser = () => {
+    if (!currentConversation) return null;
+    return getOtherUser(currentConversation);
   };
 
   return (
     <div className="p-6 h-[calc(100vh-120px)]">
-      <div className="grid h-full md:grid-cols-[280px_1fr] gap-4">
-        <Card className="p-4 overflow-auto">
-          <h3 className="font-semibold mb-3">Conversations</h3>
-          <div className="space-y-2">
-            {displayConversations.map((conv) => {
-              const label = getConversationLabel(conv.id);
-              return (
-                <button
-                  key={conv.id}
-                  onClick={() => openConversation(conv)}
-                  className={`w-full text-left p-3 rounded-lg border ${
-                    currentConversation?.id === conv.id ? 'border-primary bg-primary/5' : 'border-border'
-                  }`}
-                >
-                  <p className="font-medium truncate">{label}</p>
-                  {conv.listing && (
-                    <p className="text-xs text-muted-foreground truncate">{conv.listing.title}</p>
-                  )}
-                </button>
-              );
-            })}
-            {displayConversations.length === 0 && (
-              <div className="text-sm text-muted-foreground">No conversations yet.</div>
-            )}
+      <div className="grid h-full md:grid-cols-[320px_1fr] gap-4">
+        {/* Conversations List */}
+        <Card className="p-0 overflow-hidden flex flex-col">
+          <div className="p-4 border-b">
+            <h3 className="font-semibold text-lg">Messages</h3>
+            <p className="text-sm text-muted-foreground">
+              {displayConversations.length} conversation{displayConversations.length !== 1 ? 's' : ''}
+            </p>
           </div>
+          
+          <ScrollArea className="flex-1">
+            <div className="p-2 space-y-1">
+              {displayConversations.map((conv) => {
+                const otherUser = getOtherUser(conv);
+                if (!otherUser) return null;
+
+                return (
+                  <button
+                    key={conv.id}
+                    onClick={() => openConversation(conv)}
+                    className={`w-full text-left p-3 rounded-lg transition-colors ${
+                      currentConversation?.id === conv.id
+                        ? 'bg-primary/10 border-primary/20 border'
+                        : 'hover:bg-muted'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={otherUser.profile_picture} />
+                        <AvatarFallback className="bg-primary/10">
+                          {otherUser.name[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="font-medium truncate">{otherUser.name}</p>
+                          {conv.last_message_at && (
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(conv.last_message_at).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                        {conv.service_title && (
+                          <p className="text-xs text-muted-foreground truncate mb-1">
+                            {conv.service_title}
+                          </p>
+                        )}
+                        {conv.last_message_preview && (
+                          <p className="text-sm text-muted-foreground truncate">
+                            {conv.last_message_preview}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+              {displayConversations.length === 0 && (
+                <div className="text-sm text-muted-foreground text-center py-8">
+                  No conversations yet. Start by booking a service!
+                </div>
+              )}
+            </div>
+          </ScrollArea>
         </Card>
 
-        <Card className="flex flex-col">
-          <div className="border-b p-4">
-            <h3 className="font-semibold">
-              {currentConversation ? getConversationLabel(currentConversation.id) : 'Select a conversation'}
-            </h3>
-          </div>
-          <div className="flex-1 overflow-auto p-4 space-y-3">
-            {currentConversation ? (
-              currentMessages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`max-w-[70%] rounded-lg px-3 py-2 text-sm ${
-                    msg.senderId === user?.id
-                      ? 'ml-auto bg-primary text-primary-foreground'
-                      : 'bg-muted text-foreground'
-                  }`}
-                >
-                  {msg.content}
-                </div>
-              ))
-            ) : (
-              <div className="text-sm text-muted-foreground">Choose a conversation to start chatting.</div>
-            )}
-          </div>
-          {currentConversation && (
-            <div className="border-t p-4 flex gap-2">
-              <Input
-                placeholder="Type a message"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
+        {/* Chat Area */}
+        <div className="flex flex-col h-full overflow-hidden rounded-lg border">
+          {currentConversation ? (
+            <>
+              <ConversationHeader
+                otherUser={getCurrentOtherUser()!}
+                serviceName={currentConversation.service_title}
               />
-              <Button onClick={handleSend}>Send</Button>
+              
+              <ScrollArea className="flex-1 p-4">
+                <div className="space-y-1">
+                  {currentMessages.map((msg) => (
+                    <MessageBubble
+                      key={msg.id}
+                      message={msg}
+                      isOwn={msg.sender_id === user?.id}
+                    />
+                  ))}
+                  {currentMessages.length === 0 && (
+                    <div className="text-center text-muted-foreground py-8">
+                      No messages yet. Start the conversation!
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+
+              <MessageInput
+                value={message}
+                onChange={setMessage}
+                onSend={handleSend}
+                onImageSelect={handleImageSelect}
+                onVoiceRecord={handleVoiceRecord}
+                disabled={isUploading}
+                isRecording={false}
+              />
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <p className="text-lg font-medium mb-2">No conversation selected</p>
+                <p className="text-sm">Choose a conversation to start chatting</p>
+              </div>
             </div>
           )}
-        </Card>
+        </div>
       </div>
     </div>
   );
