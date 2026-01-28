@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   setCurrentConversation,
@@ -19,6 +19,7 @@ export const useChat = () => {
   );
   const { user } = useAppSelector(state => state.auth);
   const socketRef = useRef<ReturnType<typeof getSocket> | null>(null);
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
 
   const mapConversation = useCallback((conv: any): Conversation => {
     const defaultReputation = {
@@ -30,7 +31,7 @@ export const useChat = () => {
       badge: 'new' as const,
       recentTrend: 'stable' as const,
     };
-    const buildUser = (id: string, name: string, email: string) => ({
+    const buildUser = (id: string, name: string, email: string, picture?: string) => ({
       id,
       name,
       email,
@@ -38,20 +39,36 @@ export const useChat = () => {
       isVerified: true,
       createdAt: new Date().toISOString(),
       reputation: defaultReputation,
+      profilePicture: picture,
     });
 
-    return {
+    // Store additional fields from backend for easy access
+    const conversationWithExtras = {
       id: conv.id,
       participants: [conv.seeker_id, conv.provider_id],
       participantDetails: [
-        buildUser(conv.seeker_id, conv.seeker_name || 'Seeker', conv.seeker_email || ''),
-        buildUser(conv.provider_id, conv.provider_name || 'Provider', conv.provider_email || ''),
+        buildUser(conv.seeker_id, conv.seeker_name || 'Seeker', conv.seeker_email || '', conv.seeker_picture),
+        buildUser(conv.provider_id, conv.provider_name || 'Provider', conv.provider_email || '', conv.provider_picture),
       ],
       unreadCount: 0,
       listingId: conv.service_id || undefined,
       createdAt: conv.created_at || new Date().toISOString(),
       updatedAt: conv.updated_at || new Date().toISOString(),
+      // Additional fields for UI (not in Conversation type but useful)
+      seeker_id: conv.seeker_id,
+      provider_id: conv.provider_id,
+      seeker_name: conv.seeker_name,
+      seeker_email: conv.seeker_email,
+      seeker_picture: conv.seeker_picture,
+      provider_name: conv.provider_name,
+      provider_email: conv.provider_email,
+      provider_picture: conv.provider_picture,
+      service_title: conv.service_title,
+      last_message_at: conv.last_message_at,
+      last_message_preview: conv.last_message_preview,
     };
+
+    return conversationWithExtras as any;
   }, []);
 
   const mapMessage = useCallback((msg: any): Message => {
@@ -59,11 +76,19 @@ export const useChat = () => {
       id: msg.id,
       conversationId: msg.conversation_id,
       senderId: msg.sender_id,
-      content: msg.content,
-      type: 'text',
+      content: msg.content || '',
+      type: msg.message_type || 'text',
       isRead: msg.status === 'read',
       createdAt: msg.created_at || new Date().toISOString(),
-    };
+      // Additional fields
+      fileUrl: msg.file_url,
+      fileName: msg.file_name,
+      fileSize: msg.file_size,
+      fileType: msg.file_type,
+      duration: msg.duration,
+      senderName: msg.sender_name,
+      senderPicture: msg.sender_picture,
+    } as any;
   }, []);
 
   useEffect(() => {
@@ -90,12 +115,26 @@ export const useChat = () => {
       dispatch(addMessage(mapMessage(message)));
     };
 
+    const handleUserStatus = ({ userId, status }: { userId: string; status: 'online' | 'offline' }) => {
+      setOnlineUsers(prev => {
+        const newSet = new Set(prev);
+        if (status === 'online') {
+          newSet.add(userId);
+        } else {
+          newSet.delete(userId);
+        }
+        return newSet;
+      });
+    };
+
     socket.on('message:received', handleReceived);
     socket.on('message:sent', handleReceived);
+    socket.on('user:status', handleUserStatus);
 
     return () => {
       socket.off('message:received', handleReceived);
       socket.off('message:sent', handleReceived);
+      socket.off('user:status', handleUserStatus);
     };
   }, [dispatch, mapMessage, user]);
 
@@ -224,6 +263,10 @@ export const useChat = () => {
     }
   }, [dispatch, mapMessage]);
 
+  const isUserOnline = useCallback((userId: string) => {
+    return onlineUsers.has(userId);
+  }, [onlineUsers]);
+
   return {
     conversations,
     currentConversation,
@@ -237,5 +280,6 @@ export const useChat = () => {
     getOtherParticipant,
     getConversationById,
     loadMessages,
+    isUserOnline,
   };
 };

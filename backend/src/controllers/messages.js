@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { pool } from '../db/database.js';
 import { getFileUrl, getFileCategory } from '../middleware/upload.js';
+import { isUserOnline } from '../realtime/socket.js';
 
 const listConversations = async (req, res) => {
   try {
@@ -22,7 +23,17 @@ const listConversations = async (req, res) => {
        ORDER BY c.last_message_at DESC, c.updated_at DESC`,
       [userId, userId]
     );
-    res.json({ conversations: rows });
+
+    // Add online status for each conversation
+    const conversationsWithStatus = rows.map(conv => {
+      const otherUserId = conv.seeker_id === userId ? conv.provider_id : conv.seeker_id;
+      return {
+        ...conv,
+        other_user_online: isUserOnline(otherUserId),
+      };
+    });
+
+    res.json({ conversations: conversationsWithStatus });
   } catch (error) {
     console.error('Error listing conversations:', error);
     res.status(500).json({ error: error.message });

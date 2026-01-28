@@ -102,6 +102,9 @@ function initSocket(server) {
     onlineUsers.set(userId, socket.id);
     await upsertPresence(userId, 'online', socket.id);
 
+    // Broadcast online status to all users
+    io.emit('user:status', { userId, status: 'online' });
+
     // Deliver any queued offline messages
     try {
       const redis = await getRedisClient();
@@ -201,11 +204,23 @@ function initSocket(server) {
     socket.on('disconnect', async () => {
       onlineUsers.delete(userId);
       await upsertPresence(userId, 'offline', null);
+      // Broadcast offline status to all users
+      io.emit('user:status', { userId, status: 'offline' });
     });
   });
 
   return io;
 }
 
-export { initSocket, onlineUsers };
+// Helper function to check if user is online
+function isUserOnline(userId) {
+  return onlineUsers.has(userId);
+}
+
+// Get all online users
+function getOnlineUsers() {
+  return Array.from(onlineUsers.keys());
+}
+
+export { initSocket, onlineUsers, isUserOnline, getOnlineUsers };
 

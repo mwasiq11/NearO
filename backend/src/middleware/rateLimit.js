@@ -8,12 +8,13 @@ if (process.env.NODE_ENV === 'test') {
 }
 
 const WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW || '15') * 60 * 1000; // Convert minutes to ms
-const MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100');
-const AUTH_MAX = parseInt(process.env.AUTH_RATE_LIMIT_MAX || '5');
-const SEARCH_MAX = parseInt(process.env.SEARCH_RATE_LIMIT_MAX || '50');
+const MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '500'); // Increased from 100
+const AUTH_MAX = parseInt(process.env.AUTH_RATE_LIMIT_MAX || '10'); // Increased from 5
+const SEARCH_MAX = parseInt(process.env.SEARCH_RATE_LIMIT_MAX || '200'); // Increased from 50
 
 /**
  * Global rate limiter - applies to all requests
+ * More lenient for normal user activity
  */
 const globalLimiter = rateLimit({
   windowMs: WINDOW_MS,
@@ -25,11 +26,18 @@ const globalLimiter = rateLimit({
   },
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false, // Disable `X-RateLimit-*` headers
-  // Skip successful requests (only count errors)
   skipSuccessfulRequests: false,
-  // Use IP address as key
   keyGenerator: (req) => {
-    return req.ip || req.connection.remoteAddress;
+    // Use user ID if authenticated for better accuracy
+    return req.user?.id || req.ip || req.connection.remoteAddress;
+  },
+  skip: (req) => {
+    // Skip rate limiting for certain read-only endpoints
+    const skipPaths = [
+      '/health',
+      '/uploads',
+    ];
+    return skipPaths.some(path => req.path.startsWith(path));
   }
 });
 
@@ -59,6 +67,7 @@ const authLimiter = rateLimit({
 
 /**
  * Search rate limiter - for location-based searches
+ * More lenient for authenticated users
  */
 const searchLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
@@ -73,6 +82,10 @@ const searchLimiter = rateLimit({
   keyGenerator: (req) => {
     // Use user ID if authenticated, otherwise IP
     return req.user?.id || req.ip || req.connection.remoteAddress;
+  },
+  skip: (req) => {
+    // Give authenticated users higher limits
+    return req.user && req.method === 'GET';
   }
 });
 
@@ -104,7 +117,7 @@ const adminLimiter = rateLimit({
  */
 const passwordResetLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3, // Very strict limit
+  max: 5, // Slightly increased from 3
   message: {
     error: 'Too many password reset requests',
     message: 'Too many password reset attempts, please try again after an hour.',
@@ -122,7 +135,7 @@ const passwordResetLimiter = rateLimit({
  */
 const emailVerificationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5,
+  max: 10, // Increased from 5
   message: {
     error: 'Too many verification requests',
     message: 'Too many email verification requests, please try again later.',
@@ -132,6 +145,28 @@ const emailVerificationLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => {
     return req.body?.email || req.query?.email || req.ip || req.connection.remoteAddress;
+  }
+});
+
+/**
+ * Read-only operations limiter - Very lenient for GET requests
+ */
+const readOnlyLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // 100 requests per minute for reads
+  message: {
+    error: 'Too many read requests',
+    message: 'Please slow down your requests.',
+    retryAfter: 60
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return req.user?.id || req.ip || req.connection.remoteAddress;
+  },
+  skip: (req) => {
+    // Only apply to GET requests
+    return req.method !== 'GET';
   }
 });
 
@@ -163,6 +198,7 @@ export {
   adminLimiter,
   passwordResetLimiter,
   emailVerificationLimiter,
+  readOnlyLimiter,
   createLimiter
 };
 

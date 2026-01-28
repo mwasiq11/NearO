@@ -46,6 +46,27 @@ const createBooking = async (req, res) => {
       [id, service_id, seeker_id, requested_time]
     );
 
+    // Auto-create conversation for messaging
+    try {
+      const [existingConv] = await pool.execute(
+        `SELECT id FROM conversations WHERE seeker_id = ? AND provider_id = ? AND service_id = ?`,
+        [seeker_id, service.provider_id, service_id]
+      );
+      
+      if (existingConv.length === 0) {
+        const conversationId = uuidv4();
+        await pool.execute(
+          `INSERT INTO conversations (id, seeker_id, provider_id, service_id, last_message_at)
+           VALUES (?, ?, ?, ?, NOW())`,
+          [conversationId, seeker_id, service.provider_id, service_id]
+        );
+        console.log(`✅ Created conversation ${conversationId} for booking ${id}`);
+      }
+    } catch (convError) {
+      console.error('Warning: Failed to create conversation:', convError);
+      // Don't fail the booking if conversation creation fails
+    }
+
     res.status(201).json({
       id,
       service_id,

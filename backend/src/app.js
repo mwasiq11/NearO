@@ -59,11 +59,8 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve static files for uploads
+// Serve static files for uploads (no rate limiting on static files)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-
-// Global rate limiting
-app.use(globalLimiter);
 
 // Maintenance mode middleware
 app.use(maintenanceMiddleware);
@@ -76,7 +73,7 @@ initializeDatabase().then(() => {
   process.exit(1);
 });
 
-// Health check (before rate limiting)
+// Health check (no rate limiting)
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -100,6 +97,9 @@ app.get('/health', (req, res) => {
     }
   });
 });
+
+// Apply global rate limiting AFTER health check
+app.use(globalLimiter);
 
 // API Routes
 app.use('/auth', authRoutes);

@@ -10,25 +10,44 @@ interface MessageBubbleProps {
   message: {
     id: string;
     content?: string;
-    message_type: 'text' | 'image' | 'voice' | 'file';
+    type?: 'text' | 'image' | 'voice' | 'file';
+    message_type?: 'text' | 'image' | 'voice' | 'file';
     file_url?: string;
+    fileUrl?: string;
     file_name?: string;
+    fileName?: string;
     file_size?: number;
+    fileSize?: number;
     duration?: number;
-    sender_id: string;
-    sender_name: string;
+    sender_id?: string;
+    senderId?: string;
+    sender_name?: string;
+    senderName?: string;
     sender_picture?: string;
-    status: 'sent' | 'delivered' | 'read';
-    created_at: string;
+    senderPicture?: string;
+    status?: 'sent' | 'delivered' | 'read';
+    isRead?: boolean;
+    created_at?: string;
+    createdAt?: string;
   };
   isOwn: boolean;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) => {
+  // Handle both snake_case (backend) and camelCase (frontend) field names
+  const messageType = message.message_type || message.type || 'text';
+  const fileUrl = message.file_url || message.fileUrl;
+  const fileName = message.file_name || message.fileName;
+  const fileSize = message.file_size || message.fileSize;
+  const senderName = message.sender_name || message.senderName || 'User';
+  const senderPicture = message.sender_picture || message.senderPicture;
+  const createdAt = message.created_at || message.createdAt || new Date().toISOString();
+  const status = message.status || (message.isRead ? 'read' : 'sent');
+
   const getStatusIcon = () => {
     if (!isOwn) return null;
-    if (message.status === 'read') return <CheckCheck className="h-3 w-3 text-blue-500" />;
-    if (message.status === 'delivered') return <CheckCheck className="h-3 w-3" />;
+    if (status === 'read') return <CheckCheck className="h-3 w-3 text-blue-500" />;
+    if (status === 'delivered') return <CheckCheck className="h-3 w-3" />;
     return <Check className="h-3 w-3" />;
   };
 
@@ -43,14 +62,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
     <div className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'} mb-4`}>
       {!isOwn && (
         <Avatar className="h-8 w-8">
-          <AvatarImage src={message.sender_picture} />
-          <AvatarFallback>{message.sender_name[0]}</AvatarFallback>
+          <AvatarImage src={senderPicture} />
+          <AvatarFallback>{senderName[0]}</AvatarFallback>
         </Avatar>
       )}
       
       <div className={`max-w-[70%] ${isOwn ? 'items-end' : 'items-start'}`}>
         {!isOwn && (
-          <p className="text-xs text-muted-foreground mb-1">{message.sender_name}</p>
+          <p className="text-xs text-muted-foreground mb-1">{senderName}</p>
         )}
         
         <div
@@ -60,23 +79,23 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
               : 'bg-muted text-foreground rounded-tl-sm'
           }`}
         >
-          {message.message_type === 'text' && (
+          {messageType === 'text' && (
             <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
           )}
 
-          {message.message_type === 'image' && (
+          {messageType === 'image' && (
             <div className="space-y-2">
               <img
-                src={message.file_url}
+                src={fileUrl}
                 alt="Shared image"
                 className="rounded-lg max-w-xs max-h-64 object-cover cursor-pointer"
-                onClick={() => window.open(message.file_url, '_blank')}
+                onClick={() => window.open(fileUrl, '_blank')}
               />
               {message.content && <p className="text-sm">{message.content}</p>}
             </div>
           )}
 
-          {message.message_type === 'voice' && (
+          {messageType === 'voice' && (
             <div className="flex items-center gap-3 min-w-[200px]">
               <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
                 <Play className="h-4 w-4" />
@@ -92,20 +111,20 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
             </div>
           )}
 
-          {message.message_type === 'file' && (
+          {messageType === 'file' && (
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-background/20 flex items-center justify-center">
                 <Paperclip className="h-5 w-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{message.file_name}</p>
-                <p className="text-xs opacity-70">{formatFileSize(message.file_size)}</p>
+                <p className="text-sm font-medium truncate">{fileName}</p>
+                <p className="text-xs opacity-70">{formatFileSize(fileSize)}</p>
               </div>
               <Button 
                 size="sm" 
                 variant="ghost" 
                 className="h-8 w-8 p-0"
-                onClick={() => window.open(message.file_url, '_blank')}
+                onClick={() => window.open(fileUrl, '_blank')}
               >
                 <Download className="h-4 w-4" />
               </Button>
@@ -115,7 +134,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
 
         <div className={`flex items-center gap-1 mt-1 px-2 ${isOwn ? 'justify-end' : 'justify-start'}`}>
           <span className="text-xs text-muted-foreground">
-            {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+            {formatDistanceToNow(new Date(createdAt), { addSuffix: true })}
           </span>
           {getStatusIcon()}
         </div>

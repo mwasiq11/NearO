@@ -10,6 +10,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useListings } from '@/hooks/useListings';
 import { useBookings } from '@/hooks/useBookings';
 import { formatPrice, formatDate } from '@/utils/formatters';
+import { getCategoryEmoji } from '@/utils/categoryEmojis';
+import { getCategoryImage } from '@/utils/categoryImages';
 
 const SeekerDashboard = () => {
   const navigate = useNavigate();
@@ -52,7 +54,7 @@ const SeekerDashboard = () => {
               onClick={() => navigate(`/dashboard/browse?category=${cat.id}`)}
               className="flex flex-col items-center p-3 rounded-xl bg-card border hover:shadow-md transition-all"
             >
-              <span className="text-2xl mb-1">{cat.icon}</span>
+              <span className="text-2xl mb-1">{getCategoryEmoji(cat.name)}</span>
               <span className="text-xs text-center line-clamp-1">{cat.name}</span>
             </button>
           ))}
@@ -96,14 +98,24 @@ const SeekerDashboard = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-accent" />
-            Trending in {user?.neighborhood}
+            Trending {user?.neighborhood && user.neighborhood !== 'Unknown' ? `in ${user.neighborhood}` : 'Services'}
           </h2>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
-          {trendingListings.slice(0, 4).map((listing) => (
+          {trendingListings.slice(0, 4).map((listing) => {
+            const imageUrl = listing.images?.[0] || getCategoryImage(listing.category);
+            return (
             <Card key={listing.id} className="overflow-hidden cursor-pointer hover:shadow-md transition-all" onClick={() => navigate(`/dashboard/listing/${listing.id}`)}>
               <div className="aspect-video bg-muted relative">
-                <img src={listing.images[0]} alt={listing.title} className="w-full h-full object-cover" />
+                <img 
+                  src={imageUrl} 
+                  alt={listing.title} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = getCategoryImage(listing.category);
+                  }}
+                />
                 {listing.isTrending && (
                   <Badge variant="trending" className="absolute top-2 left-2">🔥 Trending</Badge>
                 )}
@@ -119,7 +131,7 @@ const SeekerDashboard = () => {
                 </div>
               </div>
             </Card>
-          ))}
+          );})}
         </div>
       </motion.div>
     </div>

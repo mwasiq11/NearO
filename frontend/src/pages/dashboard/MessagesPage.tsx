@@ -17,6 +17,7 @@ const MessagesPage = () => {
     currentMessages,
     openConversation,
     loadMessages,
+    isUserOnline,
   } = useChat();
   const [message, setMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -103,7 +104,13 @@ const MessagesPage = () => {
 
   const getCurrentOtherUser = () => {
     if (!currentConversation) return null;
-    return getOtherUser(currentConversation);
+    const otherUser = getOtherUser(currentConversation);
+    if (!otherUser) return null;
+    
+    return {
+      ...otherUser,
+      status: isUserOnline(otherUser.id) ? 'online' as const : 'offline' as const,
+    };
   };
 
   return (
@@ -124,6 +131,8 @@ const MessagesPage = () => {
                 const otherUser = getOtherUser(conv);
                 if (!otherUser) return null;
 
+                const isOnline = isUserOnline(otherUser.id);
+
                 return (
                   <button
                     key={conv.id}
@@ -135,12 +144,17 @@ const MessagesPage = () => {
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-12 w-12">
-                        <AvatarImage src={otherUser.profile_picture} />
-                        <AvatarFallback className="bg-primary/10">
-                          {otherUser.name[0]}
-                        </AvatarFallback>
-                      </Avatar>
+                      <div className="relative">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={otherUser.profile_picture} />
+                          <AvatarFallback className="bg-primary/10">
+                            {otherUser.name[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        {isOnline && (
+                          <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-background" />
+                        )}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <p className="font-medium truncate">{otherUser.name}</p>
