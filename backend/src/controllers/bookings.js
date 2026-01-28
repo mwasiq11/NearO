@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { pool, readPool } from '../db/database.js';
 import { logAudit, buildRequestContext } from '../audit/logger.js';
+import { getIO } from '../realtime/socket.js';
 
 const createBooking = async (req, res) => {
   try {
@@ -100,7 +101,7 @@ const getBookings = async (req, res) => {
   try {
     const { user_id } = req.query;
     let query = `
-      SELECT b.*, s.title as service_title, s.category, u.name as seeker_name
+      SELECT b.*, s.title as service_title, s.category, s.provider_id, u.name as seeker_name
       FROM bookings b
       JOIN services s ON b.service_id = s.id
       JOIN users u ON b.seeker_id = u.id
@@ -110,7 +111,7 @@ const getBookings = async (req, res) => {
 
     if (user_id) {
       query = `
-        SELECT b.*, s.title as service_title, s.category, u.name as seeker_name
+        SELECT b.*, s.title as service_title, s.category, s.provider_id, u.name as seeker_name
         FROM bookings b
         JOIN services s ON b.service_id = s.id
         JOIN users u ON b.seeker_id = u.id
@@ -128,7 +129,175 @@ const getBookings = async (req, res) => {
   }
 };
 
+const acceptBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized: User not authenticated' });
+    }
+
+    // Verify the user is the provider
+    const [bookings] = await pool.execute(
+      `SELECT b.*, s.provider_id FROM bookings b
+       JOIN services s ON b.service_id = s.id
+       WHERE b.id = ?`,
+      [id]
+    );
+
+    if (bookings.length === 0) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    const booking = bookings[0];
+    console.log(`[ACCEPT] Provider ID: ${booking.provider_id}, Current User: ${userId}`);
+
+    if (booking.provider_id !== userId) {
+      return res.status(403).json({ error: 'Only the service provider can accept bookings' });
+    }
+
+    // Update booking status
+    await pool.execute(
+      `UPDATE bookings SET status = 'approved' WHERE id = ?`,
+      [id]
+    );
+    console.log(`✅ Booking ${id} updated to approved`);
+
+    // Create notification for seeker
+    const notificationId = uuidv4();
+    try {
+      await pool.execute(
+        `INSERT INTO notifications (id, user_id, type, title, message, entity_type, entity_id)
+         VALUES (?, ?, 'booking_accepted', 'Booking Accepted', 'Your booking has been accepted by the provider', 'booking', ?)`,
+        [notificationId, booking.seeker_id, id]
+      );
+      console.log(`✅ Notification ${notificationId} created for seeker ${booking.seeker_id}`);
+
+      // Emit real-time notification to seeker via Socket.io
+      const io = getIO();
+      if (io) {
+        io.emit('booking:status-changed', {
+          bookingId: id,
+          status: 'approved',
+          seekerId: booking.seeker_id,
+          notification: {
+            id: notificationId,
+            type: 'booking_accepted',
+            title: 'Booking Accepted',
+            message: 'Your booking has been accepted by the provider'
+          }
+        });
+        console.log(`📡 Socket.io event emitted for booking status change`);
+      }
+    } catch (notifError) {
+      console.error('Warning: Failed to create notification:', notifError);
+    }
+
+    res.json({ success: true, message: 'Booking accepted' });
+
+    const ctx = buildRequestContext(req);
+    await logAudit({
+      actorId: userId,
+      actionType: 'booking_accept',
+      entityType: 'booking',
+      entityId: id,
+      newValue: { status: 'approved' },
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent
+    });
+  } catch (error) {
+    console.error('Error accepting booking:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const rejectBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized: User not authenticated' });
+    }
+
+    // Verify the user is the provider
+    const [bookings] = await pool.execute(
+      `SELECT b.*, s.provider_id FROM bookings b
+       JOIN services s ON b.service_id = s.id
+       WHERE b.id = ?`,
+      [id]
+    );
+
+    if (bookings.length === 0) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    const booking = bookings[0];
+    console.log(`[REJECT] Provider ID: ${booking.provider_id}, Current User: ${userId}`);
+
+    if (booking.provider_id !== userId) {
+      return res.status(403).json({ error: 'Only the service provider can reject bookings' });
+    }
+
+    // Update booking status
+    await pool.execute(
+      `UPDATE bookings SET status = 'rejected' WHERE id = ?`,
+      [id]
+    );
+    console.log(`✅ Booking ${id} updated to rejected`);
+
+    // Create notification for seeker
+    const notificationId = uuidv4();
+    try {
+      await pool.execute(
+        `INSERT INTO notifications (id, user_id, type, title, message, entity_type, entity_id)
+         VALUES (?, ?, 'booking_rejected', 'Booking Declined', 'Your booking has been declined by the provider', 'booking', ?)`,
+        [notificationId, booking.seeker_id, id]
+      );
+      console.log(`✅ Notification ${notificationId} created for seeker ${booking.seeker_id}`);
+
+      // Emit real-time notification to seeker via Socket.io
+      const io = getIO();
+      if (io) {
+        io.emit('booking:status-changed', {
+          bookingId: id,
+          status: 'rejected',
+          seekerId: booking.seeker_id,
+          notification: {
+            id: notificationId,
+            type: 'booking_rejected',
+            title: 'Booking Declined',
+            message: 'Your booking has been declined by the provider'
+          }
+        });
+        console.log(`📡 Socket.io event emitted for booking status change`);
+      }
+    } catch (notifError) {
+      console.error('Warning: Failed to create notification:', notifError);
+    }
+
+    res.json({ success: true, message: 'Booking rejected' });
+
+    const ctx = buildRequestContext(req);
+    await logAudit({
+      actorId: userId,
+      actionType: 'booking_reject',
+      entityType: 'booking',
+      entityId: id,
+      newValue: { status: 'rejected' },
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent
+    });
+  } catch (error) {
+    console.error('Error rejecting booking:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export {
   createBooking,
-  getBookings
+  getBookings,
+  acceptBooking,
+  rejectBooking
 };

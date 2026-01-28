@@ -50,7 +50,7 @@ export const useChat = () => {
         buildUser(conv.seeker_id, conv.seeker_name || 'Seeker', conv.seeker_email || '', conv.seeker_picture),
         buildUser(conv.provider_id, conv.provider_name || 'Provider', conv.provider_email || '', conv.provider_picture),
       ],
-      unreadCount: 0,
+      unreadCount: conv.unread_count || 0, // Get unread count from backend
       listingId: conv.service_id || undefined,
       createdAt: conv.created_at || new Date().toISOString(),
       updatedAt: conv.updated_at || new Date().toISOString(),
@@ -155,9 +155,19 @@ export const useChat = () => {
     return conversation.participants.find(p => p !== user.id) || '';
   }, [user]);
 
-  const openConversation = useCallback((conversation: Conversation) => {
+  const openConversation = useCallback(async (conversation: Conversation) => {
     dispatch(setCurrentConversation(conversation));
-    dispatch(markAsRead(conversation.id));
+    
+    // Mark conversation as read on the backend
+    if (conversation.unreadCount > 0) {
+      try {
+        await api.put(`/messages/${conversation.id}/read`, {}, { auth: true });
+        dispatch(markAsRead(conversation.id));
+      } catch (err) {
+        console.error('Failed to mark conversation as read:', err);
+      }
+    }
+    
     const socket = socketRef.current;
     if (socket) {
       socket.emit('conversation:join', { conversationId: conversation.id });

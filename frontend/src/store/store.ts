@@ -4,6 +4,7 @@ import listingsReducer from './slices/listingsSlice';
 import bookingsReducer from './slices/bookingsSlice';
 import chatReducer from './slices/chatSlice';
 import uiReducer from './slices/uiSlice';
+import notificationsReducer from './slices/notificationsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     bookings: bookingsReducer,
     chat: chatReducer,
     ui: uiReducer,
+    notifications: notificationsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

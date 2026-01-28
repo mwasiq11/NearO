@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getRedisClient } from '../queue/redisClient.js';
 
 const onlineUsers = new Map();
+let ioInstance = null;
 
 function getTokenFromHandshake(socket) {
   if (socket.handshake.auth && socket.handshake.auth.token) {
@@ -79,6 +80,8 @@ function initSocket(server) {
       credentials: true
     }
   });
+
+  ioInstance = io;
 
   io.use((socket, next) => {
     const token = getTokenFromHandshake(socket);
@@ -222,5 +225,10 @@ function getOnlineUsers() {
   return Array.from(onlineUsers.keys());
 }
 
-export { initSocket, onlineUsers, isUserOnline, getOnlineUsers };
+// Get io instance for use in controllers
+function getIO() {
+  return ioInstance;
+}
+
+export { initSocket, onlineUsers, isUserOnline, getOnlineUsers, getIO };
 

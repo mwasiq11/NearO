@@ -12,14 +12,18 @@ const listConversations = async (req, res) => {
               u1.email AS seeker_email,
               u2.name AS provider_name,
               u2.email AS provider_email,
-              s.title AS service_title
+              s.title AS service_title,
+              CASE 
+                WHEN c.seeker_id = ? THEN c.seeker_unread_count
+                ELSE c.provider_unread_count
+              END as unread_count
        FROM conversations c
        JOIN users u1 ON c.seeker_id = u1.id
        JOIN users u2 ON c.provider_id = u2.id
        LEFT JOIN services s ON c.service_id = s.id
        WHERE c.seeker_id = ? OR c.provider_id = ?
-       ORDER BY c.last_message_at DESC, c.updated_at DESC`,
-      [userId, userId]
+       ORDER BY c.last_message_at DESC`,
+      [userId, userId, userId]
     );
 
     // Add online status for each conversation
@@ -145,16 +149,40 @@ const sendMessage = async (req, res) => {
       [messageId, conversationId, userId, receiverId, finalMessageType, content || null, fileUrl, fileName, fileSize, fileType, duration]
     );
 
-    // Update conversation last message
-    const previewContent = content || (finalMessageType === 'image' ? '📷 Image' : finalMessageType === 'voice' ? '🎤 Voice message' : '📎 File');
-    await pool.execute(
-      `UPDATE conversations 
-       SET last_message_at = NOW(), 
-           last_message_preview = ?,
-           last_message_type = ?
-       WHERE id = ?`,
-      [previewContent, finalMessageType, conversationId]
+    // Increment unread count for receiver
+    const [convInfo] = await pool.execute(
+      `SELECT seeker_id, provider_id FROM conversations WHERE id = ?`,
+      [conversationId]
     );
+    
+    if (convInfo.length > 0) {
+      const isReceiverSeeker = convInfo[0].seeker_id === receiverId;
+      const unreadColumn = isReceiverSeeker ? 'seeker_unread_count' : 'provider_unread_count';
+      
+      await pool.execute(
+        `UPDATE conversations SET ${unreadColumn} = ${unreadColumn} + 1, last_message_at = NOW(), 
+         last_message_preview = ?, last_message_type = ? WHERE id = ?`,
+        [previewContent, finalMessageType, conversationId]
+      );
+
+      // Create notification for receiver
+      const notificationId = uuidv4();
+      await pool.execute(
+        `INSERT INTO notifications (id, user_id, type, title, message, entity_type, entity_id, created_at)
+         VALUES (?, ?, 'new_message', 'New Message', ?, 'message', ?, NOW())`,
+        [notificationId, receiverId, previewContent.substring(0, 100), messageId]
+      );
+    } else {
+      // Fallback if conversation info not found
+      await pool.execute(
+        `UPDATE conversations 
+         SET last_message_at = NOW(), 
+             last_message_preview = ?,
+             last_message_type = ?
+         WHERE id = ?`,
+        [previewContent, finalMessageType, conversationId]
+      );
+    }
 
     const [newMessage] = await pool.execute(
       `SELECT m.*, u.name as sender_name
@@ -174,17 +202,37 @@ const sendMessage = async (req, res) => {
 const markAsRead = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { messageId } = req.params;
+    const { conversationId } = req.params;
 
+    // Get conversation info
+    const [convInfo] = await pool.execute(
+      `SELECT seeker_id, provider_id FROM conversations WHERE id = ?`,
+      [conversationId]
+    );
+
+    if (convInfo.length === 0) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    // Mark all messages as read where user is the receiver
     await pool.execute(
       `UPDATE messages SET status = 'read' 
-       WHERE id = ? AND receiver_id = ?`,
-      [messageId, userId]
+       WHERE conversation_id = ? AND receiver_id = ? AND status != 'read'`,
+      [conversationId, userId]
+    );
+
+    // Reset unread count for this user
+    const isSeeker = convInfo[0].seeker_id === userId;
+    const unreadColumn = isSeeker ? 'seeker_unread_count' : 'provider_unread_count';
+    
+    await pool.execute(
+      `UPDATE conversations SET ${unreadColumn} = 0 WHERE id = ?`,
+      [conversationId]
     );
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Error marking message as read:', error);
+    console.error('Error marking messages as read:', error);
     res.status(500).json({ error: error.message });
   }
 };

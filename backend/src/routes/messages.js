@@ -14,8 +14,8 @@ router.get('/:conversationId', authenticate, listMessages);
 // POST /messages/send - send a message (with optional file)
 router.post('/send', authenticate, uploadSingle, sendMessage);
 
-// PUT /messages/:messageId/read - mark message as read
-router.put('/:messageId/read', authenticate, markAsRead);
+// PUT /messages/:conversationId/read - mark conversation messages as read
+router.put('/:conversationId/read', authenticate, markAsRead);
 
 export default router;
 

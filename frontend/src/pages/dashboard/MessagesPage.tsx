@@ -161,10 +161,18 @@ const MessagesPage = () => {
                         {isOnline && (
                           <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-background" />
                         )}
+                        {/* Unread count badge */}
+                        {conv.unreadCount > 0 && (
+                          <div className="absolute -top-1 -right-1 h-5 w-5 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center">
+                            {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
+                          </div>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
-                          <p className="font-medium truncate">{otherUser.name}</p>
+                          <p className={`font-medium truncate ${conv.unreadCount > 0 ? 'font-bold' : ''}`}>
+                            {otherUser.name}
+                          </p>
                           {conv.last_message_at && (
                             <span className="text-xs text-muted-foreground">
                               {new Date(conv.last_message_at).toLocaleDateString()}
@@ -177,7 +185,9 @@ const MessagesPage = () => {
                           </p>
                         )}
                         {conv.last_message_preview && (
-                          <p className="text-sm text-muted-foreground truncate">
+                          <p className={`text-sm text-muted-foreground truncate ${
+                            conv.unreadCount > 0 ? 'font-semibold text-foreground' : ''
+                          }`}>
                             {conv.last_message_preview}
                           </p>
                         )}

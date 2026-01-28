@@ -8,9 +8,9 @@ if (process.env.NODE_ENV === 'test') {
 }
 
 const WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW || '15') * 60 * 1000; // Convert minutes to ms
-const MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '500'); // Increased from 100
-const AUTH_MAX = parseInt(process.env.AUTH_RATE_LIMIT_MAX || '10'); // Increased from 5
-const SEARCH_MAX = parseInt(process.env.SEARCH_RATE_LIMIT_MAX || '200'); // Increased from 50
+const MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '1000'); // Increased from 500
+const AUTH_MAX = parseInt(process.env.AUTH_RATE_LIMIT_MAX || '20'); // Increased from 10
+const SEARCH_MAX = parseInt(process.env.SEARCH_RATE_LIMIT_MAX || '500'); // Increased from 200
 
 /**
  * Global rate limiter - applies to all requests

@@ -183,6 +183,30 @@ export const useBookings = () => {
     }
   }, [dispatch]);
 
+  const acceptBooking = useCallback(async (bookingId: string): Promise<boolean> => {
+    try {
+      await api.put(`/bookings/${bookingId}/accept`, {}, { auth: true });
+      dispatch(updateBookingStatus({ id: bookingId, status: 'confirmed' }));
+      toast.success('Booking accepted!');
+      return true;
+    } catch (err) {
+      toast.error('Failed to accept booking');
+      return false;
+    }
+  }, [dispatch]);
+
+  const rejectBooking = useCallback(async (bookingId: string): Promise<boolean> => {
+    try {
+      await api.put(`/bookings/${bookingId}/reject`, {}, { auth: true });
+      dispatch(updateBookingStatus({ id: bookingId, status: 'cancelled' }));
+      toast.success('Booking rejected');
+      return true;
+    } catch (err) {
+      toast.error('Failed to reject booking');
+      return false;
+    }
+  }, [dispatch]);
+
   const selectBooking = useCallback((booking: Booking | null) => {
     dispatch(setCurrentBooking(booking));
   }, [dispatch]);
@@ -205,6 +229,8 @@ export const useBookings = () => {
     startService,
     completeService,
     cancel,
+    acceptBooking,
+    rejectBooking,
     selectBooking,
     getBookingById,
   };
