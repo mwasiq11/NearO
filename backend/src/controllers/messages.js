@@ -10,10 +10,8 @@ const listConversations = async (req, res) => {
       `SELECT c.*,
               u1.name AS seeker_name,
               u1.email AS seeker_email,
-              u1.profile_picture AS seeker_picture,
               u2.name AS provider_name,
               u2.email AS provider_email,
-              u2.profile_picture AS provider_picture,
               s.title AS service_title
        FROM conversations c
        JOIN users u1 ON c.seeker_id = u1.id
@@ -44,8 +42,9 @@ const listMessages = async (req, res) => {
   try {
     const userId = req.user.id;
     const { conversationId } = req.params;
-    const { page = 1, limit = 50 } = req.query;
-    const offset = (page - 1) * limit;
+    const pageNum = parseInt(req.query.page) || 1;
+    const limitNum = parseInt(req.query.limit) || 50;
+    const offsetNum = (pageNum - 1) * limitNum;
 
     const [conversations] = await pool.execute(
       `SELECT id FROM conversations WHERE id = ? AND (seeker_id = ? OR provider_id = ?)`,
@@ -56,23 +55,23 @@ const listMessages = async (req, res) => {
       return res.status(403).json({ error: 'Access denied to conversation' });
     }
 
+    // Note: LIMIT and OFFSET cannot use placeholders in MySQL prepared statements
     const [messages] = await pool.execute(
       `SELECT m.*, 
-              u.name as sender_name, 
-              u.profile_picture as sender_picture
+              u.name as sender_name
        FROM messages m
        JOIN users u ON m.sender_id = u.id
        WHERE m.conversation_id = ?
        ORDER BY m.created_at ASC
-       LIMIT ? OFFSET ?`,
-      [conversationId, parseInt(limit), offset]
+       LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      [conversationId]
     );
 
     res.json({
       messages,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         count: messages.length
       }
     });
@@ -141,7 +140,7 @@ const sendMessage = async (req, res) => {
     );
 
     const [newMessage] = await pool.execute(
-      `SELECT m.*, u.name as sender_name, u.profile_picture as sender_picture
+      `SELECT m.*, u.name as sender_name
        FROM messages m
        JOIN users u ON m.sender_id = u.id
        WHERE m.id = ?`,

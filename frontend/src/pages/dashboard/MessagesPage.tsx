@@ -35,8 +35,8 @@ const MessagesPage = () => {
     const isSeeker = convo.seeker_id === user.id;
     return {
       id: isSeeker ? convo.provider_id : convo.seeker_id,
-      name: isSeeker ? convo.provider_name : convo.seeker_name,
-      email: isSeeker ? convo.provider_email : convo.seeker_email,
+      name: (isSeeker ? convo.provider_name : convo.seeker_name) || 'User',
+      email: (isSeeker ? convo.provider_email : convo.seeker_email) || '',
       profile_picture: isSeeker ? convo.provider_picture : convo.seeker_picture,
     };
   };
@@ -148,7 +148,7 @@ const MessagesPage = () => {
                         <Avatar className="h-12 w-12">
                           <AvatarImage src={otherUser.profile_picture} />
                           <AvatarFallback className="bg-primary/10">
-                            {otherUser.name[0]}
+                            {otherUser.name?.[0]?.toUpperCase() || '?'}
                           </AvatarFallback>
                         </Avatar>
                         {isOnline && (

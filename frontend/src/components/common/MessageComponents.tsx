@@ -63,7 +63,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
       {!isOwn && (
         <Avatar className="h-8 w-8">
           <AvatarImage src={senderPicture} />
-          <AvatarFallback>{senderName[0]}</AvatarFallback>
+          <AvatarFallback>{senderName?.[0]?.toUpperCase() || '?'}</AvatarFallback>
         </Avatar>
       )}
       
@@ -162,7 +162,7 @@ export const ConversationHeader: React.FC<ConversationHeaderProps> = ({ otherUse
           <Avatar className="h-12 w-12">
             <AvatarImage src={otherUser.profile_picture} />
             <AvatarFallback className="bg-primary text-primary-foreground">
-              {otherUser.name[0]}
+              {otherUser.name?.[0]?.toUpperCase() || '?'}
             </AvatarFallback>
           </Avatar>
           {otherUser.status === 'online' && (
