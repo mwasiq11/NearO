@@ -78,9 +78,16 @@ const BrowsePage = () => {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {listings.map((listing) => {
           const imageUrl = listing.images[0] || getCategoryImage(listing.category);
-          const locationText = listing.location.city && listing.location.neighborhood !== 'Unknown'
-            ? `${listing.location.neighborhood}, ${listing.location.city}`
-            : listing.location.city || listing.location.neighborhood;
+          
+          // Smart location display logic - show actual data or friendly message
+          let locationText = 'Location not specified';
+          if (listing.location.neighborhood && listing.location.city) {
+            locationText = `${listing.location.neighborhood}, ${listing.location.city}`;
+          } else if (listing.location.city) {
+            locationText = listing.location.city;
+          } else if (listing.location.neighborhood) {
+            locationText = listing.location.neighborhood;
+          }
 
           return (
             <Card
@@ -104,7 +111,7 @@ const BrowsePage = () => {
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-muted-foreground flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
-                    {locationText || 'Location not specified'}
+                    {locationText}
                   </div>
                   <Badge variant="outline">{listing.category}</Badge>
                 </div>

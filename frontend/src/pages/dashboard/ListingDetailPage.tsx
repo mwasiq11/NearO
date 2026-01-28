@@ -52,8 +52,8 @@ const ListingDetailPage = () => {
           images: service.images || [],
           availability: [],
           location: {
-            neighborhood: service.neighborhood || 'Unknown',
-            city: service.city || 'Unknown',
+            neighborhood: service.neighborhood || '',
+            city: service.city || '',
             radius: 10,
             coordinates: service.latitude && service.longitude ? {
               lat: Number(service.latitude),
@@ -124,7 +124,9 @@ const ListingDetailPage = () => {
             <h2 className="text-2xl font-bold">{listing.title}</h2>
             <div className="text-sm text-muted-foreground flex items-center gap-1">
               <MapPin className="h-4 w-4" />
-              {listing.location.neighborhood}, {listing.location.city}
+              {listing.location.neighborhood && listing.location.city
+                ? `${listing.location.neighborhood}, ${listing.location.city}`
+                : listing.location.city || listing.location.neighborhood || 'Location not specified'}
             </div>
           </div>
           <Badge variant="outline">{listing.category}</Badge>

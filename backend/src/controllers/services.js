@@ -65,10 +65,25 @@ const createService = async (req, res) => {
     let locationData = null;
     if (latitude && longitude) {
       locationData = normalizeLocation({ latitude, longitude, neighborhood, city });
+    } else if (neighborhood || city) {
+      // Save neighborhood and city even without coordinates
+      locationData = {
+        latitude: null,
+        longitude: null,
+        s2_cell_id: null,
+        neighborhood: neighborhood || null,
+        city: city || null
+      };
     }
 
     // Insert service with location data
     if (locationData) {
+      console.log('💾 Saving service with location:', { 
+        neighborhood: locationData.neighborhood, 
+        city: locationData.city,
+        hasCoordinates: !!(locationData.latitude && locationData.longitude)
+      });
+      
       await pool.execute(
         `INSERT INTO services 
          (id, provider_id, title, description, category, price, availability, 
@@ -82,6 +97,7 @@ const createService = async (req, res) => {
         ]
       );
     } else {
+      console.log('💾 Saving service WITHOUT location data');
       await pool.execute(
         'INSERT INTO services (id, provider_id, title, description, category, price, availability) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [id, provider_id, title, description, category, price, availability]
@@ -89,6 +105,13 @@ const createService = async (req, res) => {
     }
 
     const [newService] = await pool.execute('SELECT * FROM services WHERE id = ?', [id]);
+    
+    console.log('✅ Service created:', {
+      id: newService[0].id,
+      title: newService[0].title,
+      neighborhood: newService[0].neighborhood,
+      city: newService[0].city
+    });
 
     res.status(201).json(newService[0]);
 

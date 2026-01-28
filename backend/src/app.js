@@ -33,6 +33,7 @@ import reviewRoutes from './routes/reviews.js';
 import discoveryRoutes from './routes/discovery.js';
 import notificationRoutes from './routes/notifications.js';
 import historyRoutes from './routes/history.js';
+import earningsRoutes from './routes/earnings.js';
 import { startNotificationWorker } from './workers/notificationWorker.js';
 
 const app = express();
@@ -118,6 +119,7 @@ app.use('/reviews', reviewRoutes);
 app.use('/discover', discoveryRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/history', historyRoutes);
+app.use('/earnings', earningsRoutes);
 
 // 404 handler
 app.use((req, res) => {

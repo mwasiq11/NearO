@@ -26,6 +26,13 @@ export const useListings = () => {
   const { user } = useAppSelector(state => state.auth);
 
   const mapService = useCallback((service: any): ServiceListing => {
+    // Helper to check if a value is actually valid (not null, undefined, empty, or 'Unknown')
+    const isValidValue = (val: any) => val && val !== 'Unknown' && val.trim() !== '';
+    
+    // Process location data - preserve actual values, don't default to 'Unknown'
+    const neighborhood = isValidValue(service.neighborhood) ? service.neighborhood : '';
+    const city = isValidValue(service.city) ? service.city : '';
+    
     return {
       id: service.id,
       providerId: service.provider_id,
@@ -37,8 +44,8 @@ export const useListings = () => {
       images: service.images || [],
       availability: [],
       location: {
-        neighborhood: service.neighborhood || 'Unknown',
-        city: service.city || 'Unknown',
+        neighborhood: neighborhood,
+        city: city,
         radius: 10,
         coordinates: service.latitude && service.longitude ? {
           lat: Number(service.latitude),

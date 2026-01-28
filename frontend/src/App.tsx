@@ -7,6 +7,12 @@ import { Provider } from 'react-redux';
 import { store } from '@/store/store';
 import { useAppSelector } from '@/store/hooks';
 
+// React Router v7 future flags - suppress warnings and opt-in to v7 behavior
+const routerFutureConfig = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+};
+
 // Pages
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/auth/LoginPage";
@@ -22,6 +28,7 @@ import CreateServicePage from "./pages/dashboard/CreateServicePage";
 import BookingsPage from "./pages/dashboard/BookingsPage";
 import MessagesPage from "./pages/dashboard/MessagesPage";
 import ListingDetailPage from "./pages/dashboard/ListingDetailPage";
+import EarningsPage from "./pages/dashboard/EarningsPage";
 import NotFound from "./pages/NotFound";
 import ProfilePage from "./pages/profile/ProfilePage";
 import AdminModeratorLayout from "./components/layout/AdminModeratorLayout";
@@ -57,9 +64,6 @@ const RoleRoute = ({
   if (!allowed.includes(role as 'admin' | 'moderator')) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 };
-
-// Placeholder pages for routes
-const EarningsPage = () => <div className="p-6"><h1 className="text-2xl font-bold">Earnings</h1><p className="text-muted-foreground">Coming soon...</p></div>;
 
 const AppRoutes = () => {
   return (
@@ -166,7 +170,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter future={routerFutureConfig}>
           <AppRoutes />
         </BrowserRouter>
       </TooltipProvider>

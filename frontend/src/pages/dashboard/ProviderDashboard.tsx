@@ -1,22 +1,54 @@
 import { motion } from 'framer-motion';
 import { Plus, TrendingUp, Calendar, DollarSign, Star, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useBookings } from '@/hooks/useBookings';
+import { useEarnings } from '@/hooks/useEarnings';
 
 const ProviderDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { bookingsByStatus, upcomingBookings } = useBookings();
+  const { providerData, loading, fetchProviderEarnings } = useEarnings();
 
-  const stats = [
-    { label: 'Total Earnings', value: '$2,450', icon: DollarSign, change: '+12%' },
-    { label: 'Bookings', value: '23', icon: Calendar, change: '+5' },
-    { label: 'Rating', value: user?.reputation.overall.toFixed(1) || '0', icon: Star, change: 'Gold' },
-    { label: 'Clients', value: '18', icon: Users, change: '+3' },
+  useEffect(() => {
+    fetchProviderEarnings();
+  }, [fetchProviderEarnings]);
+
+  const stats = providerData ? [
+    { 
+      label: 'Total Earnings', 
+      value: `$${providerData.stats.totalEarnings.toFixed(2)}`, 
+      icon: DollarSign, 
+      change: providerData.stats.pendingEarnings > 0 ? `+$${providerData.stats.pendingEarnings.toFixed(2)}` : '+$0'
+    },
+    { 
+      label: 'Bookings', 
+      value: providerData.stats.totalBookings.toString(), 
+      icon: Calendar, 
+      change: `+${providerData.stats.pendingBookings}` 
+    },
+    { 
+      label: 'Rating', 
+      value: user?.reputation?.overall?.toFixed(1) || '0', 
+      icon: Star, 
+      change: 'Gold' 
+    },
+    { 
+      label: 'Clients', 
+      value: providerData.stats.totalClients.toString(), 
+      icon: Users, 
+      change: `+${providerData.stats.completedBookings}` 
+    },
+  ] : [
+    { label: 'Total Earnings', value: '$0', icon: DollarSign, change: '+$0' },
+    { label: 'Bookings', value: '0', icon: Calendar, change: '+0' },
+    { label: 'Rating', value: user?.reputation?.overall?.toFixed(1) || '0', icon: Star, change: 'Gold' },
+    { label: 'Clients', value: '0', icon: Users, change: '+0' },
   ];
 
   return (

@@ -11,7 +11,7 @@ const sizeClasses = {
   lg: 'h-12 w-12 border-3',
 };
 
-export const LoadingSpinner = ({ size = 'md', className }: LoadingSpinnerProps) => {
+ const LoadingSpinner = ({ size = 'md', className }: LoadingSpinnerProps) => {
   return (
     <div
       className={cn(
@@ -86,3 +86,5 @@ export const ListingCardSkeleton = () => {
     </div>
   );
 };
+
+export default LoadingSpinner;

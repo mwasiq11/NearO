@@ -24,12 +24,70 @@ export const CATEGORY_IMAGES = {
 };
 
 /**
+ * Normalize category name for matching
+ * Handles case-insensitive matching and common variations
+ */
+const normalizeCategory = (category: string): string => {
+  const normalized = category.trim().toLowerCase();
+  
+  // Map common variations to standard category names
+  const variations: Record<string, string> = {
+    'test': 'Other',
+    'testing': 'Other',
+    'garden': 'Gardening',
+    'gardens': 'Gardening',
+    'fitness training': 'Fitness',
+    'personal training': 'Fitness',
+    'workout': 'Fitness',
+    'gym': 'Fitness',
+    'tutor': 'Tutoring',
+    'education': 'Tutoring',
+    'teaching': 'Tutoring',
+    'pets': 'Pet Care',
+    'pet sitting': 'Pet Care',
+    'dog walking': 'Pet Care',
+    'electric': 'Electrical',
+    'electrician': 'Electrical',
+    'plumber': 'Plumbing',
+    'cleaning service': 'Cleaning',
+    'house cleaning': 'Cleaning',
+    'web dev': 'Web Development',
+    'website': 'Web Development',
+    'coding': 'Web Development',
+    'design': 'Graphic Design',
+    'photo': 'Photography',
+    'music': 'Music Lessons',
+    'moving': 'Moving & Transportation',
+    'transport': 'Moving & Transportation',
+    'car repair': 'Automotive',
+    'auto': 'Automotive',
+    'legal': 'Legal Services',
+    'lawyer': 'Legal Services',
+    'beauty': 'Beauty & Wellness',
+    'wellness': 'Beauty & Wellness',
+    'spa': 'Beauty & Wellness',
+  };
+  
+  // Check if we have a direct variation match
+  if (variations[normalized]) {
+    return variations[normalized];
+  }
+  
+  // Try to find a case-insensitive match in CATEGORY_IMAGES
+  const categoryKeys = Object.keys(CATEGORY_IMAGES);
+  const exactMatch = categoryKeys.find(key => key.toLowerCase() === normalized);
+  
+  return exactMatch || 'Other';
+};
+
+/**
  * Get image URL for a service category
  * @param category - The category name
  * @returns Image URL from Unsplash
  */
 export const getCategoryImage = (category: string): string => {
-  return CATEGORY_IMAGES[category as keyof typeof CATEGORY_IMAGES] || CATEGORY_IMAGES['Other'];
+  const normalizedCategory = normalizeCategory(category);
+  return CATEGORY_IMAGES[normalizedCategory as keyof typeof CATEGORY_IMAGES] || CATEGORY_IMAGES['Other'];
 };
 
 /**

@@ -9,7 +9,7 @@ if (process.env.NODE_ENV === 'test') {
 
 const WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW || '15') * 60 * 1000; // Convert minutes to ms
 const MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '1000'); // Increased from 500
-const AUTH_MAX = parseInt(process.env.AUTH_RATE_LIMIT_MAX || '20'); // Increased from 10
+const AUTH_MAX = parseInt(process.env.AUTH_RATE_LIMIT_MAX || '50'); // Increased for development
 const SEARCH_MAX = parseInt(process.env.SEARCH_RATE_LIMIT_MAX || '500'); // Increased from 200
 
 /**
@@ -43,25 +43,30 @@ const globalLimiter = rateLimit({
 
 /**
  * Authentication rate limiter - stricter limits for login/register
+ * Uses sliding window with more lenient limits for better UX
  */
 const authLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: AUTH_MAX,
+  windowMs: 15 * 60 * 1000, // 15 minutes (reduced from 1 hour for better UX)
+  max: AUTH_MAX, // 20 attempts per 15 minutes
   message: {
     error: 'Too many authentication attempts',
-    message: 'Too many authentication attempts from this IP, please try again after an hour.',
-    retryAfter: 3600
+    message: 'Too many authentication attempts from this IP, please try again after 15 minutes.',
+    retryAfter: 900 // 15 minutes in seconds
   },
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true, // Don't count successful logins
+  skipFailedRequests: false, // Count failed attempts
   keyGenerator: (req) => {
-    // Use email if available, otherwise IP
-    return req.body?.email || req.ip || req.connection.remoteAddress;
+    // Use IP only (more forgiving than per-email limiting)
+    return req.ip || req.connection.remoteAddress || 'unknown';
   },
-  skip: (req) => {
-    // Skip rate limiting for successful logins
-    return false;
+  handler: (req, res) => {
+    res.status(429).json({
+      error: 'Too many authentication attempts',
+      message: 'Too many login attempts. Please try again in 15 minutes.',
+      retryAfter: 900
+    });
   }
 });
 
