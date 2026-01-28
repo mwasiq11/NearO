@@ -71,28 +71,35 @@ const MessagesPage = () => {
       const otherUser = getOtherUser(currentConversation);
       if (!otherUser) return;
 
+      // Determine message type based on file type
+      let messageType = 'file';
+      if (file.type.startsWith('image/')) {
+        messageType = 'image';
+      } else if (file.type.startsWith('audio/')) {
+        messageType = 'voice';
+      }
+
       const formData = new FormData();
       formData.append('file', file);
       formData.append('conversationId', currentConversation.id);
       formData.append('receiverId', otherUser.id);
-      formData.append('messageType', 'image');
-      formData.append('upload_context', 'message_image');
+      formData.append('messageType', messageType);
+      formData.append('upload_context', `message_${messageType}`);
 
-      const response = await fetch(`${process.env.VITE_API_URL || 'http://localhost:3000'}/messages/send`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error('Upload failed');
+      await api.post('/messages/send', formData, { auth: true });
 
       loadMessages(currentConversation.id);
-      toast.success('Image sent');
+      
+      if (messageType === 'image') {
+        toast.success('Image sent');
+      } else if (messageType === 'voice') {
+        toast.success('Audio sent');
+      } else {
+        toast.success('File sent');
+      }
     } catch (error) {
-      toast.error('Failed to send image');
-      console.error('Image upload error:', error);
+      toast.error('Failed to send file');
+      console.error('File upload error:', error);
     } finally {
       setIsUploading(false);
     }

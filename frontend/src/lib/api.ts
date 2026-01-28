@@ -72,7 +72,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const { method = 'GET', body, auth = false, headers = {}, retry = false } = options;
   const requestHeaders: Record<string, string> = { ...headers };
 
-  if (body !== undefined) {
+  // Don't set Content-Type for FormData - browser will set it with boundary
+  if (body !== undefined && !(body instanceof FormData)) {
     requestHeaders['Content-Type'] = 'application/json';
   }
 
@@ -86,7 +87,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers: requestHeaders,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body instanceof FormData ? body : (body !== undefined ? JSON.stringify(body) : undefined),
   });
 
   if (response.status === 401 && auth && !retry) {

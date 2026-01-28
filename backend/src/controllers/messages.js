@@ -87,6 +87,16 @@ const sendMessage = async (req, res) => {
     const { conversationId, receiverId, content, messageType = 'text' } = req.body;
     const file = req.file;
 
+    console.log('Send message request:', { 
+      userId, 
+      conversationId, 
+      receiverId, 
+      content: content?.substring(0, 50), 
+      messageType,
+      hasFile: !!file,
+      fileName: file?.filename
+    });
+
     // Verify conversation access
     const [conversations] = await pool.execute(
       `SELECT * FROM conversations WHERE id = ? AND (seeker_id = ? OR provider_id = ?)`,
@@ -94,6 +104,7 @@ const sendMessage = async (req, res) => {
     );
 
     if (conversations.length === 0) {
+      console.log('Conversation access denied:', conversationId);
       return res.status(403).json({ error: 'Access denied to conversation' });
     }
 
@@ -113,11 +124,17 @@ const sendMessage = async (req, res) => {
       fileType = file.mimetype;
       finalMessageType = getFileCategory(file.mimetype);
 
+      console.log('File uploaded:', { fileUrl, fileName, fileSize, fileType, finalMessageType });
+
       // Store file upload record
+      const uploadContext = finalMessageType === 'image' ? 'message_image' : 
+                           finalMessageType === 'voice' ? 'message_voice' : 
+                           'service_image'; // Use service_image for files as fallback
+      
       await pool.execute(
         `INSERT INTO file_uploads (id, user_id, file_name, original_name, file_path, file_type, file_size, upload_context)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [uuidv4(), userId, file.filename, file.originalname, file.path, file.mimetype, file.size, 'message_' + finalMessageType]
+        [uuidv4(), userId, file.filename, file.originalname, file.path, file.mimetype, file.size, uploadContext]
       );
     }
 

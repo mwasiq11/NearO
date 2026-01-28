@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Send, Image as ImageIcon, Mic, Paperclip, Check, CheckCheck, Play, Download } from 'lucide-react';
+import { Send, Image as ImageIcon, Mic, Paperclip, Check, CheckCheck, Play, Download, FileText, File, Sheet, Presentation } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 interface MessageBubbleProps {
@@ -18,6 +18,8 @@ interface MessageBubbleProps {
     fileName?: string;
     file_size?: number;
     fileSize?: number;
+    file_type?: string;
+    fileType?: string;
     duration?: number;
     sender_id?: string;
     senderId?: string;
@@ -39,6 +41,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
   const fileUrl = message.file_url || message.fileUrl;
   const fileName = message.file_name || message.fileName;
   const fileSize = message.file_size || message.fileSize;
+  const fileType = message.file_type || message.fileType;
   const senderName = message.sender_name || message.senderName || 'User';
   const senderPicture = message.sender_picture || message.senderPicture;
   const createdAt = message.created_at || message.createdAt || new Date().toISOString();
@@ -56,6 +59,38 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
     const kb = bytes / 1024;
     if (kb < 1024) return `${kb.toFixed(1)} KB`;
     return `${(kb / 1024).toFixed(1)} MB`;
+  };
+
+  const getFileIcon = (fileName?: string, fileType?: string) => {
+    const ext = fileName?.split('.').pop()?.toLowerCase();
+    const type = fileType?.toLowerCase() || '';
+
+    // PDF
+    if (ext === 'pdf' || type.includes('pdf')) {
+      return <FileText className="h-5 w-5 text-red-500" />;
+    }
+    // Word documents
+    if (ext === 'doc' || ext === 'docx' || type.includes('word')) {
+      return <FileText className="h-5 w-5 text-blue-500" />;
+    }
+    // Excel spreadsheets
+    if (ext === 'xls' || ext === 'xlsx' || type.includes('excel') || type.includes('spreadsheet')) {
+      return <Sheet className="h-5 w-5 text-green-500" />;
+    }
+    // PowerPoint presentations
+    if (ext === 'ppt' || ext === 'pptx' || type.includes('powerpoint') || type.includes('presentation')) {
+      return <Presentation className="h-5 w-5 text-orange-500" />;
+    }
+    // Text files
+    if (ext === 'txt' || ext === 'csv' || type.includes('text')) {
+      return <FileText className="h-5 w-5 text-gray-500" />;
+    }
+    // Archives
+    if (ext === 'zip' || type.includes('zip')) {
+      return <File className="h-5 w-5 text-yellow-500" />;
+    }
+    // Default
+    return <Paperclip className="h-5 w-5" />;
   };
 
   return (
@@ -114,7 +149,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
           {messageType === 'file' && (
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-background/20 flex items-center justify-center">
-                <Paperclip className="h-5 w-5" />
+                {getFileIcon(fileName, fileType)}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{fileName}</p>
@@ -215,9 +250,11 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
+    if (file) {
       onImageSelect(file);
     }
+    // Reset input so same file can be selected again
+    e.target.value = '';
   };
 
   return (
@@ -226,7 +263,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
           className="hidden"
           onChange={handleFileSelect}
         />
