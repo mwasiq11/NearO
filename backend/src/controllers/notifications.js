@@ -19,12 +19,12 @@ const getNotifications = async (req, res) => {
       query += ` AND is_read = FALSE`;
     }
 
-    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
-    params.push(limit, offset);
+    // Use string interpolation for LIMIT/OFFSET since mysql2 execute() doesn't support number params for these
+    query += ` ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
 
     console.log('📋 Notification query:', { query, params });
 
-    const [notifications] = await readPool.execute(query, params);
+    const [notifications] = await readPool.query(query, params);
 
     // Get total count
     let countQuery = `SELECT COUNT(*) as total FROM notifications WHERE user_id = ?`;
@@ -32,7 +32,7 @@ const getNotifications = async (req, res) => {
     if (unread_only) {
       countQuery += ' AND is_read = FALSE';
     }
-    const [countResult] = await readPool.execute(countQuery, countParams);
+    const [countResult] = await readPool.query(countQuery, countParams);
     const total = countResult[0].total;
 
     res.json({
