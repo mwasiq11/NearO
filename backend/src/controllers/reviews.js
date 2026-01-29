@@ -34,6 +34,19 @@ const createReview = async (req, res) => {
       [reviewId, booking.provider_id, req.user.id, booking.service_id, booking.id, rating, comment || null]
     );
 
+    // Create notification for provider about new review
+    try {
+      const notificationId = uuidv4();
+      await pool.execute(
+        `INSERT INTO notifications (id, user_id, type, title, message, entity_type, entity_id)
+         VALUES (?, ?, 'review_posted', 'New Review', 'You received a new review from a customer', 'review', ?)`,
+        [notificationId, booking.provider_id, reviewId]
+      );
+      console.log(`✅ Notification created for provider about review`);
+    } catch (notifError) {
+      console.error('Warning: Failed to create notification:', notifError);
+    }
+
     res.status(201).json({
       id: reviewId,
       provider_id: booking.provider_id,

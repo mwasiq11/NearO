@@ -180,8 +180,8 @@ const MessagesPage = () => {
                           )}
                         </div>
                         {conv.service_title && (
-                          <p className="text-xs text-muted-foreground truncate mb-1">
-                            {conv.service_title}
+                          <p className="text-xs text-primary/80 truncate mb-1 font-medium">
+                            🔧 {conv.service_title}
                           </p>
                         )}
                         {conv.last_message_preview && (

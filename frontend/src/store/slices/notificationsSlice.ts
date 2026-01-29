@@ -1,64 +1,67 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { api } from '../../lib/api';
-
-export interface Notification {
-  id: string; // Changed from number to string (UUID)
-  user_id: string; // Changed from number to string (UUID)
-  type: 'new_booking' | 'booking_accepted' | 'booking_rejected' | 'new_message' | 'review_received';
-  title: string;
-  message: string;
-  entity_type: string | null;
-  entity_id: string | null; // Changed from number to string (UUID)
-  is_read: boolean;
-  created_at: string;
-}
+import { api } from '@/lib/api';
+import type { Notification } from '@/models/types';
 
 interface NotificationsState {
   notifications: Notification[];
   unreadCount: number;
-  loading: boolean;
+  isLoading: boolean;
   error: string | null;
 }
 
 const initialState: NotificationsState = {
   notifications: [],
   unreadCount: 0,
-  loading: false,
+  isLoading: false,
   error: null,
 };
 
-// Fetch all notifications
+// Async thunks
 export const fetchNotifications = createAsyncThunk(
-  'notifications/fetchAll',
-  async (unreadOnly: boolean = false) => {
-    const response = await api.get(`/notifications${unreadOnly ? '?unread_only=true' : ''}`, { auth: true });
-    return response.data;
+  'notifications/fetchNotifications',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get<Notification[]>('/notifications', { auth: true });
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to fetch notifications');
+    }
   }
 );
 
-// Fetch unread count
 export const fetchUnreadCount = createAsyncThunk(
   'notifications/fetchUnreadCount',
-  async () => {
-    const response = await api.get('/notifications/unread-count', { auth: true });
-    return response.data.count;
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get<{ count: number }>('/notifications/unread-count', { auth: true });
+      return response.count;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to fetch unread count');
+    }
   }
 );
 
-// Mark notification as read
-export const markNotificationAsRead = createAsyncThunk(
+export const markAsRead = createAsyncThunk(
   'notifications/markAsRead',
-  async (notificationId: string) => { // Changed from number to string
-    await api.put(`/notifications/${notificationId}/read`, undefined, { auth: true });
-    return notificationId;
+  async (notificationId: string, { rejectWithValue }) => {
+    try {
+      await api.put(`/notifications/${notificationId}/read`, {}, { auth: true });
+      return notificationId;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to mark notification as read');
+    }
   }
 );
 
-// Mark all notifications as read
 export const markAllAsRead = createAsyncThunk(
   'notifications/markAllAsRead',
-  async () => {
-    await api.put('/notifications/read-all', undefined, { auth: true });
+  async (_, { rejectWithValue }) => {
+    try {
+      await api.put('/notifications/read-all', {}, { auth: true });
+      return;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to mark all as read');
+    }
   }
 );
 
@@ -81,23 +84,24 @@ const notificationsSlice = createSlice({
     builder
       // Fetch notifications
       .addCase(fetchNotifications.pending, (state) => {
-        state.loading = true;
+        state.isLoading = true;
         state.error = null;
       })
       .addCase(fetchNotifications.fulfilled, (state, action) => {
-        state.loading = false;
-        state.notifications = action.payload.notifications || action.payload;
+        state.isLoading = false;
+        state.notifications = action.payload;
+        state.unreadCount = action.payload.filter(n => !n.is_read).length;
       })
       .addCase(fetchNotifications.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.error.message || 'Failed to fetch notifications';
+        state.isLoading = false;
+        state.error = action.payload as string;
       })
       // Fetch unread count
       .addCase(fetchUnreadCount.fulfilled, (state, action) => {
         state.unreadCount = action.payload;
       })
       // Mark as read
-      .addCase(markNotificationAsRead.fulfilled, (state, action) => {
+      .addCase(markAsRead.fulfilled, (state, action) => {
         const notification = state.notifications.find(n => n.id === action.payload);
         if (notification && !notification.is_read) {
           notification.is_read = true;

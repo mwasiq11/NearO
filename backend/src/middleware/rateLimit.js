@@ -8,9 +8,9 @@ if (process.env.NODE_ENV === 'test') {
 }
 
 const WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW || '15') * 60 * 1000; // Convert minutes to ms
-const MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '1000'); // Increased from 500
-const AUTH_MAX = parseInt(process.env.AUTH_RATE_LIMIT_MAX || '50'); // Increased for development
-const SEARCH_MAX = parseInt(process.env.SEARCH_RATE_LIMIT_MAX || '500'); // Increased from 200
+const MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '5000'); // Increased for development
+const AUTH_MAX = parseInt(process.env.AUTH_RATE_LIMIT_MAX || '100'); // Increased for development
+const SEARCH_MAX = parseInt(process.env.SEARCH_RATE_LIMIT_MAX || '1000'); // Increased from 200
 
 /**
  * Global rate limiter - applies to all requests
@@ -32,11 +32,22 @@ const globalLimiter = rateLimit({
     return req.user?.id || req.ip || req.connection.remoteAddress;
   },
   skip: (req) => {
-    // Skip rate limiting for certain read-only endpoints
+    // Skip rate limiting for certain read-only endpoints and development
     const skipPaths = [
       '/health',
       '/uploads',
+      '/users/me',
+      '/messages/conversations',
+      '/notifications',
     ];
+    
+    // Skip rate limiting in development mode for easier testing
+    if (process.env.NODE_ENV === 'development') {
+      return skipPaths.some(path => req.path.startsWith(path)) || 
+             req.path === '/users/me' ||
+             req.path === '/users/me/profile-picture';
+    }
+    
     return skipPaths.some(path => req.path.startsWith(path));
   }
 });

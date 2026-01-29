@@ -155,6 +155,17 @@ const sendMessage = async (req, res) => {
       [conversationId]
     );
     
+    // Create preview content
+    const previewContent = content 
+      ? content.substring(0, 100) 
+      : finalMessageType === 'image' 
+        ? '📷 Image'
+        : finalMessageType === 'voice'
+          ? '🎤 Voice message'
+          : finalMessageType === 'document'
+            ? `📄 ${fileName || 'File'}`
+            : 'Attachment';
+    
     if (convInfo.length > 0) {
       const isReceiverSeeker = convInfo[0].seeker_id === receiverId;
       const unreadColumn = isReceiverSeeker ? 'seeker_unread_count' : 'provider_unread_count';
@@ -170,7 +181,7 @@ const sendMessage = async (req, res) => {
       await pool.execute(
         `INSERT INTO notifications (id, user_id, type, title, message, entity_type, entity_id, created_at)
          VALUES (?, ?, 'new_message', 'New Message', ?, 'message', ?, NOW())`,
-        [notificationId, receiverId, previewContent.substring(0, 100), messageId]
+        [notificationId, receiverId, previewContent, messageId]
       );
     } else {
       // Fallback if conversation info not found

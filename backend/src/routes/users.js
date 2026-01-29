@@ -3,7 +3,8 @@ import { authenticate } from '../middleware/auth.js';
 import { requirePermission } from '../middleware/permissions.js';
 import { validate } from '../middleware/validation.js';
 import { updateProfileSchema } from '../utils/validationSchemas.js';
-import { createUser, getUsers, getMyProfile, updateMyProfile } from '../controllers/users.js';
+import { createUser, getUsers, getMyProfile, updateMyProfile, uploadProfilePicture } from '../controllers/users.js';
+import upload from '../middleware/upload.js';
 
 const router = express.Router();
 
@@ -18,5 +19,8 @@ router.get('/me', authenticate, requirePermission('profile.read'), getMyProfile)
 
 // PUT /users/me - Update current user profile
 router.put('/me', authenticate, requirePermission('profile.update'), validate(updateProfileSchema), updateMyProfile);
+
+// POST /users/me/profile-picture - Upload profile picture
+router.post('/me/profile-picture', authenticate, requirePermission('profile.update'), upload.single('file'), uploadProfilePicture);
 
 export default router;

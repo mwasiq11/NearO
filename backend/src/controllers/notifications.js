@@ -7,28 +7,29 @@ import { saveSubscription, removeSubscription, removeAllSubscriptions } from '..
 const getNotifications = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { page = 1, limit = 20, unread_only = false } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const unread_only = req.query.unread_only === 'true';
     const offset = (page - 1) * limit;
 
-    let query = `
-      SELECT * FROM notifications
-      WHERE user_id = ?
-    `;
+    let query = `SELECT * FROM notifications WHERE user_id = ?`;
     const params = [userId];
 
-    if (unread_only === 'true') {
-      query += ' AND is_read = FALSE';
+    if (unread_only) {
+      query += ` AND is_read = FALSE`;
     }
 
     query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
-    params.push(parseInt(limit), offset);
+    params.push(limit, offset);
+
+    console.log('📋 Notification query:', { query, params });
 
     const [notifications] = await readPool.execute(query, params);
 
     // Get total count
     let countQuery = `SELECT COUNT(*) as total FROM notifications WHERE user_id = ?`;
     const countParams = [userId];
-    if (unread_only === 'true') {
+    if (unread_only) {
       countQuery += ' AND is_read = FALSE';
     }
     const [countResult] = await readPool.execute(countQuery, countParams);
@@ -40,8 +41,8 @@ const getNotifications = async (req, res) => {
         payload: n.payload ? JSON.parse(n.payload) : null
       })),
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page,
+        limit,
         total,
         pages: Math.ceil(total / limit)
       }

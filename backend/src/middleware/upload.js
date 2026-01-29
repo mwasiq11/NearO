@@ -22,7 +22,7 @@ const servicesDir = path.join(uploadsDir, 'services');
 // Configure storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const context = req.body.upload_context || 'messages';
+    const context = req.body?.upload_context || req.query?.upload_context || 'messages';
     let targetDir = messagesDir;
 
     if (context === 'profile_picture') {
@@ -31,6 +31,7 @@ const storage = multer.diskStorage({
       targetDir = servicesDir;
     }
 
+    console.log('📁 Upload destination:', { context, targetDir });
     cb(null, targetDir);
   },
   filename: (req, file, cb) => {

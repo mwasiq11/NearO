@@ -47,6 +47,30 @@ const createBooking = async (req, res) => {
       [id, service_id, seeker_id, requested_time]
     );
 
+    // Create notification for provider about new booking
+    try {
+      const notificationId = uuidv4();
+      await pool.execute(
+        `INSERT INTO notifications (id, user_id, type, title, message, entity_type, entity_id)
+         VALUES (?, ?, 'booking_new', 'New Booking Request', 'You have a new service booking request', 'booking', ?)`,
+        [notificationId, service.provider_id, id]
+      );
+      console.log(`✅ Notification created for provider about new booking`);
+
+      // Emit real-time notification to provider via Socket.io
+      const io = getIO();
+      if (io) {
+        io.emit('booking:new', {
+          bookingId: id,
+          service_id,
+          seeker_id,
+          requested_time
+        });
+      }
+    } catch (notifError) {
+      console.error('Warning: Failed to create notification:', notifError);
+    }
+
     // Auto-create conversation for messaging
     try {
       const [existingConv] = await pool.execute(

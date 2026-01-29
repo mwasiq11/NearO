@@ -4,10 +4,10 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   fetchNotifications,
   fetchUnreadCount,
-  markNotificationAsRead,
+  markAsRead,
   markAllAsRead,
-  type Notification,
 } from '../../store/slices/notificationsSlice';
+import type { Notification } from '../../models/types';
 import { Button } from '../ui/button';
 import {
   DropdownMenu,
@@ -58,7 +58,7 @@ export default function NotificationDropdown() {
 
   const handleMarkAsRead = async (notificationId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await dispatch(markNotificationAsRead(notificationId));
+    await dispatch(markAsRead(notificationId));
   };
 
   const handleMarkAllAsRead = async () => {
@@ -68,7 +68,7 @@ export default function NotificationDropdown() {
 
   const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
-      case 'new_booking':
+      case 'booking_new':
         return <Calendar className="h-4 w-4 text-blue-500" />;
       case 'booking_accepted':
         return <Check className="h-4 w-4 text-green-500" />;
@@ -76,7 +76,7 @@ export default function NotificationDropdown() {
         return <Clock className="h-4 w-4 text-red-500" />;
       case 'new_message':
         return <MessageSquare className="h-4 w-4 text-purple-500" />;
-      case 'review_received':
+      case 'review_posted':
         return <Star className="h-4 w-4 text-yellow-500" />;
       default:
         return <Bell className="h-4 w-4" />;

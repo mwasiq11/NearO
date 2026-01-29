@@ -41,6 +41,7 @@ import AdminAnalyticsPage from "./pages/admin/AdminAnalyticsPage";
 import AdminCategoriesPage from "./pages/admin/AdminCategoriesPage";
 import AdminModeratorsPage from "./pages/admin/AdminModeratorsPage";
 import AdminSystemSettingsPage from "./pages/admin/AdminSystemSettingsPage";
+import SettingsPage from "./pages/dashboard/SettingsPage";
 
 const queryClient = new QueryClient();
 
@@ -87,6 +88,7 @@ const AppRoutes = () => {
         <Route path="bookings" element={<BookingsPage />} />
         <Route path="messages" element={<MessagesPage />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="settings" element={<SettingsPage />} />
         <Route path="my-services" element={<MyServicesPage />} />
         <Route path="my-services/new" element={<CreateServicePage />} />
         <Route path="listing/:id" element={<ListingDetailPage />} />

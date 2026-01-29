@@ -1,21 +1,99 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useListings } from '@/hooks/useListings';
+import { useImagePrefetch } from '@/hooks/useImagePrefetch';
 import { formatPrice } from '@/utils/formatters';
 import { getCategoryImage } from '@/utils/categoryImages';
-import { Search, MapPin } from 'lucide-react';
+import { SearchAutocomplete } from '@/components/common/SearchAutocomplete';
+import { Autocomplete } from '@/components/common/Autocomplete';
+import { MapPin } from 'lucide-react';
+import { api } from '@/lib/api';
 
 const BrowsePage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { categories, filteredListings, isLoading, updateFilters, searchServices } = useListings();
+  const { categories, filteredListings, isLoading, updateFilters, searchServices, listings: allListings } = useListings();
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [category, setCategory] = useState(searchParams.get('category') || '');
   const [neighborhood, setNeighborhood] = useState(searchParams.get('neighborhood') || '');
+  const [neighborhoods, setNeighborhoods] = useState<Array<{ value: string; label: string; count: number }>>([]);
+
+  // Prefetch Unsplash images for all categories
+  useImagePrefetch();
+
+  // Fetch neighborhoods from backend
+  useEffect(() => {
+    const fetchNeighborhoods = async () => {
+      try {
+        const response = await api.get<{ neighborhoods: Array<{ neighborhood: string; city: string; service_count: number }> }>('/search/neighborhoods');
+        const neighborhoodOptions = response.neighborhoods.map(n => ({
+          value: n.neighborhood,
+          label: `${n.neighborhood}${n.city ? `, ${n.city}` : ''}`,
+          count: n.service_count,
+        }));
+        setNeighborhoods(neighborhoodOptions);
+      } catch (error) {
+        console.error('Failed to fetch neighborhoods:', error);
+      }
+    };
+    fetchNeighborhoods();
+  }, []);
+
+  // Generate search suggestions from available services
+  const searchSuggestions = useMemo(() => {
+    const suggestions: Array<{ type: 'service' | 'category' | 'tag'; value: string; label: string; count?: number }> = [];
+    
+    // Add service titles
+    const serviceTitles = new Set<string>();
+    allListings.forEach(listing => {
+      if (!serviceTitles.has(listing.title.toLowerCase())) {
+        serviceTitles.add(listing.title.toLowerCase());
+        suggestions.push({
+          type: 'service',
+          value: listing.title,
+          label: listing.title,
+        });
+      }
+    });
+
+    // Add categories with count
+    const categoryCount = new Map<string, number>();
+    allListings.forEach(listing => {
+      categoryCount.set(listing.category, (categoryCount.get(listing.category) || 0) + 1);
+    });
+    categoryCount.forEach((count, cat) => {
+      suggestions.push({
+        type: 'category',
+        value: cat,
+        label: cat,
+        count,
+      });
+    });
+
+    // Add popular tags
+    const tagCount = new Map<string, number>();
+    allListings.forEach(listing => {
+      listing.tags.forEach(tag => {
+        tagCount.set(tag, (tagCount.get(tag) || 0) + 1);
+      });
+    });
+    Array.from(tagCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .forEach(([tag, count]) => {
+        suggestions.push({
+          type: 'tag',
+          value: tag,
+          label: tag,
+          count,
+        });
+      });
+
+    return suggestions;
+  }, [allListings]);
 
   const handleSearch = async () => {
     updateFilters({
@@ -41,15 +119,12 @@ const BrowsePage = () => {
 
       <Card className="p-4 space-y-4">
         <div className="grid gap-3 md:grid-cols-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search services"
-              className="pl-9"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
+          <SearchAutocomplete
+            value={query}
+            onValueChange={setQuery}
+            suggestions={searchSuggestions}
+            placeholder="Search services"
+          />
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
@@ -62,10 +137,14 @@ const BrowsePage = () => {
               </option>
             ))}
           </select>
-          <Input
-            placeholder="Neighborhood"
+          <Autocomplete
+            options={neighborhoods}
             value={neighborhood}
-            onChange={(e) => setNeighborhood(e.target.value)}
+            onValueChange={setNeighborhood}
+            placeholder="Select neighborhood"
+            searchPlaceholder="Search neighborhoods..."
+            emptyMessage="No neighborhoods found."
+            className="w-full"
           />
         </div>
         <Button variant="hero" onClick={handleSearch}>

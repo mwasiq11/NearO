@@ -205,13 +205,20 @@ export const ConversationHeader: React.FC<ConversationHeaderProps> = ({ otherUse
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold truncate">{otherUser.name}</h3>
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-semibold truncate">{otherUser.name}</h3>
+          </div>
+          {serviceName && (
+            <p className="text-xs text-muted-foreground truncate mb-1">
+              💼 {serviceName}
+            </p>
+          )}
           <p className="text-sm text-muted-foreground truncate">
             {otherUser.status === 'online' 
-              ? 'Online' 
+              ? '🟢 Online' 
               : otherUser.last_seen 
               ? `Last seen ${formatDistanceToNow(new Date(otherUser.last_seen), { addSuffix: true })}`
-              : serviceName || otherUser.email
+              : otherUser.email
             }
           </p>
         </div>

@@ -148,9 +148,21 @@ const DashboardLayout = () => {
             
             {/* Page Title - Could be dynamic */}
             <div className="hidden sm:block">
-              <h1 className="text-lg font-semibold">Welcome back</h1>
+              <h1 className="text-lg font-semibold">Welcome back, {user?.name || 'User'}!</h1>
               <p className="text-sm text-muted-foreground">
-                {user?.neighborhood || 'Neighborhood'}, {user?.city || 'City'}
+                {(() => {
+                  const neighborhood = user?.neighborhood && user.neighborhood !== 'Unknown' ? user.neighborhood : '';
+                  const city = user?.city && user.city !== 'Unknown' ? user.city : '';
+                  
+                  if (neighborhood && city) {
+                    return `📍 ${neighborhood}, ${city}`;
+                  } else if (city) {
+                    return `📍 ${city}`;
+                  } else if (neighborhood) {
+                    return `📍 ${neighborhood}`;
+                  }
+                  return 'Ready to connect with local services';
+                })()}
               </p>
             </div>
           </div>

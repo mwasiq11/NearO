@@ -1,3 +1,5 @@
+import { getCachedCategoryImage, fetchCategoryImage } from '@/services/unsplashService';
+
 // Category Image Mappings - Using Unsplash for high-quality, free images
 export const CATEGORY_IMAGES = {
   'Plumbing': 'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?w=800&q=80',
@@ -82,12 +84,41 @@ const normalizeCategory = (category: string): string => {
 
 /**
  * Get image URL for a service category
+ * First checks Unsplash API cache, then falls back to static images
  * @param category - The category name
- * @returns Image URL from Unsplash
+ * @returns Image URL from Unsplash or fallback
  */
 export const getCategoryImage = (category: string): string => {
   const normalizedCategory = normalizeCategory(category);
+  
+  // Try to get cached Unsplash image first
+  const cachedImage = getCachedCategoryImage(normalizedCategory);
+  if (cachedImage) {
+    return cachedImage;
+  }
+  
+  // Fall back to static images
   return CATEGORY_IMAGES[normalizedCategory as keyof typeof CATEGORY_IMAGES] || CATEGORY_IMAGES['Other'];
+};
+
+/**
+ * Async version - fetches from Unsplash API if not cached
+ * Use this for initial load or when you can handle async
+ * @param category - The category name
+ * @returns Promise with image URL
+ */
+export const getCategoryImageAsync = async (category: string): Promise<string> => {
+  const normalizedCategory = normalizeCategory(category);
+  
+  try {
+    // This will fetch from Unsplash API and cache the result
+    const imageUrl = await fetchCategoryImage(normalizedCategory);
+    return imageUrl;
+  } catch (error) {
+    console.error('Failed to fetch category image:', error);
+    // Fall back to static image
+    return CATEGORY_IMAGES[normalizedCategory as keyof typeof CATEGORY_IMAGES] || CATEGORY_IMAGES['Other'];
+  }
 };
 
 /**

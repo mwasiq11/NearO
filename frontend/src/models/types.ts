@@ -161,13 +161,14 @@ export interface SearchFilters {
 // Notification Types
 export interface Notification {
   id: string;
-  userId: string;
-  type: 'booking' | 'message' | 'review' | 'system';
+  user_id: string;
+  type: 'booking_new' | 'booking_accepted' | 'booking_rejected' | 'new_message' | 'review_posted' | 'system';
   title: string;
   message: string;
-  data?: Record<string, any>;
-  isRead: boolean;
-  createdAt: string;
+  entity_type?: string;
+  entity_id?: string;
+  is_read: boolean;
+  created_at: string;
 }
 
 // Trending/Discovery Types
