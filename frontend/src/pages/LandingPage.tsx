@@ -36,11 +36,11 @@ const LandingPage = () => {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-xl bg-gradient-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">N</span>
+          <Link to="/" className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl overflow-hidden bg-white shadow-sm flex items-center justify-center p-1.5">
+              <img src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" alt="NearO" className="h-full w-full object-contain" />
             </div>
-            <span className="font-bold text-xl text-foreground">NearO</span>
+            <span style={{fontFamily: 'Poppins, sans-serif'}} className="font-bold text-2xl bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent tracking-tight">NearO</span>
           </Link>
           
           <nav className="hidden md:flex items-center gap-8">
@@ -371,10 +371,10 @@ const LandingPage = () => {
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="h-9 w-9 rounded-xl bg-gradient-primary flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-lg">N</span>
+                <div className="h-10 w-10 rounded-xl overflow-hidden bg-white shadow-sm flex items-center justify-center p-1.5">
+                  <img src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" alt="NearO" className="h-full w-full object-contain" />
                 </div>
-                <span className="font-bold text-xl">NearO</span>
+                <span style={{fontFamily: 'Poppins, sans-serif'}} className="font-bold text-xl tracking-tight">NearO</span>
               </div>
               <p className="text-muted-foreground">
                 Building stronger communities through local connections.

@@ -6,6 +6,8 @@
 
 @layer base {
   :root {
+    /* Brand Font */
+    --font-brand: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     /* Core Background & Foreground */
     --background: 0 0% 99%;
     --foreground: 160 25% 10%;

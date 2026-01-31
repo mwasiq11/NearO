@@ -50,11 +50,11 @@ const ResetPasswordPage = () => {
         className="w-full max-w-md space-y-8"
       >
         <div>
-          <Link to="/" className="flex items-center gap-2 mb-8">
-            <div className="h-9 w-9 rounded-xl bg-gradient-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">N</span>
+          <Link to="/" className="inline-flex items-center gap-3 mb-8">
+            <div className="h-12 w-12 rounded-xl overflow-hidden bg-white shadow-sm flex items-center justify-center p-1.5">
+              <img src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" alt="NearO" className="h-full w-full object-contain" />
             </div>
-            <span className="font-bold text-xl text-foreground">NearO</span>
+            <span style={{fontFamily: 'Poppins, sans-serif'}} className="font-bold text-2xl text-foreground tracking-tight">NearO</span>
           </Link>
           <h1 className="text-3xl font-bold mb-2">Create a new password</h1>
           <p className="text-muted-foreground">Choose a strong password to secure your account.</p>

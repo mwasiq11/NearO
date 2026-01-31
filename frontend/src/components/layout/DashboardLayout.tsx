@@ -56,11 +56,11 @@ const DashboardLayout = () => {
       <aside className="hidden lg:flex flex-col w-64 border-r bg-card">
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b">
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold">N</span>
+          <Link to="/dashboard" className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg overflow-hidden bg-white shadow-sm flex items-center justify-center p-1.5">
+              <img src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" alt="NearO" className="h-full w-full object-contain" />
             </div>
-              <span className="font-bold text-lg">NearO</span>
+            <span style={{fontFamily: 'Poppins, sans-serif'}} className="font-bold text-xl bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent tracking-tight">NearO</span>
           </Link>
         </div>
 
@@ -233,10 +233,10 @@ const DashboardLayout = () => {
             >
               <div className="h-16 flex items-center justify-between px-4 border-b">
                 <Link to="/dashboard" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
-                  <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-                    <span className="text-primary-foreground font-bold">N</span>
+                  <div className="h-9 w-9 rounded-lg overflow-hidden bg-white shadow-sm flex items-center justify-center p-1.5">
+                    <img src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" alt="NearO" className="h-full w-full object-contain" />
                   </div>
-                  <span className="font-bold text-lg">NearO</span>
+                  <span style={{fontFamily: 'Poppins, sans-serif'}} className="font-bold text-lg tracking-tight">NearO</span>
                 </Link>
                 <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-muted-foreground">
                   <X className="h-5 w-5" />

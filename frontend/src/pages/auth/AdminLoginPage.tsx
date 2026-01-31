@@ -39,7 +39,7 @@ export default function AdminLoginPage() {
       } else {
         setError('Invalid credentials or unauthorized');
       }
-    } catch (err: any) {
+    } catch (err:any) {
       setError(err.message || 'An error occurred during login');
     } finally {
       setIsLoading(false);
