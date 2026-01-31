@@ -32,16 +32,12 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await apiCall('/auth/admin-login', {
-        method: 'POST',
-        body: form
-      });
-
-      if (response.ok) {
-        login(response.data);
-        navigate('/admin-dashboard');
+      const success = await login(form.email, form.password, 'admin');
+      
+      if (success) {
+        // Navigation is handled by useAuth hook
       } else {
-        setError(response.data?.error || 'Login failed');
+        setError('Invalid credentials or unauthorized');
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred during login');

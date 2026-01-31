@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ShieldCheck, Clock } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
@@ -17,6 +20,8 @@ interface Moderator {
 const AdminModeratorsPage = () => {
   const [moderators, setModerators] = useState<Moderator[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ name: '', email: '', password: '' });
 
   useEffect(() => {
     const loadModerators = async () => {
@@ -51,6 +56,32 @@ const AdminModeratorsPage = () => {
     }
   };
 
+  const inviteModerator = async () => {
+    if (!inviteForm.name || !inviteForm.email || !inviteForm.password) {
+      toast.error('Please fill all fields');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const newMod = await api.post<any>('/admin/moderators', inviteForm, { auth: true });
+      setModerators(prev => [...prev, {
+        id: newMod.id,
+        name: newMod.name,
+        email: newMod.email,
+        role: 'moderator',
+        createdAt: new Date().toLocaleDateString(),
+      }]);
+      toast.success('Moderator invited successfully!');
+      setShowInviteDialog(false);
+      setInviteForm({ name: '', email: '', password: '' });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to invite moderator');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -58,7 +89,7 @@ const AdminModeratorsPage = () => {
           <h2 className="text-2xl font-bold">Moderators</h2>
           <p className="text-muted-foreground">Track workload and manage promotions.</p>
         </div>
-        <Button disabled>Invite moderator</Button>
+        <Button onClick={() => setShowInviteDialog(true)}>Invite moderator</Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -72,9 +103,9 @@ const AdminModeratorsPage = () => {
               <ShieldCheck className="h-5 w-5 text-blue-600" />
             </CardHeader>
             <CardContent className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground space-y-1">
-                <p><Badge variant="outline">{m.role}</Badge></p>
-                <p className="flex items-center gap-1"><Clock className="h-4 w-4" /> Joined {m.createdAt}</p>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <div><Badge variant="outline">{m.role}</Badge></div>
+                <div className="flex items-center gap-1"><Clock className="h-4 w-4" /> Joined {m.createdAt}</div>
               </div>
               <div className="space-x-2">
                 {m.role !== 'admin' && (
@@ -88,6 +119,57 @@ const AdminModeratorsPage = () => {
           <div className="text-sm text-muted-foreground">Loading moderators...</div>
         )}
       </div>
+
+      {/* Invite Moderator Dialog */}
+      <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite New Moderator</DialogTitle>
+            <DialogDescription>
+              Create a new moderator account. They will be able to manage users and services.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                placeholder="John Doe"
+                value={inviteForm.name}
+                onChange={(e) => setInviteForm(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="moderator@nearo.pk"
+                value={inviteForm.email}
+                onChange={(e) => setInviteForm(prev => ({ ...prev, email: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={inviteForm.password}
+                onChange={(e) => setInviteForm(prev => ({ ...prev, password: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={inviteModerator} disabled={isLoading}>
+              {isLoading ? 'Creating...' : 'Create Moderator'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

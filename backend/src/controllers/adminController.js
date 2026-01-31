@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import bcrypt from 'bcrypt';
 import { pool } from '../db/database.js';
 import { normalizeLocation } from '../utils/location.js';
 import { invalidateCache } from '../cache/cache.js';
@@ -645,6 +646,79 @@ const deleteCategory = async (req, res) => {
 /**
  * Moderator management
  */
+const createModerator = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    if (!name || !email) {
+      return res.status(400).json({ error: 'Name and email are required' });
+    }
+
+    // Check if user already exists
+    const [existing] = await pool.execute(
+      'SELECT id, role, password FROM users WHERE email = ?', 
+      [email]
+    );
+
+    if (existing.length > 0) {
+      // User exists - promote them to moderator
+      const existingUser = existing[0];
+      
+      if (existingUser.role === 'admin') {
+        return res.status(400).json({ error: 'Cannot modify admin users' });
+      }
+
+      if (existingUser.role === 'moderator') {
+        return res.status(400).json({ error: 'User is already a moderator' });
+      }
+
+      // Promote existing user to moderator
+      await pool.execute(
+        'UPDATE users SET role = ?, is_verified = ? WHERE id = ?',
+        ['moderator', true, existingUser.id]
+      );
+
+      await logAdminAction('moderator_promote', req.user.id, 'user', existingUser.id, null, req);
+
+      res.status(200).json({
+        id: existingUser.id,
+        name,
+        email,
+        role: 'moderator',
+        message: 'User promoted to moderator successfully'
+      });
+    } else {
+      // User doesn't exist - create new moderator
+      if (!password) {
+        return res.status(400).json({ error: 'Password is required for new moderators' });
+      }
+
+      // Generate UUID and hash password
+      const id = uuidv4();
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create moderator with verified status
+      await pool.execute(
+        'INSERT INTO users (id, name, email, password, role, is_active, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [id, name, email, hashedPassword, 'moderator', true, true]
+      );
+
+      await logAdminAction('moderator_create', req.user.id, 'user', id, null, req);
+
+      res.status(201).json({
+        id,
+        name,
+        email,
+        role: 'moderator',
+        message: 'Moderator created successfully'
+      });
+    }
+  } catch (error) {
+    console.error('Error creating/promoting moderator:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const listModerators = async (req, res) => {
   try {
     const [moderators] = await pool.execute(
@@ -932,6 +1006,7 @@ export {
   createCategory,
   updateCategory,
   deleteCategory,
+  createModerator,
   listModerators,
   promoteToModerator,
   demoteModerator,

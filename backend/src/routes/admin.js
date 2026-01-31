@@ -34,6 +34,7 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
+  createModerator,
   listModerators,
   promoteToModerator,
   demoteModerator,
@@ -81,6 +82,7 @@ router.put('/categories/:id', requirePermission('categories.manage'), validate(u
 router.delete('/categories/:id', requirePermission('categories.manage'), deleteCategory);
 
 // Moderator Management (Admin only)
+router.post('/moderators', requirePermission('moderators.manage'), createModerator);
 router.get('/moderators', requirePermission('moderators.manage'), listModerators);
 router.put('/moderators/:id/promote', requirePermission('moderators.manage'), promoteToModerator);
 router.put('/moderators/:id/demote', requirePermission('moderators.manage'), demoteModerator);

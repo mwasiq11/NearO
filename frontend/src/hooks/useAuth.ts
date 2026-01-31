@@ -48,15 +48,28 @@ export const useAuth = () => {
     };
   }, []);
 
-  const login = useCallback(async (credentials: LoginForm): Promise<boolean> => {
+  const login = useCallback(async (credentials: LoginForm | string, password?: string, role?: 'user' | 'moderator' | 'admin'): Promise<boolean> => {
     dispatch(loginStart());
+    
+    // Handle both object and separate parameters
+    const loginData = typeof credentials === 'string' 
+      ? { email: credentials, password: password! }
+      : credentials;
+    
+    // Determine endpoint based on role
+    let endpoint = '/auth/login';
+    if (role === 'moderator') {
+      endpoint = '/auth/moderator-login';
+    } else if (role === 'admin') {
+      endpoint = '/auth/admin-login';
+    }
     
     try {
       const data = await api.post<{
         user: User;
         accessToken: string;
         refreshToken: string;
-      }>('/auth/login', credentials);
+      }>(endpoint, loginData);
 
       const normalized = normalizeUser(data.user);
       authStorage.setTokens(data.accessToken, data.refreshToken);
