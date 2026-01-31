@@ -35,7 +35,9 @@ async function logAdminAction(action, actorId, targetType = null, targetId = nul
 const getAllUsers = async (req, res) => {
   try {
     const { page = 1, limit = 20, role, is_active, search } = req.query;
-    const offset = (page - 1) * limit;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
 
     let query = 'SELECT id, name, email, role, is_active, is_verified, created_at, last_login_at FROM users WHERE 1=1';
     const params = [];
@@ -57,12 +59,21 @@ const getAllUsers = async (req, res) => {
     }
 
     query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), offset);
+    params.push(limitNum, offset);
 
     const [users] = await pool.execute(query, params);
 
-    // Get total count
+    // Get total count with same filters
     let countQuery = 'SELECT COUNT(*) as total FROM users WHERE 1=1';
+    if (role) {
+      countQuery += ' AND role = ?';
+    }
+    if (is_active !== undefined) {
+      countQuery += ' AND is_active = ?';
+    }
+    if (search) {
+      countQuery += ' AND (name LIKE ? OR email LIKE ?)';
+    }
     const countParams = params.slice(0, -2); // Remove limit and offset
     const [countResult] = await pool.execute(countQuery, countParams);
     const total = countResult[0].total;
@@ -70,10 +81,10 @@ const getAllUsers = async (req, res) => {
     res.json({
       users,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         total,
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.ceil(total / limitNum)
       }
     });
   } catch (error) {
@@ -273,7 +284,9 @@ const updateUserRole = async (req, res) => {
 const getPendingServices = async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
-    const offset = (page - 1) * limit;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
 
     const [services] = await pool.execute(
       `SELECT s.*, u.name as provider_name, u.email as provider_email 
@@ -282,7 +295,7 @@ const getPendingServices = async (req, res) => {
        WHERE s.moderated_at IS NULL 
        ORDER BY s.created_at ASC 
        LIMIT ? OFFSET ?`,
-      [parseInt(limit), offset]
+      [limitNum, offset]
     );
 
     const [countResult] = await pool.execute(
@@ -293,10 +306,10 @@ const getPendingServices = async (req, res) => {
     res.json({
       services,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         total,
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.ceil(total / limitNum)
       }
     });
   } catch (error) {
@@ -477,7 +490,9 @@ const rejectService = async (req, res) => {
 const getUserReports = async (req, res) => {
   try {
     const { page = 1, limit = 20, status } = req.query;
-    const offset = (page - 1) * limit;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
 
     let query = `
       SELECT r.*, 
@@ -485,8 +500,8 @@ const getUserReports = async (req, res) => {
              u2.name as reporter_name,
              u3.name as reviewer_name
       FROM user_reports r
-      JOIN users u1 ON r.reported_user_id = u1.id
-      JOIN users u2 ON r.reported_by = u2.id
+      LEFT JOIN users u1 ON r.reported_user_id = u1.id
+      LEFT JOIN users u2 ON r.reported_by = u2.id
       LEFT JOIN users u3 ON r.reviewed_by = u3.id
       WHERE 1=1
     `;
@@ -498,7 +513,7 @@ const getUserReports = async (req, res) => {
     }
 
     query += ' ORDER BY r.created_at DESC LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), offset);
+    params.push(limitNum, offset);
 
     const [reports] = await pool.execute(query, params);
 
@@ -511,10 +526,10 @@ const getUserReports = async (req, res) => {
     res.json({
       reports,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         total,
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.ceil(total / limitNum)
       }
     });
   } catch (error) {
@@ -781,19 +796,19 @@ const getAnalyticsDashboard = async (req, res) => {
 
     const [[serviceCounts]] = await pool.execute(
       `SELECT 
-         COUNT(*) as total,
-         SUM(is_active = TRUE) as active,
-         SUM(moderated_at IS NULL) as pending
+         COALESCE(COUNT(*), 0) as total,
+         COALESCE(SUM(is_active = TRUE), 0) as active,
+         COALESCE(SUM(moderated_at IS NULL AND is_active = TRUE), 0) as pending
        FROM services`
     );
 
     const [[reportCounts]] = await pool.execute(
       `SELECT 
-         COUNT(*) as total,
-         SUM(status = 'pending') as pending,
-         SUM(status = 'reviewed') as reviewed,
-         SUM(status = 'resolved') as resolved,
-         SUM(status = 'dismissed') as dismissed
+         COALESCE(COUNT(*), 0) as total,
+         COALESCE(SUM(status = 'pending'), 0) as pending,
+         COALESCE(SUM(status = 'reviewed'), 0) as reviewed,
+         COALESCE(SUM(status = 'resolved'), 0) as resolved,
+         COALESCE(SUM(status = 'dismissed'), 0) as dismissed
        FROM user_reports`
     );
 

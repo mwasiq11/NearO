@@ -22,6 +22,9 @@ const AdminModeratorsPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [inviteForm, setInviteForm] = useState({ name: '', email: '', password: '' });
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refreshModerators = () => setRefreshKey(prev => prev + 1);
 
   useEffect(() => {
     const loadModerators = async () => {
@@ -44,12 +47,12 @@ const AdminModeratorsPage = () => {
     };
 
     loadModerators();
-  }, []);
+  }, [refreshKey]);
 
   const demote = async (id: string) => {
     try {
       await api.put(`/admin/moderators/${id}/demote`, undefined, { auth: true });
-      setModerators(prev => prev.filter(m => m.id !== id));
+      refreshModerators();
       toast.success('Moderator demoted');
     } catch (err) {
       toast.error('Failed to demote moderator');
@@ -64,14 +67,8 @@ const AdminModeratorsPage = () => {
 
     try {
       setIsLoading(true);
-      const newMod = await api.post<any>('/admin/moderators', inviteForm, { auth: true });
-      setModerators(prev => [...prev, {
-        id: newMod.id,
-        name: newMod.name,
-        email: newMod.email,
-        role: 'moderator',
-        createdAt: new Date().toLocaleDateString(),
-      }]);
+      await api.post<any>('/admin/moderators', inviteForm, { auth: true });
+      refreshModerators();
       toast.success('Moderator invited successfully!');
       setShowInviteDialog(false);
       setInviteForm({ name: '', email: '', password: '' });

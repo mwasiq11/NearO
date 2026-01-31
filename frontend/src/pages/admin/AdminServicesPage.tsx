@@ -29,6 +29,9 @@ const AdminServicesPage = () => {
   const [status, setStatus] = useState<'all' | ServiceRow['status']>('all');
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refreshServices = () => setRefreshKey(prev => prev + 1);
 
   useEffect(() => {
     const loadServices = async () => {
@@ -52,7 +55,7 @@ const AdminServicesPage = () => {
     };
 
     loadServices();
-  }, []);
+  }, [refreshKey]);
 
   const filtered = useMemo(() => {
     return services.filter((s) => {
@@ -65,7 +68,7 @@ const AdminServicesPage = () => {
   const approveService = async (id: string) => {
     try {
       await api.put(`/admin/services/${id}/approve`, undefined, { auth: true });
-      setServices(prev => prev.filter(s => s.id !== id));
+      refreshServices();
       toast.success('Service approved');
     } catch (err) {
       toast.error('Failed to approve service');
@@ -75,7 +78,7 @@ const AdminServicesPage = () => {
   const rejectService = async (id: string) => {
     try {
       await api.put(`/admin/services/${id}/reject`, { reason: 'Rejected by admin' }, { auth: true });
-      setServices(prev => prev.filter(s => s.id !== id));
+      refreshServices();
       toast.success('Service rejected');
     } catch (err) {
       toast.error('Failed to reject service');

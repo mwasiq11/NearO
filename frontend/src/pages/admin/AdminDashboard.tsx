@@ -30,6 +30,9 @@ const AdminDashboard = () => {
     badge: string;
   }>>([]);
   const [pendingItems, setPendingItems] = useState<PendingItem[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refreshData = () => setRefreshKey(prev => prev + 1);
 
   useEffect(() => {
     const load = async () => {
@@ -70,13 +73,18 @@ const AdminDashboard = () => {
     };
 
     load();
-  }, []);
+  }, [refreshKey]);
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-bold">Platform overview</h2>
-        <p className="text-muted-foreground">Quick glance at health, workload, and moderation signals.</p>
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-2xl font-bold">Platform overview</h2>
+          <p className="text-muted-foreground">Quick glance at health, workload, and moderation signals.</p>
+        </div>
+        <Button variant="outline" onClick={refreshData}>
+          Refresh
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

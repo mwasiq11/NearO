@@ -28,6 +28,9 @@ const AdminUsersPage = () => {
   const [status, setStatus] = useState<'all' | AdminUser['status']>('all');
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refreshUsers = () => setRefreshKey(prev => prev + 1);
 
   useEffect(() => {
     const loadUsers = async () => {
@@ -51,7 +54,7 @@ const AdminUsersPage = () => {
     };
 
     loadUsers();
-  }, []);
+  }, [refreshKey]);
 
   const filtered = useMemo(() => {
     return users.filter((u) => {
@@ -64,7 +67,7 @@ const AdminUsersPage = () => {
   const promoteToModerator = async (id: string) => {
     try {
       await api.put(`/admin/moderators/${id}/promote`, undefined, { auth: true });
-      setUsers(prev => prev.map(u => (u.id === id ? { ...u, role: 'moderator' } : u)));
+      refreshUsers();
       toast.success('User promoted to moderator');
     } catch (err) {
       toast.error('Failed to promote user');
@@ -74,7 +77,7 @@ const AdminUsersPage = () => {
   const suspendUser = async (id: string) => {
     try {
       await api.put(`/admin/users/${id}/suspend`, { duration_hours: 24 }, { auth: true });
-      setUsers(prev => prev.map(u => (u.id === id ? { ...u, status: 'suspended' } : u)));
+      refreshUsers();
       toast.success('User suspended');
     } catch (err) {
       toast.error('Failed to suspend user');
@@ -84,7 +87,7 @@ const AdminUsersPage = () => {
   const reinstateUser = async (id: string) => {
     try {
       await api.put(`/admin/users/${id}/unsuspend`, undefined, { auth: true });
-      setUsers(prev => prev.map(u => (u.id === id ? { ...u, status: 'active' } : u)));
+      refreshUsers();
       toast.success('User reinstated');
     } catch (err) {
       toast.error('Failed to reinstate user');
@@ -99,6 +102,9 @@ const AdminUsersPage = () => {
           <p className="text-muted-foreground">Search, filter, and moderate users.</p>
         </div>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={refreshUsers}>
+              Refresh
+            </Button>
             <Button variant="outline" size="sm" disabled>
               Export
             </Button>
