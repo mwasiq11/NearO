@@ -1,6 +1,6 @@
 # NearO - Hyperlocal Service Marketplace
 
-![NearO Logo](https://via.placeholder.com/150x50/4F46E5/FFFFFF?text=NearO)
+![NearO Logo]([https://via.placeholder.com/150x50/4F46E5/FFFFFF?text=NearO](https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493))
 
 A full-stack hyperlocal service marketplace platform connecting service providers with seekers in their neighborhood. Built with Node.js, Express, MySQL, React, TypeScript, and Socket.io for real-time features.
 
