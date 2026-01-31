@@ -79,7 +79,10 @@ const BookingsPage = () => {
           <Card key={booking.id} className="p-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
-                <p className="font-semibold">Service booking</p>
+                <p className="font-semibold">{booking.serviceTitle || 'Service booking'}</p>
+                {booking.serviceCategory && (
+                  <p className="text-xs text-muted-foreground capitalize">{booking.serviceCategory}</p>
+                )}
                 <p className="text-sm text-muted-foreground">
                   {formatDate(booking.scheduledDate)} at {booking.scheduledTime}
                 </p>

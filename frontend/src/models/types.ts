@@ -99,6 +99,9 @@ export interface Booking {
   totalPrice: number;
   status: BookingStatus;
   notes?: string;
+  serviceTitle?: string;
+  serviceCategory?: string;
+  seekerName?: string;
   seekerReview?: Review;
   providerReview?: Review;
   createdAt: string;

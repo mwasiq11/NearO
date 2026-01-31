@@ -45,6 +45,9 @@ export const useBookings = () => {
       notes: booking.notes || undefined,
       createdAt: booking.created_at || new Date().toISOString(),
       updatedAt: booking.updated_at || booking.created_at || new Date().toISOString(),
+      serviceTitle: booking.service_title || 'Service',
+      serviceCategory: booking.category || undefined,
+      seekerName: booking.seeker_name || undefined,
     };
   }, []);
 
