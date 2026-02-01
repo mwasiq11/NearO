@@ -433,7 +433,7 @@ The database schema will be automatically created when you start the backend ser
 npm run migrate
 
 # Or use the migration script
-node src/db/run-migration.js
+node src/run_migration.js
 ```
 
 7. **Seed Default Admin Account (Optional):**
@@ -830,7 +830,7 @@ NearO/
 │   │   │   ├── database.js      # Connection pool & schema
 │   │   │   ├── createViews.js   # Database views
 │   │   │   ├── seed.js          # Database seeder
-│   │   │   ├── run-migration.js
+│   │   ├── run_migration.js
 │   │   │   └── migrations/      # SQL migration files
 │   │   │       ├── stage2_migration.sql
 │   │   │       ├── stage3_migration.sql
@@ -856,7 +856,7 @@ NearO/
 │   │       ├── location.js      # S2 Geometry helpers
 │   │       ├── s2-helpers.js
 │   │       └── validationSchemas.js
-│   ├── uploads/                 # User uploaded files
+│   │   ├── uploads/                 # User uploaded files
 │   │   ├── profiles/
 │   │   ├── services/
 │   │   └── messages/
