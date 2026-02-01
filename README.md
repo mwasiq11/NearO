@@ -440,7 +440,7 @@ node src/run_migration.js
 
 The system automatically creates a default admin account on first run:
 - **Email**: `admin@example.com`
-- **Password**: `Admin123`
+- **Password**: `your_admin_password_here`
 
 **⚠️ IMPORTANT**: Change this password immediately after first login!
 
@@ -597,7 +597,7 @@ Once all services are running:
 
 #### Admin Account
 - **Email**: `admin@example.com`
-- **Password**: `Admin123`
+- **Password**: `your_admin_password_here`
 
 #### Test User Accounts
 Create your own accounts via the registration page or use the backend API.
@@ -1473,7 +1473,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 📞 Support
 
-For support, email muhammadwasiq67585@gmail.com or open an issue in the repository.
+For support, email support@example.com or open an issue in the repository.
 
 ---
 
