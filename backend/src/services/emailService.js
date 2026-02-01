@@ -17,6 +17,65 @@ const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@neighbourly.com';
 const FROM_NAME = process.env.FROM_NAME || 'NearO';
 
 /**
+ * Send OTP verification email for new user sign-up
+ * @param {string} to - Recipient email
+ * @param {string} name - Recipient name
+ * @param {string} otpCode - 6-digit OTP code
+ * @returns {Promise<Object>} Email send result
+ */
+async function sendOTPEmail(to, name, otpCode) {
+  const mailOptions = {
+    from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
+    to,
+    subject: 'Verify Your NearO Account',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; }
+          .content { background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+          .otp-box { background-color: #f0f9ff; border: 2px solid #10b981; border-radius: 8px; padding: 20px; text-align: center; margin: 25px 0; }
+          .otp-code { font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #10b981; font-family: 'Courier New', monospace; }
+          .footer { margin-top: 30px; font-size: 12px; color: #666; text-align: center; }
+          .warning { color: #d97706; font-size: 14px; margin-top: 15px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="content">
+            <h2 style="color: #10b981; margin-bottom: 20px;">Welcome to NearO, ${name}!</h2>
+            <p>Thank you for signing up. Please verify your email address to activate your account.</p>
+            <p>Enter this verification code in the app:</p>
+            <div class="otp-box">
+              <div class="otp-code">${otpCode}</div>
+            </div>
+            <p class="warning">⏰ This code will expire in 10 minutes.</p>
+            <p style="margin-top: 25px; font-size: 14px; color: #666;">
+              If you didn't create an account, please ignore this email.
+            </p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} NearO. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('OTP email sent successfully:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Error sending OTP email:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Send email verification email
  * @param {string} to - Recipient email
  * @param {string} name - Recipient name
@@ -186,6 +245,7 @@ async function testEmailConfig() {
 }
 
 export {
+  sendOTPEmail,
   sendVerificationEmail,
   sendPasswordResetEmail,
   sendWelcomeEmail,

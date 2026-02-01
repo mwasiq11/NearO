@@ -5,6 +5,7 @@ import {
   loginStart,
   loginSuccess,
   loginFailure,
+  signupSuccess,
   logout as logoutAction,
   clearError,
 } from '@/store/slices/authSlice';
@@ -93,19 +94,36 @@ export const useAuth = () => {
     }
   }, [dispatch, navigate, normalizeUser]);
 
+  const completeOtpLogin = useCallback((data: { user: User; accessToken: string; refreshToken: string }) => {
+    const normalized = normalizeUser(data.user);
+    authStorage.setTokens(data.accessToken, data.refreshToken);
+    authStorage.setUser(normalized);
+    dispatch(loginSuccess({ user: normalized, accessToken: data.accessToken, refreshToken: data.refreshToken }));
+
+    toast.success('Verification successful. Welcome to NearO!');
+    navigate('/dashboard');
+  }, [dispatch, navigate, normalizeUser]);
+
   const signup = useCallback(async (data: SignupForm): Promise<boolean> => {
     dispatch(loginStart());
     
     try {
-      await api.post('/auth/register', {
+      const response = await api.post('/auth/register', {
         name: data.name,
         email: data.email,
         password: data.password,
       });
 
-      dispatch(clearError());
-      toast.success('Account created. Please verify your email before logging in.');
-      navigate('/login');
+      dispatch(signupSuccess());
+      toast.success('Account created! Please check your email for verification code.');
+      
+      // Navigate to OTP verification page with email and name
+      navigate('/verify-otp', { 
+        state: { 
+          email: data.email,
+          userName: data.name 
+        } 
+      });
       return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create account';
@@ -138,6 +156,7 @@ export const useAuth = () => {
     isLoading,
     error,
     login,
+    completeOtpLogin,
     signup,
     logout,
     clearAuthError,

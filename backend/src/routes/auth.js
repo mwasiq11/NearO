@@ -6,6 +6,8 @@ import {
   adminLogin,
   refresh,
   logout,
+  verifyOTP,
+  resendOTP,
   verifyEmail,
   forgotPassword,
   resetPassword
@@ -24,6 +26,12 @@ const router = express.Router();
 // POST /auth/register - Register new user
 router.post('/register', validate(registerSchema), register);
 
+// POST /auth/verify-otp - Verify OTP for new user sign-up
+router.post('/verify-otp', emailVerificationLimiter, verifyOTP);
+
+// POST /auth/resend-otp - Resend OTP for email verification
+router.post('/resend-otp', emailVerificationLimiter, resendOTP);
+
 // POST /auth/login - Login user (provider/seeker)
 router.post('/login', validate(loginSchema), login);
 
@@ -39,7 +47,7 @@ router.post('/refresh', refresh);
 // POST /auth/logout - Logout user
 router.post('/logout', logout);
 
-// GET /auth/verify-email - Verify email address
+// GET /auth/verify-email - Verify email address (legacy - for password reset)
 router.get('/verify-email', emailVerificationLimiter, verifyEmail);
 
 // POST /auth/forgot-password - Request password reset

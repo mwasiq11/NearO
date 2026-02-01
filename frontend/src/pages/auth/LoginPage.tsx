@@ -1,22 +1,33 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowRight, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const LoginPage = () => {
+  const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    email: '',
+    email: location.state?.email || '',
     password: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
   
   const { login, isLoading, error } = useAuth();
+
+  useEffect(() => {
+    // Clear success message after 5 seconds
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(''), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -85,6 +96,15 @@ const LoginPage = () => {
               Enter your credentials to access your account
             </p>
           </div>
+
+          {successMessage && (
+            <Alert className="bg-emerald-50 border-emerald-200">
+              <CheckCircle className="h-4 w-4 text-emerald-600" />
+              <AlertDescription className="text-emerald-800">
+                {successMessage}
+              </AlertDescription>
+            </Alert>
+          )}
 
           {error && (
             <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg p-4">

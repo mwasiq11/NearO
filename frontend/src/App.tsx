@@ -22,6 +22,7 @@ import AdminLoginPage from "./pages/auth/AdminLoginPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
+import OTPVerificationPage from "./pages/auth/OTPVerificationPage";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import DashboardHome from "./pages/dashboard/DashboardHome";
 import BrowsePage from "./pages/dashboard/BrowsePage";
@@ -80,6 +81,7 @@ const AppRoutes = () => {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/verify-otp" element={<OTPVerificationPage />} />
 
       {/* Protected Dashboard Routes */}
       <Route path="/dashboard" element={
