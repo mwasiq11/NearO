@@ -15,6 +15,8 @@ const routerFutureConfig = {
 
 // Pages
 import LandingPage from "./pages/LandingPage";
+import AboutPage from "./pages/AboutPage";
+import HowItWorksPage from "./pages/HowItWorksPage";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
 import ModeratorLoginPage from "./pages/auth/ModeratorLoginPage";
@@ -74,6 +76,8 @@ const AppRoutes = () => {
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/how-it-works" element={<HowItWorksPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/auth/moderator-login" element={<ModeratorLoginPage />} />

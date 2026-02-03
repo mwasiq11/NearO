@@ -18,5 +18,4 @@ EXPOSE 3000
 
 # Use entrypoint for better startup control
 ENTRYPOINT ["./entrypoint.sh"]
-CMD ["mysql"]
 
