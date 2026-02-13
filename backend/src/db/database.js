@@ -18,7 +18,10 @@ const dbConfig = {
   database: process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  connectionTimeout: 30000,
+  enableKeepAlive: true,
+  keepAliveInitialDelayMs: 0
 };
 
 const readDbConfig = {
@@ -29,7 +32,10 @@ const readDbConfig = {
   database: process.env.READ_DB_NAME || process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  connectionTimeout: 30000,
+  enableKeepAlive: true,
+  keepAliveInitialDelayMs: 0
 };
 
 // Create connection pools
