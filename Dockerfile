@@ -39,4 +39,4 @@ EXPOSE 3000
 
 ENTRYPOINT ["/sbin/tini", "--"]
 
-CMD ["./entrypoint.sh"]
+CMD ["/bin/bash", "./entrypoint.sh"]
