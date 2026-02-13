@@ -71,36 +71,11 @@ app.use('/uploads', (req, res, next) => {
 // Maintenance mode middleware
 app.use(maintenanceMiddleware);
 
-// Initialize database with retry logic
-async function initDatabaseWithRetry() {
-  const maxRetries = 30;
-  const baseDelay = 1000; // 1 second
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`⏳ Database connection attempt ${attempt}/${maxRetries}...`);
-      await initializeDatabase();
-      console.log('✅ Database initialized successfully');
-      return;
-    } catch (error) {
-      if (attempt === maxRetries) {
-        console.error('❌ Failed to initialize database after', maxRetries, 'attempts');
-        console.error('Error:', error.message);
-        process.exit(1);
-      }
-      
-      const delay = Math.min(baseDelay * Math.pow(2, attempt - 1), 30000);
-      console.error(`⚠️ Attempt ${attempt} failed. Retrying in ${delay}ms...`);
-      console.error(`Error: ${error.message}`);
-      
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-}
-
-// Start the initialization process
-initDatabaseWithRetry().catch((error) => {
-  console.error('❌ Fatal error during database initialization:', error);
+// Initialize database
+initializeDatabase().then(() => {
+  console.log('✅ Database initialized successfully');
+}).catch((error) => {
+  console.error('❌ Failed to initialize database:', error);
   process.exit(1);
 });
 

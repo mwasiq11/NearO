@@ -6,10 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/app.js",
-    "dev": "nodemon src/app.js",
-    "migrate": "node src/run_migration.js",
-    "seed": "node src/db/seed.js",
-    "test": "NODE_ENV=test node --experimental-vm-modules node_modules/jest/bin/jest.js"
+    "dev": "nodemon src/app.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
