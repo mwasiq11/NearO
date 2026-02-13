@@ -1,0 +1,44 @@
+# Production Dockerfile for Railway deployment
+# Stage 1: Build dependencies
+FROM node:22-alpine AS dependencies
+
+WORKDIR /app
+
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production && \
+    npm cache clean --force
+
+# Stage 2: Runtime
+FROM node:22-alpine AS runtime
+
+# Install runtime dependencies only (no development tools)
+RUN apk add --no-cache curl tini
+
+WORKDIR /app
+
+# Copy node_modules from dependencies stage
+COPY --from=dependencies /app/node_modules ./node_modules
+
+# Copy application code
+COPY package*.json ./
+COPY src ./src
+COPY entrypoint.sh wait-for-mysql.sh ./
+
+# Make scripts executable
+RUN chmod +x entrypoint.sh wait-for-mysql.sh
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+USER nodejs
+
+EXPOSE 3000
+
+# Use tini as PID 1 for proper signal handling
+ENTRYPOINT ["/sbin/tini", "--"]
+
+# Use the entrypoint script with fallback to npm start
+CMD ["./entrypoint.sh"]

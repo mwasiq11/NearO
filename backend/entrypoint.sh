@@ -1,17 +1,20 @@
 #!/bin/bash
 # entrypoint.sh - Backend startup script
-# Waits for MySQL and runs npm dev
+# Waits for MySQL/Redis and runs the application
+# Works in both local development and Railway production
 
 set -e
 
-HOST="$1"
-if [ -z "$HOST" ]; then
-  HOST="mysql"
-fi
+HOST="${DB_HOST:-mysql}"
+
+# Environment detection
+NODE_ENV="${NODE_ENV:-development}"
+is_production="[ \"$NODE_ENV\" = \"production\" ]"
 
 echo "=========================================="
 echo "🚀 NearO Backend Startup"
 echo "=========================================="
+echo "Environment: $NODE_ENV"
 echo "Waiting for MySQL at $HOST:3306..."
 
 # Wait for MySQL port to be open
@@ -51,10 +54,35 @@ while [ $db_attempt -lt $max_db_attempts ]; do
   if mysql -h "$HOST" -P 3306 -u "$DB_USER" -p"$DB_PASSWORD" --skip-ssl -e "SELECT 1" 2>/dev/null; then
     echo "✓ MySQL is responding!"
     echo ""
+    
+    # Check Redis connectivity (optional, don't fail if unavailable)
+    if [ -n "$REDIS_HOST" ]; then
+      echo "Checking Redis connectivity..."
+      if timeout 2 bash -c "echo > /dev/tcp/$REDIS_HOST/${REDIS_PORT:-6379}" 2>/dev/null; then
+        echo "✓ Redis is available"
+      else
+        echo "⚠️ Redis not available yet (will retry internally)"
+      fi
+    fi
+    
+    echo ""
     echo "=========================================="
     echo "Starting Node.js application..."
+    echo "Starting in: $NODE_ENV mode"
     echo "=========================================="
-    exec npm run dev
+    
+    # Run migrations if needed
+    if [ "$NODE_ENV" = "production" ]; then
+      echo "Running database migrations..."
+      npm run migrate 2>/dev/null || echo "No migrations to run"
+    fi
+    
+    # Start the application based on environment
+    if [ "$NODE_ENV" = "production" ]; then
+      exec npm start
+    else
+      exec npm run dev
+    fi
   fi
   
   if [ $((db_attempt % 5)) -eq 0 ]; then
