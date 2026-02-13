@@ -14,7 +14,7 @@ RUN npm ci --only=production && \
 # Production stage
 FROM node:22-alpine
 
-RUN apk add --no-cache curl tini
+RUN apk add --no-cache curl
 
 WORKDIR /app
 
@@ -24,10 +24,6 @@ COPY --from=dependencies /app/node_modules ./node_modules
 # Copy application code from backend
 COPY backend/src ./src
 COPY backend/package*.json ./
-COPY backend/entrypoint.sh backend/wait-for-mysql.sh ./
-
-# Make scripts executable
-RUN chmod +x entrypoint.sh wait-for-mysql.sh
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
@@ -37,6 +33,4 @@ USER nodejs
 
 EXPOSE 3000
 
-ENTRYPOINT ["/sbin/tini", "--"]
-
-CMD ["/bin/bash", "./entrypoint.sh"]
+CMD ["node", "src/app.js"]
