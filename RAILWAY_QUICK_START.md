@@ -2,24 +2,33 @@
 
 ## TL;DR - Deploy in 5 Minutes
 
-### 1. Push Your Code
+### 1. Commit Configuration
 ```bash
 git add .
-git commit -m "Configure for Railway deployment"
+git commit -m "Railway deployment configured"
 git push origin main
 ```
 
-### 2. Connect Railway
+### 2. Fix Failed Deployment (If you had an error)
+
+⚠️ **If you got "Dockerfile does not exist" error:**
+- See [RAILWAY_DOCKERFILE_FIX.md](./RAILWAY_DOCKERFILE_FIX.md) for quick fix
+- Delete the failed service in Railway
+- Railway auto-redeploys from git push
+
+✅ **Root Dockerfile is now created** - Railway will find it automatically
+
+### 3. Connect Railway
 - Go to https://railway.app/dashboard
 - New Project → Deploy from GitHub
 - Select `mwasiq11/NearO` repository
 
-### 3. Add Services (one by one via Railway UI)
+### 4. Add Services (one by one via Railway UI)
 - Click "+ Add Service"
 - Add MySQL (Railway will auto-configure)
 - Add Redis (Railway will auto-configure)
 
-### 4. Set Environment Variables
+### 5. Set Environment Variables
 Copy into Railway dashboard Variables section:
 
 ```env
