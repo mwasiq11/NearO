@@ -11,7 +11,8 @@ import { useChat } from '@/hooks/useChat';
 import { api } from '@/lib/api';
 import { ServiceListing } from '@/models/types';
 import { formatPrice } from '@/utils/formatters';
-import { MapPin, MessageSquare } from 'lucide-react';
+import { getCategoryImage } from '@/utils/categoryImages';
+import { MapPin, MessageSquare, Star, Clock, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ListingDetailPage = () => {
@@ -109,68 +110,164 @@ const ListingDetailPage = () => {
   };
 
   if (isLoading || !listing) {
-    return <div className="p-6 text-sm text-muted-foreground">Loading service...</div>;
+    return <div className="p-6 flex items-center justify-center min-h-[400px] text-muted-foreground">Loading service details...</div>;
   }
 
+  const imageUrl = listing.images[0] || getCategoryImage(listing.category);
+  const locationText = listing.location.neighborhood && listing.location.city
+    ? `${listing.location.neighborhood}, ${listing.location.city}`
+    : listing.location.city || listing.location.neighborhood || 'Location not specified';
+
   return (
-    <div className="p-6 space-y-6">
-      <Button variant="ghost" onClick={() => navigate(-1)}>
-        ← Back
+    <div className="container max-w-5xl mx-auto p-4 md:p-6 space-y-6">
+      <Button variant="ghost" onClick={() => navigate(-1)} className="mb-2 -ml-4 hover:bg-transparent hover:text-primary transition-colors">
+        ← Back to listings
       </Button>
 
-      <Card className="p-6 space-y-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">{listing.title}</h2>
-            <div className="text-sm text-muted-foreground flex items-center gap-1">
-              <MapPin className="h-4 w-4" />
-              {listing.location.neighborhood && listing.location.city
-                ? `${listing.location.neighborhood}, ${listing.location.city}`
-                : listing.location.city || listing.location.neighborhood || 'Location not specified'}
+      {/* Featured Image Banner */}
+      <div className="w-full aspect-video md:aspect-[21/9] rounded-2xl overflow-hidden bg-muted relative shadow-md">
+        <img 
+          src={imageUrl} 
+          alt={listing.title}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            e.currentTarget.src = getCategoryImage('Other');
+          }}
+        />
+        <div className="absolute top-4 right-4">
+          <Badge className="bg-background/90 text-foreground hover:bg-background backdrop-blur-sm text-sm px-3 py-1 shadow-sm">
+            {listing.category}
+          </Badge>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Main Content Area */}
+        <div className="md:col-span-2 space-y-6">
+          <Card className="p-6 md:p-8 space-y-6 border-none shadow-md">
+            <div className="space-y-4">
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">{listing.title}</h1>
+              
+              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1.5 bg-muted/50 px-3 py-1 rounded-full">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  <span className="font-medium">{locationText}</span>
+                </div>
+                {listing.rating > 0 && (
+                  <div className="flex items-center gap-1.5 bg-yellow-100/50 text-yellow-800 dark:text-yellow-500 dark:bg-yellow-900/20 px-3 py-1 rounded-full">
+                    <Star className="h-4 w-4 fill-current" />
+                    <span className="font-medium">{listing.rating.toFixed(1)} ({listing.reviewCount} reviews)</span>
+                  </div>
+                )}
+                {/* Provider info or other metadata could go here */}
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-6 border-t">
+              <h3 className="text-xl font-semibold">About this service</h3>
+              <p className="text-muted-foreground leading-relaxed whitespace-pre-line text-lg">
+                {listing.description}
+              </p>
+            </div>
+            
+            {listing.tags && listing.tags.length > 0 && (
+              <div className="space-y-3 pt-4">
+                <h4 className="font-medium">Tags</h4>
+                <div className="flex flex-wrap gap-2">
+                  {listing.tags.map(tag => (
+                    <Badge key={tag} variant="secondary" className="font-normal">{tag}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* Sidebar / Booking Area */}
+        <div className="space-y-6">
+          <Card className="p-6 space-y-6 border-none shadow-md sticky top-6">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Service Price</p>
+              <div className="text-3xl font-bold text-primary">
+                {formatPrice(listing.price, listing.priceType)}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <Button size="lg" variant="hero" onClick={() => document.getElementById('booking-section')?.scrollIntoView({ behavior: 'smooth'})} className="w-full text-base font-semibold shadow-sm">
+                Book Now
+              </Button>
+              <Button size="lg" variant="outline" className="w-full text-base font-semibold" onClick={handleMessage}>
+                <MessageSquare className="h-4 w-4 mr-2" /> Message Provider
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Booking Form Section */}
+      <div id="booking-section" className="pt-6">
+        <Card className="p-6 md:p-8 space-y-6 border-none shadow-md">
+          <div className="space-y-2">
+            <h3 className="text-2xl font-bold flex items-center gap-2">
+              <Calendar className="h-6 w-6 text-primary" /> Request a Booking
+            </h3>
+            <p className="text-muted-foreground">Select your preferred date, time, and provide any necessary details.</p>
+          </div>
+          
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Date</label>
+              <Input
+                type="date"
+                value={bookingData.date}
+                className="h-12"
+                onChange={(e) => setBookingData(prev => ({ ...prev, date: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Time</label>
+              <Input
+                type="time"
+                value={bookingData.time}
+                className="h-12"
+                onChange={(e) => setBookingData(prev => ({ ...prev, time: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Duration</label>
+              <div className="relative">
+                <Clock className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
+                <Input
+                  type="number"
+                  placeholder="Minutes"
+                  value={bookingData.duration}
+                  className="h-12 pl-10"
+                  onChange={(e) => setBookingData(prev => ({ ...prev, duration: e.target.value }))}
+                />
+              </div>
             </div>
           </div>
-          <Badge variant="outline">{listing.category}</Badge>
-        </div>
-        <p className="text-muted-foreground">{listing.description}</p>
-        <div className="text-xl font-semibold text-primary">
-          {formatPrice(listing.price, listing.priceType)}
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="gap-1" onClick={handleMessage}>
-            <MessageSquare className="h-4 w-4" /> Message provider
-          </Button>
-        </div>
-      </Card>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Additional Notes</label>
+            <Textarea
+              placeholder="Tell the provider what you need help with..."
+              className="min-h-[120px] resize-y"
+              value={bookingData.notes}
+              onChange={(e) => setBookingData(prev => ({ ...prev, notes: e.target.value }))}
+            />
+          </div>
+          
+          <div className="flex justify-end pt-4">
+            <Button size="lg" variant="hero" onClick={handleBooking} disabled={!canBook} className="px-8 text-base">
+              Submit Request
+            </Button>
+          </div>
+        </Card>
+      </div>
 
-      <Card className="p-6 space-y-4">
-        <h3 className="text-lg font-semibold">Book this service</h3>
-        <div className="grid gap-3 md:grid-cols-3">
-          <Input
-            type="date"
-            value={bookingData.date}
-            onChange={(e) => setBookingData(prev => ({ ...prev, date: e.target.value }))}
-          />
-          <Input
-            type="time"
-            value={bookingData.time}
-            onChange={(e) => setBookingData(prev => ({ ...prev, time: e.target.value }))}
-          />
-          <Input
-            type="number"
-            placeholder="Duration (mins)"
-            value={bookingData.duration}
-            onChange={(e) => setBookingData(prev => ({ ...prev, duration: e.target.value }))}
-          />
-        </div>
-        <Textarea
-          placeholder="Notes for the provider"
-          value={bookingData.notes}
-          onChange={(e) => setBookingData(prev => ({ ...prev, notes: e.target.value }))}
-        />
-        <Button variant="hero" onClick={handleBooking} disabled={!canBook}>
-          Request booking
-        </Button>
-      </Card>
+
     </div>
   );
 };

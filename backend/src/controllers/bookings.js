@@ -125,7 +125,7 @@ const getBookings = async (req, res) => {
   try {
     const { user_id } = req.query;
     let query = `
-      SELECT b.*, s.title as service_title, s.category, s.provider_id, u.name as seeker_name
+      SELECT b.*, s.title as service_title, s.category, s.image_url as service_image_url, s.provider_id, u.name as seeker_name
       FROM bookings b
       JOIN services s ON b.service_id = s.id
       JOIN users u ON b.seeker_id = u.id
@@ -135,7 +135,7 @@ const getBookings = async (req, res) => {
 
     if (user_id) {
       query = `
-        SELECT b.*, s.title as service_title, s.category, s.provider_id, u.name as seeker_name
+        SELECT b.*, s.title as service_title, s.category, s.image_url as service_image_url, s.provider_id, u.name as seeker_name
         FROM bookings b
         JOIN services s ON b.service_id = s.id
         JOIN users u ON b.seeker_id = u.id

@@ -10,8 +10,8 @@ interface MessageBubbleProps {
   message: {
     id: string;
     content?: string;
-    type?: 'text' | 'image' | 'voice' | 'file';
-    message_type?: 'text' | 'image' | 'voice' | 'file';
+    type?: 'text' | 'image' | 'voice' | 'file' | 'booking_request' | 'booking_update';
+    message_type?: 'text' | 'image' | 'voice' | 'file' | 'booking_request' | 'booking_update';
     file_url?: string;
     fileUrl?: string;
     file_name?: string;
@@ -108,10 +108,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
         )}
         
         <div
-          className={`rounded-2xl px-4 py-2 ${
+          className={`px-4 py-2.5 shadow-sm max-w-full ${
             isOwn
-              ? 'bg-primary text-primary-foreground rounded-tr-sm'
-              : 'bg-muted text-foreground rounded-tl-sm'
+              ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm'
+              : 'bg-white dark:bg-zinc-800 text-foreground rounded-2xl rounded-tl-sm border dark:border-zinc-700'
           }`}
         >
           {messageType === 'text' && (
@@ -191,8 +191,8 @@ interface ConversationHeaderProps {
 
 export const ConversationHeader: React.FC<ConversationHeaderProps> = ({ otherUser, serviceName }) => {
   return (
-    <Card className="border-b rounded-none p-4">
-      <div className="flex items-center gap-3">
+    <Card className="border-b border-x-0 border-t-0 rounded-none p-4 flex items-center justify-between bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-10 shadow-sm">
+      <div className="flex items-center gap-4">
         <div className="relative">
           <Avatar className="h-12 w-12">
             <AvatarImage src={otherUser.profile_picture} />
@@ -265,8 +265,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   return (
-    <Card className="border-t rounded-none p-4">
-      <div className="flex items-end gap-2">
+    <Card className="border-t border-x-0 border-b-0 rounded-none p-4 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm">
+      <div className="flex items-end gap-3 max-w-4xl mx-auto">
         <input
           ref={fileInputRef}
           type="file"
@@ -292,7 +292,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={disabled}
-            className="resize-none"
+            className="resize-none rounded-full px-4 h-12 bg-muted/50 border-transparent focus-visible:ring-1 focus-visible:bg-background transition-all"
           />
         </div>
 
@@ -301,7 +301,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             size="icon"
             onClick={onSend}
             disabled={disabled}
-            className="shrink-0"
+            className="shrink-0 rounded-full h-12 w-12 bg-primary hover:bg-primary/90 shadow-sm"
           >
             <Send className="h-5 w-5" />
           </Button>
@@ -311,7 +311,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             variant={isRecording ? 'destructive' : 'ghost'}
             onClick={onVoiceRecord}
             disabled={disabled}
-            className="shrink-0"
+            className="shrink-0 rounded-full h-12 w-12 hover:bg-muted"
           >
             <Mic className="h-5 w-5" />
           </Button>

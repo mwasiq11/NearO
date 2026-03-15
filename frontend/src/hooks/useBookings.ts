@@ -47,6 +47,7 @@ export const useBookings = () => {
       updatedAt: booking.updated_at || booking.created_at || new Date().toISOString(),
       serviceTitle: booking.service_title || 'Service',
       serviceCategory: booking.category || undefined,
+      serviceImageUrl: booking.service_image_url || undefined,
       seekerName: booking.seeker_name || undefined,
     };
   }, []);

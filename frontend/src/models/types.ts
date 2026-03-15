@@ -101,6 +101,7 @@ export interface Booking {
   notes?: string;
   serviceTitle?: string;
   serviceCategory?: string;
+  serviceImageUrl?: string;
   seekerName?: string;
   seekerReview?: Review;
   providerReview?: Review;
@@ -135,14 +136,18 @@ export interface Conversation {
   listing?: ServiceListing;
   createdAt: string;
   updatedAt: string;
+  last_message_at?: string;
+  service_title?: string;
+  last_message_preview?: string;
 }
 
 export interface Message {
   id: string;
   conversationId: string;
   senderId: string;
+  sender_id?: string;
   content: string;
-  type: 'text' | 'image' | 'booking_request' | 'booking_update';
+  type: 'text' | 'image' | 'booking_request' | 'booking_update' | 'file' | 'voice';
   metadata?: Record<string, any>;
   isRead: boolean;
   createdAt: string;

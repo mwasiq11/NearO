@@ -121,10 +121,10 @@ const MessagesPage = () => {
   };
 
   return (
-    <div className="p-6 h-[calc(100vh-120px)]">
-      <div className="grid h-full md:grid-cols-[320px_1fr] gap-4">
+    <div className="p-4 md:p-6 h-[calc(100vh-80px)] max-w-7xl mx-auto">
+      <div className="grid h-full md:grid-cols-[340px_1fr] md:gap-6">
         {/* Conversations List */}
-        <Card className="p-0 overflow-hidden flex flex-col">
+        <Card className="p-0 flex flex-col border-none shadow-md overflow-hidden bg-background/60 backdrop-blur-lg">
           <div className="p-4 border-b">
             <h3 className="font-semibold text-lg">Messages</h3>
             <p className="text-sm text-muted-foreground">
@@ -144,10 +144,10 @@ const MessagesPage = () => {
                   <button
                     key={conv.id}
                     onClick={() => openConversation(conv)}
-                    className={`w-full text-left p-3 rounded-lg transition-colors ${
+                    className={`w-full text-left p-4 transition-all border-l-4 ${
                       currentConversation?.id === conv.id
-                        ? 'bg-primary/10 border-primary/20 border'
-                        : 'hover:bg-muted'
+                        ? 'bg-primary/5 border-primary shadow-sm'
+                        : 'border-transparent hover:bg-muted/80'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -206,7 +206,7 @@ const MessagesPage = () => {
         </Card>
 
         {/* Chat Area */}
-        <div className="flex flex-col h-full overflow-hidden rounded-lg border">
+        <div className="flex flex-col h-full overflow-hidden rounded-xl border border-border shadow-md bg-[#f8f9fa] dark:bg-zinc-950 relative">
           {currentConversation ? (
             <>
               <ConversationHeader
@@ -214,18 +214,22 @@ const MessagesPage = () => {
                 serviceName={currentConversation.service_title}
               />
               
-              <ScrollArea className="flex-1 p-4">
-                <div className="space-y-1">
+              <ScrollArea className="flex-1 p-4 md:p-6 relative">
+                <div className="space-y-4">
                   {currentMessages.map((msg) => (
                     <MessageBubble
                       key={msg.id}
-                      message={msg}
-                      isOwn={msg.sender_id === user?.id}
+                      message={msg as any}
+                      isOwn={msg.senderId === user?.id || (msg as any).sender_id === user?.id}
                     />
                   ))}
                   {currentMessages.length === 0 && (
-                    <div className="text-center text-muted-foreground py-8">
-                      No messages yet. Start the conversation!
+                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground pt-20">
+                      <div className="bg-primary/10 p-4 rounded-full mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                      </div>
+                      <p className="font-medium">No messages yet</p>
+                      <p className="text-sm">Say hello and start the conversation!</p>
                     </div>
                   )}
                 </div>

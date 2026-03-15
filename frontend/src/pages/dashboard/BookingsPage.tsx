@@ -5,11 +5,14 @@ import { Badge } from '@/components/ui/badge';
 import { Check, X } from 'lucide-react';
 import { useBookings } from '@/hooks/useBookings';
 import { formatDate } from '@/utils/formatters';
+import { getCategoryImage } from '@/utils/categoryImages';
 import { useAppSelector } from '@/store/hooks';
+import { useNavigate } from 'react-router-dom';
 
 const BookingsPage = () => {
   const { myBookings, receivedBookings, isLoading, acceptBooking, rejectBooking } = useBookings();
   const { user } = useAppSelector(state => state.auth);
+  const navigate = useNavigate();
   const [view, setView] = useState<'mine' | 'received'>('mine');
   const bookings = view === 'mine' ? myBookings : receivedBookings;
 
@@ -75,59 +78,118 @@ const BookingsPage = () => {
       {isLoading && <div className="text-sm text-muted-foreground">Loading bookings...</div>}
 
       <div className="grid gap-4">
-        {bookings.map((booking) => (
-          <Card key={booking.id} className="p-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <p className="font-semibold">{booking.serviceTitle || 'Service booking'}</p>
-                {booking.serviceCategory && (
-                  <p className="text-xs text-muted-foreground capitalize">{booking.serviceCategory}</p>
-                )}
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(booking.scheduledDate)} at {booking.scheduledTime}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Total: ${booking.totalPrice.toFixed(2)}
-                </p>
-                {booking.notes && (
-                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{booking.notes}</p>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Badge className={getStatusColor(booking.status)}>
-                  {booking.status.replace('_', ' ')}
-                </Badge>
-                
-                {/* Show accept/reject buttons for provider on pending received bookings */}
-                {view === 'received' && 
-                 booking.status === 'pending' && 
-                 booking.providerId === user?.id && (
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-green-600 hover:bg-green-50 dark:hover:bg-green-950"
-                      onClick={() => handleAccept(booking.id)}
-                    >
-                      <Check className="h-4 w-4 mr-1" />
-                      Accept
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-                      onClick={() => handleReject(booking.id)}
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      Reject
-                    </Button>
+        {bookings.map((booking) => {
+          const imageUrl = booking.serviceImageUrl || getCategoryImage(booking.serviceCategory || 'Other');
+          
+          return (
+            <Card key={booking.id} className="overflow-hidden hover:shadow-md transition-shadow group">
+              <div className="flex flex-col md:flex-row h-full">
+                {/* Image Section */}
+                <div 
+                  className="w-full md:w-64 h-48 md:h-auto bg-muted flex-shrink-0 cursor-pointer relative"
+                  onClick={() => booking.listingId && navigate(`/dashboard/listing/${booking.listingId}`)}
+                >
+                  <img 
+                    src={imageUrl} 
+                    alt={booking.serviceTitle || 'Service'} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    onError={(e) => {
+                      e.currentTarget.src = getCategoryImage('Other');
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent md:hidden pointer-events-none" />
+                  <div className="absolute bottom-3 left-3 md:hidden">
+                    <Badge className={getStatusColor(booking.status)}>
+                      {booking.status.replace('_', ' ')}
+                    </Badge>
                   </div>
-                )}
+                </div>
+
+                {/* Details Section */}
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <div>
+                    <div className="flex items-start justify-between gap-4 mb-2">
+                      <div>
+                        {booking.serviceCategory && (
+                          <p className="text-xs font-medium text-primary uppercase tracking-wider mb-1">
+                            {booking.serviceCategory}
+                          </p>
+                        )}
+                        <h3 
+                          className="text-lg font-bold cursor-pointer hover:text-primary transition-colors"
+                          onClick={() => booking.listingId && navigate(`/dashboard/listing/${booking.listingId}`)}
+                        >
+                          {booking.serviceTitle || 'Service booking'}
+                        </h3>
+                        {view === 'received' && booking.seekerName && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Requested by: <span className="font-medium text-foreground">{booking.seekerName}</span>
+                          </p>
+                        )}
+                      </div>
+                      <div className="hidden md:block">
+                        <Badge className={`${getStatusColor(booking.status)} px-3 py-1 shadow-sm`}>
+                          {booking.status.replace('_', ' ')}
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-y-2 mt-4 text-sm bg-muted/30 p-3 rounded-lg">
+                      <div>
+                        <span className="text-muted-foreground">Date:</span>
+                        <div className="font-medium">{formatDate(booking.scheduledDate)}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Time:</span>
+                        <div className="font-medium">{booking.scheduledTime}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Total:</span>
+                        <div className="font-semibold text-primary">${booking.totalPrice.toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Duration:</span>
+                        <div className="font-medium">{booking.duration} mins</div>
+                      </div>
+                    </div>
+
+                    {booking.notes && (
+                      <div className="mt-4 text-sm">
+                        <span className="font-medium text-foreground">Notes: </span>
+                        <span className="text-muted-foreground">{booking.notes}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Actions */}
+                  {view === 'received' && 
+                   booking.status === 'pending' && 
+                   booking.providerId === user?.id && (
+                    <div className="flex items-center gap-3 pt-4 border-t mt-auto">
+                      <Button
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white flex-1 md:flex-none"
+                        onClick={() => handleAccept(booking.id)}
+                      >
+                        <Check className="h-4 w-4 mr-2" />
+                        Accept Request
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200 dark:hover:bg-red-950 flex-1 md:flex-none"
+                        onClick={() => handleReject(booking.id)}
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Decline
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
 
       {!isLoading && bookings.length === 0 && (
