@@ -79,7 +79,19 @@ const upload = multer({
 });
 
 /**
- * Middleware to handle single file upload
+ * Middleware to handle single file upload (memory storage for S3)
+ */
+const memoryStorage = multer.memoryStorage();
+export const uploadMemory = multer({
+  storage: memoryStorage,
+  fileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
+
+export const uploadSingleToMemory = uploadMemory.single('file');
+
+/**
+ * Middleware to handle single file upload (disk storage)
  */
 export const uploadSingle = upload.single('file');
 

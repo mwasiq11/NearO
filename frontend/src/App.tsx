@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Provider } from 'react-redux';
 import { store } from '@/store/store';
 import { useAppSelector } from '@/store/hooks';
+import { useTheme } from '@/hooks/useTheme';
 
 // React Router v7 future flags - suppress warnings and opt-in to v7 behavior
 const routerFutureConfig = {
@@ -72,6 +73,9 @@ const RoleRoute = ({
 };
 
 const AppRoutes = () => {
+  // Initialize theme at the root level inside Redux Provider
+  useTheme();
+
   return (
     <Routes>
       {/* Public Routes */}

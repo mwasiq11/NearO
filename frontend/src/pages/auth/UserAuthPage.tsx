@@ -104,7 +104,7 @@ export default function UserAuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-muted/20 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">NearO</CardTitle>
@@ -172,11 +172,11 @@ export default function UserAuthPage() {
                   <div className="w-full border-t border-gray-300"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">or</span>
+                  <span className="px-2 bg-background text-muted-foreground">or</span>
                 </div>
               </div>
 
-              <div className="text-center text-sm text-gray-600">
+              <div className="text-center text-sm text-muted-foreground">
                 Are you an admin or moderator?{' '}
                 <button
                   onClick={() => navigate('/moderator-login')}
@@ -263,7 +263,7 @@ export default function UserAuthPage() {
                   {isLoading ? 'Creating account...' : 'Create Account'}
                 </Button>
 
-                <p className="text-xs text-gray-600 text-center">
+                <p className="text-xs text-muted-foreground text-center">
                   By signing up, you agree to our Terms of Service and Privacy Policy
                 </p>
               </form>

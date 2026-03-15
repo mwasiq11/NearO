@@ -119,7 +119,7 @@ export default function UserDashboard() {
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold">Welcome, {user.name}!</h1>
-            <p className="text-gray-600 mt-1">Manage your services and bookings</p>
+            <p className="text-muted-foreground mt-1">Manage your services and bookings</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => navigate('/history')}>
@@ -140,53 +140,53 @@ export default function UserDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   <Briefcase className="w-4 h-4" />
                   Services Provided
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold">{stats.servicesProvided}</div>
-                <p className="text-xs text-gray-500 mt-1">Active services</p>
+                <p className="text-xs text-muted-foreground mt-1">Active services</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   <MessageSquare className="w-4 h-4" />
                   Bookings Made
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold">{stats.bookingsMade}</div>
-                <p className="text-xs text-gray-500 mt-1">Total bookings</p>
+                <p className="text-xs text-muted-foreground mt-1">Total bookings</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   <Star className="w-4 h-4" />
                   Reviews
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold">{stats.reviewsReceived}</div>
-                <p className="text-xs text-gray-500 mt-1">Received as provider</p>
+                <p className="text-xs text-muted-foreground mt-1">Received as provider</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   <TrendingUp className="w-4 h-4" />
                   Rating
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold">{stats.avgRating.toFixed(1)}</div>
-                <p className="text-xs text-gray-500 mt-1">Average rating</p>
+                <p className="text-xs text-muted-foreground mt-1">Average rating</p>
               </CardContent>
             </Card>
           </div>
@@ -241,9 +241,9 @@ export default function UserDashboard() {
             {services.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
-                  <Briefcase className="w-12 h-12 mx-auto text-gray-300 mb-4" />
+                  <Briefcase className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-medium">No services yet</h3>
-                  <p className="text-gray-600 mt-1">Start by creating your first service</p>
+                  <p className="text-muted-foreground mt-1">Start by creating your first service</p>
                   <Button onClick={() => navigate('/create-service')} className="mt-4">
                     Create Service
                   </Button>
@@ -265,15 +265,15 @@ export default function UserDashboard() {
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      <p className="text-sm text-gray-600 line-clamp-2">{service.description}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{service.description}</p>
                       <div className="flex justify-between items-center">
                         <div>
                           <p className="text-2xl font-bold">${service.price}</p>
-                          <p className="text-xs text-gray-500">per service</p>
+                          <p className="text-xs text-muted-foreground">per service</p>
                         </div>
                         <div className="text-right">
                           <p className="text-xl font-bold">{service.avg_rating.toFixed(1)}</p>
-                          <p className="text-xs text-gray-500">{service.booking_count} bookings</p>
+                          <p className="text-xs text-muted-foreground">{service.booking_count} bookings</p>
                         </div>
                       </div>
                       <div className="flex gap-2 pt-2">
@@ -298,9 +298,9 @@ export default function UserDashboard() {
             {bookings.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
-                  <MessageSquare className="w-12 h-12 mx-auto text-gray-300 mb-4" />
+                  <MessageSquare className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-medium">No bookings yet</h3>
-                  <p className="text-gray-600 mt-1">Browse and book services in your area</p>
+                  <p className="text-muted-foreground mt-1">Browse and book services in your area</p>
                   <Button onClick={() => navigate('/dashboard/browse')} className="mt-4">
                     Browse Services
                   </Button>
@@ -313,23 +313,23 @@ export default function UserDashboard() {
                     <CardContent className="pt-6">
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
-                          <p className="text-sm text-gray-600">Service</p>
+                          <p className="text-sm text-muted-foreground">Service</p>
                           <p className="font-semibold">{booking.title}</p>
-                          <p className="text-xs text-gray-500">{booking.category}</p>
+                          <p className="text-xs text-muted-foreground">{booking.category}</p>
                         </div>
                         <div>
-                          <p className="text-sm text-gray-600">Provider</p>
+                          <p className="text-sm text-muted-foreground">Provider</p>
                           <p className="font-semibold">{booking.provider_name}</p>
-                          <p className="text-xs text-gray-500">{booking.provider_email}</p>
+                          <p className="text-xs text-muted-foreground">{booking.provider_email}</p>
                         </div>
                         <div>
-                          <p className="text-sm text-gray-600">Status</p>
+                          <p className="text-sm text-muted-foreground">Status</p>
                           <Badge className="mt-1">
                             {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                           </Badge>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-gray-600">Price</p>
+                          <p className="text-sm text-muted-foreground">Price</p>
                           <p className="text-2xl font-bold">${booking.price}</p>
                         </div>
                       </div>

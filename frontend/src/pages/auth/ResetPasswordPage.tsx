@@ -51,7 +51,7 @@ const ResetPasswordPage = () => {
       >
         <div>
           <Link to="/" className="inline-flex items-center gap-3 mb-8">
-            <div className="h-12 w-12 rounded-xl overflow-hidden bg-white shadow-sm flex items-center justify-center p-1.5">
+            <div className="h-12 w-12 rounded-xl overflow-hidden bg-background shadow-sm flex items-center justify-center p-1.5 border">
               <img src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" alt="NearO" className="h-full w-full object-contain" />
             </div>
             <span style={{fontFamily: 'Poppins, sans-serif'}} className="font-bold text-2xl text-foreground tracking-tight">NearO</span>

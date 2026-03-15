@@ -47,8 +47,8 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-xl border-red-200">
+    <div className="min-h-screen bg-muted/20 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md shadow-xl border-border">
         <CardHeader className="space-y-1 bg-gradient-to-r from-red-600 to-orange-600 text-white rounded-t-lg">
           <div className="flex items-center gap-2 mb-2">
             <button
@@ -118,7 +118,7 @@ export default function AdminLoginPage() {
             </p>
           </div>
 
-          <div className="mt-4 text-center text-sm text-gray-600">
+          <div className="mt-4 text-center text-sm text-muted-foreground">
             <button
               onClick={() => navigate('/login')}
               className="text-blue-600 hover:underline font-medium"

@@ -54,7 +54,7 @@ const ModeratorDashboard = () => {
         </CardHeader>
         <CardContent className="space-y-3">
           {queue.map((item) => (
-            <div key={item.id} className="flex items-center justify-between rounded-lg border bg-white px-4 py-3">
+            <div key={item.id} className="flex items-center justify-between rounded-lg border bg-card px-4 py-3">
               <div>
                 <p className="font-medium">{item.title}</p>
                 <p className="text-sm text-muted-foreground">{item.id}</p>

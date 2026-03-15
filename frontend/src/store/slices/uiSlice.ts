@@ -1,20 +1,35 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+export type Theme = 'light' | 'dark' | 'system';
+
 interface UiState {
   isSidebarOpen: boolean;
   isMobileMenuOpen: boolean;
   activeTab: string;
-  theme: 'light' | 'dark';
+  theme: Theme;
   notifications: number;
   searchOpen: boolean;
   filterDrawerOpen: boolean;
 }
 
+// Load initial theme from localStorage if available
+const getInitialTheme = (): Theme => {
+  try {
+    const savedTheme = localStorage.getItem('nearo-theme') as Theme;
+    if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
+      return savedTheme;
+    }
+  } catch (e) {
+    // Ignore error
+  }
+  return 'system';
+};
+
 const initialState: UiState = {
   isSidebarOpen: true,
   isMobileMenuOpen: false,
   activeTab: 'home',
-  theme: 'light',
+  theme: getInitialTheme(),
   notifications: 3,
   searchOpen: false,
   filterDrawerOpen: false,
@@ -39,8 +54,8 @@ const uiSlice = createSlice({
     setActiveTab: (state, action: PayloadAction<string>) => {
       state.activeTab = action.payload;
     },
-    toggleTheme: (state) => {
-      state.theme = state.theme === 'light' ? 'dark' : 'light';
+    setTheme: (state, action: PayloadAction<Theme>) => {
+      state.theme = action.payload;
     },
     setNotifications: (state, action: PayloadAction<number>) => {
       state.notifications = action.payload;
@@ -71,7 +86,7 @@ export const {
   toggleMobileMenu,
   setMobileMenuOpen,
   setActiveTab,
-  toggleTheme,
+  setTheme,
   setNotifications,
   decrementNotifications,
   toggleSearch,

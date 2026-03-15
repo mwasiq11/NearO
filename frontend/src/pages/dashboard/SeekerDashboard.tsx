@@ -48,16 +48,18 @@ const SeekerDashboard = () => {
           </Button>
         </div>
         <div className="grid grid-cols-4 gap-3">
-          {categories.slice(0, 8).map((cat) => (
+          {categories.slice(0, 8).map((cat) => {
+            const Icon = getCategoryEmoji(cat.name);
+            return (
             <button
               key={cat.id}
               onClick={() => navigate(`/dashboard/browse?category=${cat.id}`)}
               className="flex flex-col items-center p-3 rounded-xl bg-card border hover:shadow-md transition-all"
             >
-              <span className="text-2xl mb-1">{getCategoryEmoji(cat.name)}</span>
+              <div className="text-2xl mb-1 text-primary"><Icon className="w-8 h-8" /></div>
               <span className="text-xs text-center line-clamp-1">{cat.name}</span>
             </button>
-          ))}
+          );})}
         </div>
       </motion.div>
 

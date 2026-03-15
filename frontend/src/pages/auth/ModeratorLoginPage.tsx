@@ -47,13 +47,13 @@ export default function ModeratorLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-muted/20 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1">
           <div className="flex items-center gap-2 mb-2">
             <button
               onClick={() => navigate('/login')}
-              className="p-1 hover:bg-gray-100 rounded"
+              className="p-1 hover:bg-muted rounded text-muted-foreground"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -104,7 +104,7 @@ export default function ModeratorLoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
+          <div className="mt-6 text-center text-sm text-muted-foreground">
             <p>Moderators are assigned by administrators.</p>
             <p className="mt-2">
               Need access?{' '}

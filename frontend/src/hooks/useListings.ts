@@ -41,7 +41,7 @@ export const useListings = () => {
       category: service.category,
       price: Number(service.price),
       priceType: 'fixed',
-      images: service.images || [],
+      images: service.image_url ? [service.image_url] : (service.images || []),
       availability: [],
       location: {
         neighborhood: neighborhood,
@@ -180,6 +180,7 @@ export const useListings = () => {
         city: form.city || user.city,
         latitude: form.latitude,
         longitude: form.longitude,
+        image_url: form.image_url,
       };
 
       const created = await api.post<any>('/services', payload, { auth: true });

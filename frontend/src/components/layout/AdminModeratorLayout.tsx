@@ -15,7 +15,10 @@ import {
   Menu,
   X,
   LogOut,
+  Sun,
+  Moon,
 } from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
 
 interface NavItem {
   label: string;
@@ -28,6 +31,7 @@ const AdminModeratorLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { theme, resolvedTheme, setTheme } = useTheme();
 
   const role = user?.role || 'user';
   const isAdmin = role === 'admin';
@@ -48,24 +52,24 @@ const AdminModeratorLayout = ({ children }: { children: React.ReactNode }) => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-background">
       <aside
         className={cn(
-          'bg-gray-900 text-white transition-all duration-300 flex flex-col',
+          'bg-card text-foreground transition-all duration-300 flex flex-col border-r',
           sidebarOpen ? 'w-64' : 'w-20'
         )}
       >
-        <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+        <div className="p-6 border-b flex items-center justify-between h-[73px]">
           {sidebarOpen && (
             <div>
-              <p className="text-xs text-gray-400">{isAdmin ? 'Administrator' : 'Moderator'}</p>
+              <p className="text-xs text-muted-foreground">{isAdmin ? 'Administrator' : 'Moderator'}</p>
               <h1 className="text-xl font-bold">Control Center</h1>
             </div>
           )}
           <Button
             variant="ghost"
             size="icon"
-            className="text-white"
+            className="text-foreground"
             onClick={() => setSidebarOpen((prev) => !prev)}
           >
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -79,7 +83,7 @@ const AdminModeratorLayout = ({ children }: { children: React.ReactNode }) => {
               to={item.path}
               className={cn(
                 'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
-                isActive(item.path) ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800'
+                isActive(item.path) ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
               )}
               title={!sidebarOpen ? item.label : undefined}
             >
@@ -89,13 +93,13 @@ const AdminModeratorLayout = ({ children }: { children: React.ReactNode }) => {
           ))}
         </nav>
 
-        <div className="border-t border-gray-800 p-4 space-y-3">
+        <div className="border-t p-4 space-y-3">
           {sidebarOpen && (
             <div>
-              <p className="text-xs text-gray-400">Signed in as</p>
+              <p className="text-xs text-muted-foreground">Signed in as</p>
               <p className="font-semibold truncate">{user?.name || 'Demo User'}</p>
-              <p className="text-xs text-gray-400 truncate">{user?.email}</p>
-              <Badge className="mt-2 bg-blue-600 text-white">{(user?.role || 'user').toUpperCase()}</Badge>
+              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              <Badge className="mt-2 bg-primary text-primary-foreground">{(user?.role || 'user').toUpperCase()}</Badge>
             </div>
           )}
           <Button variant="destructive" className="w-full" onClick={logout}>
@@ -105,25 +109,34 @@ const AdminModeratorLayout = ({ children }: { children: React.ReactNode }) => {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
+      <main className="flex-1 flex flex-col overflow-hidden bg-background">
+        <div className="bg-card border-b px-6 py-4 flex items-center justify-between h-[73px]">
           <div>
-            <p className="text-xs text-gray-500">{isAdmin ? 'Administrator' : 'Moderator'} workspace</p>
+            <p className="text-xs text-muted-foreground">{isAdmin ? 'Administrator' : 'Moderator'} workspace</p>
             <h2 className="text-lg font-semibold">
               {availableItems.find((item) => isActive(item.path))?.label || 'Dashboard'}
             </h2>
           </div>
-          <div className="text-sm text-gray-600">
-            {new Date().toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric',
-            })}
+          <div className="flex items-center gap-6">
+            <button
+              onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+              className="p-2 rounded-full text-muted-foreground hover:bg-muted focus:outline-none transition-colors"
+              aria-label="Toggle theme"
+            >
+              {resolvedTheme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </button>
+            <div className="text-sm text-muted-foreground hidden sm:block">
+              {new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+            </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto bg-gray-50">
+        <div className="flex-1 overflow-auto bg-muted/20">
           <div className="p-8 max-w-6xl mx-auto space-y-6">{children}</div>
         </div>
       </main>

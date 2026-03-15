@@ -83,7 +83,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
     }
     // Text files
     if (ext === 'txt' || ext === 'csv' || type.includes('text')) {
-      return <FileText className="h-5 w-5 text-gray-500" />;
+      return <FileText className="h-5 w-5 text-muted-foreground" />;
     }
     // Archives
     if (ext === 'zip' || type.includes('zip')) {

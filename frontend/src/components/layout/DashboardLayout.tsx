@@ -12,7 +12,9 @@ import {
   Menu,
   X,
   Package,
-  TrendingUp
+  TrendingUp,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -22,6 +24,7 @@ import NotificationDropdown from '@/components/common/NotificationDropdown';
 import { useAuth } from '@/hooks/useAuth';
 import { useChat } from '@/hooks/useChat';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 
 const DashboardLayout = () => {
@@ -32,6 +35,7 @@ const DashboardLayout = () => {
   const { user, logout } = useAuth();
   const { totalUnread } = useChat();
   const { unreadCount } = useNotifications();
+  const { theme, resolvedTheme, setTheme } = useTheme();
 
   const navItems = [
     { path: '/dashboard', icon: Home, label: 'Home' },
@@ -57,7 +61,7 @@ const DashboardLayout = () => {
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b">
           <Link to="/dashboard" className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg overflow-hidden bg-white shadow-sm flex items-center justify-center p-1.5">
+            <div className="h-9 w-9 rounded-lg overflow-hidden bg-background shadow-sm flex items-center justify-center p-1.5 border">
               <img src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" alt="NearO" className="h-full w-full object-contain" />
             </div>
             <span style={{fontFamily: 'Poppins, sans-serif'}} className="font-bold text-xl bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent tracking-tight">NearO</span>
@@ -168,6 +172,14 @@ const DashboardLayout = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+              className="p-2 mr-1 rounded-full text-muted-foreground hover:bg-muted focus:outline-none transition-colors"
+              aria-label="Toggle theme"
+            >
+              {resolvedTheme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </button>
+
             <NotificationDropdown />
             
             <div className="hidden sm:block lg:hidden">
@@ -233,7 +245,7 @@ const DashboardLayout = () => {
             >
               <div className="h-16 flex items-center justify-between px-4 border-b">
                 <Link to="/dashboard" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
-                  <div className="h-9 w-9 rounded-lg overflow-hidden bg-white shadow-sm flex items-center justify-center p-1.5">
+                  <div className="h-9 w-9 rounded-lg overflow-hidden bg-background shadow-sm flex items-center justify-center p-1.5 border">
                     <img src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" alt="NearO" className="h-full w-full object-contain" />
                   </div>
                   <span style={{fontFamily: 'Poppins, sans-serif'}} className="font-bold text-lg tracking-tight">NearO</span>

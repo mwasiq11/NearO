@@ -6,11 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppSelector } from '@/store/hooks';
+import { useTheme } from '@/hooks/useTheme';
+import { Theme } from '@/store/slices/uiSlice';
 import { toast } from 'sonner';
 import { Bell, Globe, Shield, Moon, Sun, Monitor, Smartphone } from 'lucide-react';
 
 const SettingsPage = () => {
   const { user } = useAppSelector(state => state.auth);
+  const { theme, setTheme } = useTheme();
   const [settings, setSettings] = useState({
     // Notification Settings
     emailNotifications: true,
@@ -26,7 +29,6 @@ const SettingsPage = () => {
     showLastSeen: true,
     
     // Display Settings
-    theme: 'system', // light, dark, system
     language: 'en',
     timezone: 'UTC-5',
 
@@ -40,7 +42,11 @@ const SettingsPage = () => {
   };
 
   const handleSelectChange = (key: string, value: string) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+    if (key === 'theme') {
+      setTheme(value as Theme);
+    } else {
+      setSettings(prev => ({ ...prev, [key]: value }));
+    }
   };
 
   const handleSave = () => {
@@ -203,7 +209,7 @@ const SettingsPage = () => {
               <Label>Theme</Label>
               <p className="text-sm text-muted-foreground">Choose your preferred theme</p>
             </div>
-            <Select value={settings.theme} onValueChange={(value) => handleSelectChange('theme', value)}>
+            <Select value={theme} onValueChange={(value) => handleSelectChange('theme', value)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue />
               </SelectTrigger>

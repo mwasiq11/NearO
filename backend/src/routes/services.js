@@ -3,8 +3,9 @@ import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
 import { requirePermission, requireResourcePermission } from '../middleware/permissions.js';
 import { validate } from '../middleware/validation.js';
 import { createServiceSchema, reportServiceSchema, updateOwnServiceSchema } from '../utils/validationSchemas.js';
-import { createService, getServices, getServiceById, updateServiceOwn, deleteServiceOwn, reportService } from '../controllers/services.js';
+import { createService, getServices, getServiceById, updateServiceOwn, deleteServiceOwn, reportService, uploadServiceImage } from '../controllers/services.js';
 import { pool } from '../db/database.js';
+import { uploadSingleToMemory } from '../middleware/upload.js';
 
 const router = express.Router();
 
@@ -13,6 +14,9 @@ router.get('/', optionalAuthenticate, getServices);
 
 // GET /services/:id - Get a specific service by ID
 router.get('/:id', optionalAuthenticate, getServiceById);
+
+// POST /services/upload-image - Upload an image for a service
+router.post('/upload-image', authenticate, requirePermission('services.create'), uploadSingleToMemory, uploadServiceImage);
 
 // POST /services - Create a new service (requires authentication)
 router.post('/', authenticate, requirePermission('services.create'), validate(createServiceSchema), createService);

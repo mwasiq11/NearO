@@ -222,6 +222,7 @@ export interface ListingForm {
   price: number;
   priceType: 'hourly' | 'fixed' | 'negotiable';
   images: File[];
+  image_url?: string;
   tags: string[];
   radius: number;
   neighborhood?: string;

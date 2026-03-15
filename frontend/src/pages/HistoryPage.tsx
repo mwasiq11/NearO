@@ -99,13 +99,13 @@ export default function HistoryPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate(-1)}
-            className="p-2 hover:bg-gray-100 rounded"
+            className="p-2 hover:bg-muted rounded text-muted-foreground"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div>
             <h1 className="text-3xl font-bold">Activity History</h1>
-            <p className="text-gray-600 mt-1">View your account activity and changes</p>
+            <p className="text-muted-foreground mt-1">View your account activity and changes</p>
           </div>
         </div>
 
@@ -148,9 +148,9 @@ export default function HistoryPage() {
         ) : history.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <Clock className="w-12 h-12 mx-auto text-gray-300 mb-4" />
+              <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium">No history found</h3>
-              <p className="text-gray-600 mt-1">Your activities will appear here</p>
+              <p className="text-muted-foreground mt-1">Your activities will appear here</p>
             </CardContent>
           </Card>
         ) : (
@@ -161,8 +161,8 @@ export default function HistoryPage() {
                   <div className="flex gap-4">
                     {/* Icon */}
                     <div className="flex-shrink-0">
-                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-gray-600" />
+                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-muted-foreground" />
                       </div>
                     </div>
 
@@ -174,32 +174,32 @@ export default function HistoryPage() {
                             <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getActionBadgeColor(log.action_type)}`}>
                               {ACTION_LABELS[log.action_type] || log.action_type}
                             </span>
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-muted-foreground">
                               on <span className="font-medium">{log.entity_type}</span>
                             </span>
                           </div>
 
                           {log.actor_name && (
-                            <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                            <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                               <User className="w-3 h-3" />
                               {log.actor_name} ({log.actor_email})
                             </p>
                           )}
 
                           {log.metadata && (
-                            <p className="text-xs text-gray-600 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                               {JSON.stringify(log.metadata).substring(0, 100)}...
                             </p>
                           )}
                         </div>
 
                         <div className="text-right">
-                          <p className="text-xs text-gray-500 flex items-center justify-end gap-1">
+                          <p className="text-xs text-muted-foreground flex items-center justify-end gap-1">
                             <Clock className="w-3 h-3" />
                             {new Date(log.created_at).toLocaleDateString()} {new Date(log.created_at).toLocaleTimeString()}
                           </p>
                           {log.ip_address && (
-                            <p className="text-xs text-gray-400 mt-1">IP: {log.ip_address}</p>
+                            <p className="text-xs text-muted-foreground/50 mt-1">IP: {log.ip_address}</p>
                           )}
                         </div>
                       </div>
@@ -221,7 +221,7 @@ export default function HistoryPage() {
             >
               Previous
             </Button>
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-muted-foreground">
               Page {page} of {totalPages}
             </span>
             <Button

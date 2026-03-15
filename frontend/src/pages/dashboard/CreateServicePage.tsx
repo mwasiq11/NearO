@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { CategoryCombobox } from '@/components/common/CategoryCombobox';
 import { useListings } from '@/hooks/useListings';
 import { toast } from 'sonner';
+import { api } from '@/lib/api';
+import { Upload, X } from 'lucide-react';
 
 const CreateServicePage = () => {
   const navigate = useNavigate();
@@ -24,7 +26,53 @@ const CreateServicePage = () => {
     city: '',
     latitude: '',
     longitude: '',
+    image_url: '',
   });
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (previewUrl && previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+    setIsUploadingImage(true);
+
+    const uploadData = new FormData();
+    uploadData.append('file', file);
+    uploadData.append('upload_context', 'service_image');
+
+    try {
+      const response = await api.post<{ imageUrl: string }>('/services/upload-image', uploadData, { auth: true });
+      if (response.imageUrl) {
+        setFormData(prev => ({ ...prev, image_url: response.imageUrl }));
+        toast.success('Image uploaded successfully');
+      }
+    } catch (err) {
+      toast.error('Failed to upload image');
+      setPreviewUrl(null);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const removeImage = () => {
+    setFormData(prev => ({ ...prev, image_url: '' }));
+    setPreviewUrl(null);
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -60,6 +108,7 @@ const CreateServicePage = () => {
         city: formData.city || undefined,
         latitude: formData.latitude ? Number(formData.latitude) : undefined,
         longitude: formData.longitude ? Number(formData.longitude) : undefined,
+        image_url: formData.image_url || undefined,
       });
 
       if (created) {
@@ -83,6 +132,65 @@ const CreateServicePage = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-4 md:col-span-2">
+              <Label className="text-lg font-semibold">Service Image (Optional)</Label>
+              <div className="mt-2">
+                {(previewUrl || formData.image_url) ? (
+                  <div className="relative group w-full max-w-3xl aspect-video sm:h-80 rounded-xl overflow-hidden border shadow-sm transition-all hover:shadow-md">
+                    <img 
+                      src={previewUrl || formData.image_url} 
+                      alt="Service preview" 
+                      className={`h-full w-full object-cover transition-opacity duration-300 ${isUploadingImage ? 'opacity-50 blur-[2px]' : 'opacity-100'}`}
+                    />
+                    {isUploadingImage && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/30 backdrop-blur-sm">
+                        <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent shadow-sm"></div>
+                        <span className="mt-4 font-semibold text-lg drop-shadow-md">Uploading to server...</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                       <Button 
+                         type="button" 
+                         variant="destructive" 
+                         size="lg"
+                         onClick={removeImage}
+                         className="flex items-center gap-2 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300"
+                       >
+                         <X className="h-5 w-5" /> Remove Image
+                       </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor="image-upload"
+                    className="relative flex flex-col items-center justify-center w-full max-w-3xl aspect-video sm:h-80 rounded-xl border-2 border-dashed border-input bg-muted/30 hover:bg-muted/60 hover:border-primary/50 transition-all cursor-pointer group"
+                  >
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+                      <div className="p-5 bg-background rounded-full shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all duration-300 mb-5">
+                        <Upload className="h-10 w-10 text-primary" />
+                      </div>
+                      <p className="mb-2 text-xl font-semibold text-foreground">
+                        Click to upload an image
+                      </p>
+                      <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                        Showcase your service with a high-quality cover photo. Drag & drop or click. PNG, JPG, or GIF up to 10MB.
+                      </p>
+                    </div>
+                    <input 
+                      id="image-upload" 
+                      name="image-upload" 
+                      type="file" 
+                      className="sr-only" 
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      disabled={isUploadingImage || isSubmitting}
+                    />
+                  </label>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">If no image is uploaded, we'll provide a beautiful default image based on the category.</p>
+            </div>
+
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="title">Title *</Label>
               <Input 

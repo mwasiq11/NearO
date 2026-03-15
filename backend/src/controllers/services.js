@@ -3,6 +3,7 @@ import { pool, readPool } from '../db/database.js';
 import { normalizeLocation } from '../utils/location.js';
 import { invalidateCache } from '../cache/cache.js';
 import { logAudit, buildRequestContext } from '../audit/logger.js';
+import { uploadToS3 } from '../utils/s3.js';
 
 const createService = async (req, res) => {
   try {
@@ -16,7 +17,8 @@ const createService = async (req, res) => {
       latitude,
       longitude,
       neighborhood,
-      city
+      city,
+      image_url
     } = req.body;
 
     // Validation
@@ -87,20 +89,20 @@ const createService = async (req, res) => {
       await pool.execute(
         `INSERT INTO services 
          (id, provider_id, title, description, category, price, availability, 
-          latitude, longitude, s2_cell_id, neighborhood, city) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          latitude, longitude, s2_cell_id, neighborhood, city, image_url) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id, provider_id, title, description, category, price, availability,
           locationData.latitude, locationData.longitude, 
           locationData.s2_cell_id ? locationData.s2_cell_id.toString() : null,
-          locationData.neighborhood, locationData.city
+          locationData.neighborhood, locationData.city, image_url || null
         ]
       );
     } else {
       console.log('💾 Saving service WITHOUT location data');
       await pool.execute(
-        'INSERT INTO services (id, provider_id, title, description, category, price, availability) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [id, provider_id, title, description, category, price, availability]
+        'INSERT INTO services (id, provider_id, title, description, category, price, availability, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [id, provider_id, title, description, category, price, availability, image_url || null]
       );
     }
 
@@ -362,11 +364,33 @@ const reportService = async (req, res) => {
   }
 };
 
+const uploadServiceImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file uploaded' });
+    }
+
+    // req.file.buffer is available because we use memoryStorage
+    const imageUrl = await uploadToS3(
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype,
+      'services'
+    );
+
+    res.status(200).json({ imageUrl });
+  } catch (error) {
+    console.error('Error uploading service image:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export {
   createService,
   getServices,
   getServiceById,
   updateServiceOwn,
   deleteServiceOwn,
-  reportService
+  reportService,
+  uploadServiceImage
 };
