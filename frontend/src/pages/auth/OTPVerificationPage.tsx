@@ -7,13 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 const OTPVerificationPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
   const { completeOtpLogin } = useAuth();
   
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -73,9 +72,7 @@ const OTPVerificationPage = () => {
     const pastedData = e.clipboardData.getData('text').slice(0, 6);
     
     if (!/^\d+$/.test(pastedData)) {
-      toast({
-        variant: 'destructive',
-        title: 'Invalid OTP',
+      toast.error('Invalid OTP', {
         description: 'Please paste only numbers',
       });
       return;
@@ -94,9 +91,7 @@ const OTPVerificationPage = () => {
     const otpCode = otp.join('');
     
     if (otpCode.length !== 6) {
-      toast({
-        variant: 'destructive',
-        title: 'Incomplete OTP',
+      toast.error('Incomplete OTP', {
         description: 'Please enter all 6 digits',
       });
       return;
@@ -108,10 +103,9 @@ const OTPVerificationPage = () => {
       const response = await api.post('/auth/verify-otp', {
         email,
         otp: otpCode,
-      });
+      }) as any;
 
-      toast({
-        title: 'Success!',
+      toast.success('Success!', {
         description: response.message || 'Email verified successfully',
       });
 
@@ -125,9 +119,7 @@ const OTPVerificationPage = () => {
         navigate('/login');
       }
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Verification failed',
+      toast.error('Verification failed', {
         description: error.response?.data?.error || 'Invalid or expired OTP',
       });
       // Clear OTP on error
@@ -143,10 +135,9 @@ const OTPVerificationPage = () => {
     setIsResending(true);
 
     try {
-      const response = await api.post('/auth/resend-otp', { email });
+      const response = await api.post('/auth/resend-otp', { email }) as any;
 
-      toast({
-        title: 'OTP Sent',
+      toast.success('OTP Sent', {
         description: response.data.message || 'A new verification code has been sent',
       });
 
@@ -159,9 +150,7 @@ const OTPVerificationPage = () => {
     } catch (error: any) {
       const retryAfter = error.response?.data?.retryAfter;
       
-      toast({
-        variant: 'destructive',
-        title: 'Failed to resend',
+      toast.error('Failed to resend', {
         description: retryAfter 
           ? `Please wait ${retryAfter} seconds before requesting again`
           : error.response?.data?.error || 'Failed to send verification code',

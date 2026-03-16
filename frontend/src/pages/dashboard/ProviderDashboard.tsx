@@ -54,13 +54,9 @@ const ProviderDashboard = () => {
   return (
     <div className="p-4 lg:p-6 pb-24 lg:pb-6 space-y-6">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Welcome, {user?.name?.split(' ')[0]}!</h1>
-          <p className="text-muted-foreground">Here's your business overview</p>
-        </div>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex justify-end">
         <Button variant="hero" onClick={() => navigate('/dashboard/my-services/new')}>
-          <Plus className="h-4 w-4" /> Add Service
+          <Plus className="h-4 w-4 mr-2" /> Add Service
         </Button>
       </motion.div>
 

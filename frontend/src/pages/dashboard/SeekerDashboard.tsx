@@ -21,13 +21,9 @@ const SeekerDashboard = () => {
 
   return (
     <div className="p-4 lg:p-6 pb-24 lg:pb-6 space-y-6">
-      {/* Welcome & Search */}
+      {/* Search */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-        <div>
-          <h1 className="text-2xl font-bold">Hi, {user?.name?.split(' ')[0]}! 👋</h1>
-          <p className="text-muted-foreground">What do you need help with today?</p>
-        </div>
-        
+
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input
