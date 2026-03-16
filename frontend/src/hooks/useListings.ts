@@ -85,6 +85,16 @@ export const useListings = () => {
         const mappedServices = services.map(mapService);
         const mappedTrending = (trending.services || []).map(mapService);
         const mappedCategories = (categoryData.categories || []).map(mapCategory);
+        
+        // Ensure 'Other' category exists for the Create Service form
+        if (!mappedCategories.some(c => c.name.toLowerCase() === 'other')) {
+          mappedCategories.push({
+            id: 'other',
+            name: 'Other',
+            icon: '📦',
+            description: 'Other undocumented services'
+          });
+        }
 
         dispatch(setListings(mappedServices));
         dispatch(setTrendingListings(mappedTrending));

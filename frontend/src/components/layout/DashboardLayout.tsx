@@ -37,6 +37,19 @@ const DashboardLayout = () => {
   const { unreadCount } = useNotifications();
   const { theme, resolvedTheme, setTheme } = useTheme();
 
+  const getPageTitle = () => {
+    const path = location.pathname;
+    if (path.includes('/dashboard/earnings')) return 'Earnings & Spending';
+    if (path.includes('/dashboard/bookings')) return 'Bookings';
+    if (path.includes('/dashboard/messages')) return 'Messages';
+    if (path.includes('/dashboard/my-services')) return 'My Services';
+    if (path.includes('/dashboard/settings')) return 'Settings';
+    if (path.includes('/dashboard/profile')) return 'Profile';
+    if (path.includes('/dashboard/browse')) return 'Browse Services';
+    if (path.includes('/dashboard/listing')) return 'Service Details';
+    return 'Dashboard';
+  };
+
   const navItems = [
     { path: '/dashboard', icon: Home, label: 'Home' },
     { path: '/dashboard/browse', icon: Search, label: 'Browse' },
@@ -150,24 +163,9 @@ const DashboardLayout = () => {
               <Menu className="h-5 w-5" />
             </button>
             
-            {/* Page Title - Could be dynamic */}
+            {/* Page Title - Dynamic */}
             <div className="hidden sm:block">
-              <h1 className="text-lg font-semibold">Welcome back, {user?.name || 'User'}!</h1>
-              <p className="text-sm text-muted-foreground">
-                {(() => {
-                  const neighborhood = user?.neighborhood && user.neighborhood !== 'Unknown' ? user.neighborhood : '';
-                  const city = user?.city && user.city !== 'Unknown' ? user.city : '';
-                  
-                  if (neighborhood && city) {
-                    return `📍 ${neighborhood}, ${city}`;
-                  } else if (city) {
-                    return `📍 ${city}`;
-                  } else if (neighborhood) {
-                    return `📍 ${neighborhood}`;
-                  }
-                  return 'Ready to connect with local services';
-                })()}
-              </p>
+              <h1 className="text-xl font-bold tracking-tight text-foreground px-2">{getPageTitle()}</h1>
             </div>
           </div>
 
