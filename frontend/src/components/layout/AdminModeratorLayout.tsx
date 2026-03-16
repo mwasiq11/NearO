@@ -112,10 +112,6 @@ const AdminModeratorLayout = ({ children }: { children: React.ReactNode }) => {
       <main className="flex-1 flex flex-col overflow-hidden bg-background">
         <div className="bg-card border-b px-6 py-4 flex items-center justify-between h-[73px]">
           <div>
-            <p className="text-xs text-muted-foreground">{isAdmin ? 'Administrator' : 'Moderator'} workspace</p>
-            <h2 className="text-lg font-semibold">
-              {availableItems.find((item) => isActive(item.path))?.label || 'Dashboard'}
-            </h2>
           </div>
           <div className="flex items-center gap-6">
             <button

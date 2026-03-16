@@ -163,9 +163,8 @@ const DashboardLayout = () => {
               <Menu className="h-5 w-5" />
             </button>
             
-            {/* Page Title - Dynamic */}
+            {/* Page Title - Dynamic (Removed per user request) */}
             <div className="hidden sm:block">
-              <h1 className="text-xl font-bold tracking-tight text-foreground px-2">{getPageTitle()}</h1>
             </div>
           </div>
 
