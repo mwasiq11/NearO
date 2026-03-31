@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,13 +9,15 @@ import { CategoryCombobox } from '@/components/common/CategoryCombobox';
 import { useListings } from '@/hooks/useListings';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
-import { Upload, X } from 'lucide-react';
-import { getCategoryImageAsync } from '@/utils/categoryImages';
+import { Upload, X, ArrowLeft } from 'lucide-react';
 
-const CreateServicePage = () => {
+const EditServicePage = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const { categories, createListing } = useListings();
+  const { categories, getListingById, editListing } = useListings();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -29,8 +31,63 @@ const CreateServicePage = () => {
     longitude: '',
     image_url: '',
   });
+  
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    
+    const loadListing = async () => {
+      setIsLoading(true);
+      try {
+        // First try to get from local store
+        let listing = getListingById(id);
+        
+        // If not in store, fetch from API
+        if (!listing) {
+          const service = await api.get<any>(`/services/${id}`);
+          // Simplified mapping for the form
+          setFormData({
+            title: service.title,
+            description: service.description,
+            category: service.category,
+            price: String(service.price),
+            priceType: (service.price_type || 'fixed') as any,
+            tags: service.tags?.join(', ') || service.availability || '',
+            neighborhood: service.neighborhood || '',
+            city: service.city || '',
+            latitude: service.latitude ? String(service.latitude) : '',
+            longitude: service.longitude ? String(service.longitude) : '',
+            image_url: service.image_url || '',
+          });
+          if (service.image_url) setPreviewUrl(service.image_url);
+        } else {
+          setFormData({
+            title: listing.title,
+            description: listing.description,
+            category: listing.category,
+            price: String(listing.price),
+            priceType: listing.priceType as any,
+            tags: listing.tags?.join(', ') || '',
+            neighborhood: listing.location.neighborhood || '',
+            city: listing.location.city || '',
+            latitude: listing.location.coordinates?.lat ? String(listing.location.coordinates.lat) : '',
+            longitude: listing.location.coordinates?.lng ? String(listing.location.coordinates.lng) : '',
+            image_url: listing.images[0] || '',
+          });
+          if (listing.images[0]) setPreviewUrl(listing.images[0]);
+        }
+      } catch (err) {
+        toast.error('Failed to load service details');
+        navigate('/dashboard/my-services');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadListing();
+  }, [id, getListingById, navigate]);
 
   useEffect(() => {
     return () => {
@@ -60,11 +117,12 @@ const CreateServicePage = () => {
       const response = await api.post<{ imageUrl: string }>('/services/upload-image', uploadData, { auth: true });
       if (response.imageUrl) {
         setFormData(prev => ({ ...prev, image_url: response.imageUrl }));
-        toast.success('Image uploaded successfully');
+        toast.success('Image updated successfully');
       }
     } catch (err) {
       toast.error('Failed to upload image');
-      setPreviewUrl(null);
+      // Revert preview if listing had an original image
+      setPreviewUrl(formData.image_url || null);
     } finally {
       setIsUploadingImage(false);
     }
@@ -82,6 +140,7 @@ const CreateServicePage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!id) return;
     
     if (!formData.title || !formData.description || !formData.category || !formData.price) {
       toast.error('Please fill all required fields');
@@ -96,54 +155,62 @@ const CreateServicePage = () => {
         .map((t) => t.trim())
         .filter(Boolean);
 
-      let finalImageUrl = formData.image_url;
-      if (!finalImageUrl) {
-        try {
-          finalImageUrl = await getCategoryImageAsync(formData.category);
-        } catch (err) {
-          console.error('Failed to fetch default category image:', err);
-        }
-      }
-
-      const created = await createListing({
+      const success = await editListing(id, {
         title: formData.title,
         description: formData.description,
         category: formData.category,
         price: Number(formData.price),
         priceType: formData.priceType,
-        images: [],
+        images: formData.image_url ? [formData.image_url] : [],
         tags,
-        radius: 10,
-        neighborhood: formData.neighborhood || undefined,
-        city: formData.city || undefined,
-        latitude: formData.latitude ? Number(formData.latitude) : undefined,
-        longitude: formData.longitude ? Number(formData.longitude) : undefined,
-        image_url: finalImageUrl || undefined,
+        location: {
+          neighborhood: formData.neighborhood,
+          city: formData.city,
+          radius: 10,
+          coordinates: formData.latitude && formData.longitude ? {
+            lat: Number(formData.latitude),
+            lng: Number(formData.longitude),
+          } : undefined,
+        },
       });
 
-      if (created) {
-        navigate('/dashboard/my-services');
+      if (success) {
+        navigate(`/dashboard/listing/${id}`);
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[400px] text-muted-foreground">
+        Loading service details...
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Create service</h2>
-        <p className="text-muted-foreground">Share your skills with the community.</p>
+    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div>
+          <h2 className="text-2xl font-bold">Edit service</h2>
+          <p className="text-muted-foreground">Update your service details and preferences.</p>
+        </div>
       </div>
 
-      <Card>
+      <Card className="border-none shadow-md">
         <CardHeader>
           <CardTitle>Service details</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+          <form onSubmit={handleSubmit} className="grid gap-6 md:grid-cols-2">
+            {/* Image Upload Section */}
             <div className="space-y-4 md:col-span-2">
-              <Label className="text-lg font-semibold">Service Image (Optional)</Label>
+              <Label className="text-lg font-semibold">Service Image</Label>
               <div className="mt-2">
                 {(previewUrl || formData.image_url) ? (
                   <div className="relative group w-full max-w-3xl aspect-video sm:h-80 rounded-xl overflow-hidden border shadow-sm transition-all hover:shadow-md">
@@ -155,7 +222,7 @@ const CreateServicePage = () => {
                     {isUploadingImage && (
                       <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/30 backdrop-blur-sm">
                         <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent shadow-sm"></div>
-                        <span className="mt-4 font-semibold text-lg drop-shadow-md">Uploading to server...</span>
+                        <span className="mt-4 font-semibold text-lg">Uploading...</span>
                       </div>
                     )}
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
@@ -179,12 +246,8 @@ const CreateServicePage = () => {
                       <div className="p-5 bg-background rounded-full shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all duration-300 mb-5">
                         <Upload className="h-10 w-10 text-primary" />
                       </div>
-                      <p className="mb-2 text-xl font-semibold text-foreground">
-                        Click to upload an image
-                      </p>
-                      <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                        Showcase your service with a high-quality cover photo. Drag & drop or click. PNG, JPG, or GIF up to 10MB.
-                      </p>
+                      <p className="mb-2 text-xl font-semibold text-foreground">Click to update image</p>
+                      <p className="text-sm text-muted-foreground">Showcase your service with a high-quality cover photo.</p>
                     </div>
                     <input 
                       id="image-upload" 
@@ -198,9 +261,9 @@ const CreateServicePage = () => {
                   </label>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground mt-2">If no image is uploaded, we'll provide a beautiful default image based on the category.</p>
             </div>
 
+            {/* Form Fields */}
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="title">Title *</Label>
               <Input 
@@ -221,6 +284,7 @@ const CreateServicePage = () => {
                 onChange={handleChange}
                 disabled={isSubmitting}
                 required
+                className="min-h-[150px]"
               />
             </div>
             <div className="space-y-2">
@@ -229,12 +293,9 @@ const CreateServicePage = () => {
                 value={formData.category}
                 onChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
                 categories={categories}
-                placeholder="Select or type custom category"
+                placeholder="Select category"
                 disabled={isSubmitting}
               />
-              <p className="text-xs text-muted-foreground">
-                Choose from predefined categories or create your own
-              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="price">Price *</Label>
@@ -256,7 +317,7 @@ const CreateServicePage = () => {
                 id="priceType"
                 name="priceType"
                 value={formData.priceType}
-                onChange={(e) => setFormData(prev => ({ ...prev, priceType: e.target.value as 'fixed' | 'hourly' | 'negotiable' }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, priceType: e.target.value as any }))}
                 className="h-10 w-full rounded-md border bg-background px-3 text-sm"
                 disabled={isSubmitting}
               >
@@ -285,12 +346,13 @@ const CreateServicePage = () => {
               <Label htmlFor="longitude">Longitude (optional)</Label>
               <Input id="longitude" name="longitude" value={formData.longitude} onChange={handleChange} />
             </div>
-            <div className="md:col-span-2 flex justify-end gap-2">
+            
+            <div className="md:col-span-2 flex justify-end gap-3 pt-6 border-t mt-4">
               <Button type="button" variant="outline" onClick={() => navigate(-1)} disabled={isSubmitting || isUploadingImage}>
                 Cancel
               </Button>
-              <Button type="submit" variant="hero" disabled={isSubmitting || isUploadingImage}>
-                {isSubmitting ? 'Creating...' : isUploadingImage ? 'Uploading image...' : 'Create service'}
+              <Button type="submit" variant="hero" size="lg" disabled={isSubmitting || isUploadingImage} className="px-8">
+                {isSubmitting ? 'Updating...' : 'Save Changes'}
               </Button>
             </div>
           </form>
@@ -300,5 +362,4 @@ const CreateServicePage = () => {
   );
 };
 
-export default CreateServicePage;
-
+export default EditServicePage;

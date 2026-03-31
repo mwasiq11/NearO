@@ -30,6 +30,7 @@ import DashboardHome from "./pages/dashboard/DashboardHome";
 import BrowsePage from "./pages/dashboard/BrowsePage";
 import MyServicesPage from "./pages/dashboard/MyServicesPage";
 import CreateServicePage from "./pages/dashboard/CreateServicePage";
+import EditServicePage from "./pages/dashboard/EditServicePage";
 import BookingsPage from "./pages/dashboard/BookingsPage";
 import MessagesPage from "./pages/dashboard/MessagesPage";
 import ListingDetailPage from "./pages/dashboard/ListingDetailPage";
@@ -104,6 +105,7 @@ const AppRoutes = () => {
         <Route path="settings" element={<SettingsPage />} />
         <Route path="my-services" element={<MyServicesPage />} />
         <Route path="my-services/new" element={<CreateServicePage />} />
+        <Route path="my-services/edit/:id" element={<EditServicePage />} />
         <Route path="listing/:id" element={<ListingDetailPage />} />
         <Route path="earnings" element={<EarningsPage />} />
       </Route>

@@ -7,18 +7,25 @@ import {
   Users, 
   Sparkles,
   ArrowRight,
-  ChevronRight
+  ChevronRight,
+  Wrench,
+  BookOpen,
+  PawPrint,
+  Dumbbell,
+  Leaf,
+  Search,
+  MessageSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 const categories = [
-  { id: 'home-repair', name: 'Home Repair', icon: '🔧', count: 156 },
-  { id: 'tutoring', name: 'Tutoring', icon: '📚', count: 89 },
-  { id: 'cleaning', name: 'Cleaning', icon: '🧹', count: 134 },
-  { id: 'pet-care', name: 'Pet Care', icon: '🐕', count: 245 },
-  { id: 'fitness', name: 'Fitness', icon: '💪', count: 189 },
-  { id: 'gardening', name: 'Gardening', icon: '🌱', count: 67 },
+  { id: 'home-repair', name: 'Home Repair', icon: Wrench, color: 'bg-orange-100 text-orange-600', count: 156 },
+  { id: 'tutoring', name: 'Tutoring', icon: BookOpen, color: 'bg-blue-100 text-blue-600', count: 89 },
+  { id: 'cleaning', name: 'Cleaning', icon: Sparkles, color: 'bg-purple-100 text-purple-600', count: 134 },
+  { id: 'pet-care', name: 'Pet Care', icon: PawPrint, color: 'bg-rose-100 text-rose-600', count: 245 },
+  { id: 'fitness', name: 'Fitness', icon: Dumbbell, color: 'bg-emerald-100 text-emerald-600', count: 189 },
+  { id: 'gardening', name: 'Gardening', icon: Leaf, color: 'bg-lime-100 text-lime-600', count: 67 },
 ];
 
 const stats = [
@@ -250,22 +257,31 @@ const LandingPage = () => {
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {categories.map((category, index) => (
-              <motion.button
-                key={category.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.05 }}
-                whileHover={{ scale: 1.05 }}
-                onClick={() => navigate(`/dashboard/browse?category=${category.id}`)}
-                className="bg-card border rounded-2xl p-6 text-center hover:shadow-lg transition-all group"
-              >
-                <span className="text-4xl mb-3 block">{category.icon}</span>
-                <p className="font-medium mb-1">{category.name}</p>
-                <p className="text-sm text-muted-foreground">{category.count} providers</p>
-              </motion.button>
-            ))}
+            {categories.map((category, index) => {
+              const Icon = category.icon;
+              return (
+                <motion.button
+                  key={category.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.05 }}
+                  whileHover={{ y: -5 }}
+                  onClick={() => navigate(`/dashboard/browse?category=${category.id}`)}
+                  className="bg-card border rounded-2xl p-6 text-center hover:shadow-xl transition-all group relative overflow-hidden"
+                >
+                  <div className={`h-16 w-16 mx-auto mb-4 rounded-2xl ${category.color} flex items-center justify-center transition-transform group-hover:scale-110 duration-300`}>
+                    <Icon className="h-8 w-8" />
+                  </div>
+                  <p className="font-semibold mb-1">{category.name}</p>
+                  <p className="text-sm text-muted-foreground">{category.count} providers</p>
+                  
+                  <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </motion.button>
+              );
+            })}
           </div>
           
           <div className="text-center mt-8">
@@ -293,37 +309,45 @@ const LandingPage = () => {
                 step: '01',
                 title: 'Search & Discover',
                 description: 'Browse services in your neighborhood or search for specific skills you need.',
-                icon: '🔍',
+                icon: Search,
+                color: 'bg-primary/10 text-primary',
               },
               {
                 step: '02',
                 title: 'Connect & Chat',
                 description: 'Message providers directly to discuss your needs and schedule a time.',
-                icon: '💬',
+                icon: MessageSquare,
+                color: 'bg-emerald-100 text-emerald-600',
               },
               {
                 step: '03',
                 title: 'Book & Review',
                 description: 'Confirm your booking, get the job done, and leave a review for your neighbor.',
-                icon: '⭐',
+                icon: Star,
+                color: 'bg-accent/10 text-accent',
               },
-            ].map((item, index) => (
-              <motion.div
-                key={item.step}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.15 }}
-                className="relative bg-card rounded-2xl border p-8"
-              >
-                <span className="absolute -top-4 left-6 bg-primary text-primary-foreground text-sm font-bold px-3 py-1 rounded-full">
-                  {item.step}
-                </span>
-                <span className="text-5xl mb-4 block">{item.icon}</span>
-                <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
-                <p className="text-muted-foreground">{item.description}</p>
-              </motion.div>
-            ))}
+            ].map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <motion.div
+                  key={item.step}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.15 }}
+                  className="relative bg-card rounded-3xl border p-8 hover:shadow-xl transition-shadow group"
+                >
+                  <span className="absolute -top-4 left-6 bg-primary text-primary-foreground text-sm font-bold px-4 py-1.5 rounded-full shadow-lg">
+                    STEP {item.step}
+                  </span>
+                  <div className={`h-16 w-16 rounded-2xl ${item.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                    <Icon className="h-8 w-8" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-3">{item.title}</h3>
+                  <p className="text-muted-foreground leading-relaxed">{item.description}</p>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>

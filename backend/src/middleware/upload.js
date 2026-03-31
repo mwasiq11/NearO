@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, '../uploads');
+const uploadsDir = path.join(process.cwd(), 'uploads');
 const messagesDir = path.join(uploadsDir, 'messages');
 const profilesDir = path.join(uploadsDir, 'profiles');
 const servicesDir = path.join(uploadsDir, 'services');

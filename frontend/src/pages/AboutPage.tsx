@@ -54,24 +54,6 @@ const milestones = [
   },
 ];
 
-const team = [
-  {
-    name: "Aisha Nguyen",
-    role: "Founder & CEO",
-    image: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=300",
-  },
-  {
-    name: "Marcus Hall",
-    role: "Head of Product",
-    image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=300",
-  },
-  {
-    name: "Priya Patel",
-    role: "Community Lead",
-    image: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=300",
-  },
-];
-
 const AboutPage = () => {
   const navigate = useNavigate();
 
@@ -285,38 +267,6 @@ const AboutPage = () => {
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-16 bg-muted/30 px-4">
-        <div className="container mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold">Meet the team</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto">
-              A passionate group of builders, neighbors, and advocates.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {team.map((member, index) => (
-              <motion.div
-                key={member.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Card className="rounded-3xl border">
-                  <CardContent className="pt-6 flex flex-col items-center text-center">
-                    <div className="h-28 w-28 rounded-full overflow-hidden mb-4">
-                      <img src={member.image} alt={member.name} className="h-full w-full object-cover" />
-                    </div>
-                    <p className="font-semibold text-lg">{member.name}</p>
-                    <p className="text-muted-foreground">{member.role}</p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
           </div>
         </div>
       </section>

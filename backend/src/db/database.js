@@ -134,6 +134,7 @@ async function createTables(connection) {
       s2_cell_id BIGINT UNSIGNED NULL,
       neighborhood VARCHAR(255) NULL,
       city VARCHAR(255) NULL,
+      image_url TEXT NULL,
       is_active BOOLEAN DEFAULT TRUE,
       moderated_at TIMESTAMP NULL,
       moderated_by VARCHAR(36) NULL,

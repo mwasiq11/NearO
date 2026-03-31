@@ -231,9 +231,12 @@ export const useListings = () => {
         description: updates.description,
         category: updates.category,
         price: updates.price,
-        availability: updates.tags?.join(', '),
+        availability: (updates.tags && updates.tags.length > 0) ? updates.tags.join(', ') : 'Available',
         neighborhood: updates.location?.neighborhood,
         city: updates.location?.city,
+        latitude: updates.location?.coordinates?.lat,
+        longitude: updates.location?.coordinates?.lng,
+        image_url: updates.images?.[0],
       };
 
       const updated = await api.put<any>(`/services/${id}`, payload, { auth: true });

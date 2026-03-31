@@ -28,7 +28,8 @@ const createServiceSchema = Joi.object({
   latitude: Joi.number().optional().allow(null),
   longitude: Joi.number().optional().allow(null),
   neighborhood: Joi.string().max(255).optional().allow('').trim(),
-  city: Joi.string().max(255).optional().allow('').trim()
+  city: Joi.string().max(255).optional().allow('').trim(),
+  image_url: Joi.string().max(500).optional().allow('', null).trim()
 })
 
 // Update profile schema
@@ -48,7 +49,8 @@ const updateOwnServiceSchema = Joi.object({
   latitude: Joi.number().min(-90).max(90).optional(),
   longitude: Joi.number().min(-180).max(180).optional(),
   neighborhood: Joi.string().max(255).optional().trim(),
-  city: Joi.string().max(255).optional().trim()
+  city: Joi.string().max(255).optional().trim(),
+  image_url: Joi.string().max(500).optional().allow('', null).trim()
 }).and('latitude', 'longitude');
 
 // Review creation schema
@@ -132,6 +134,7 @@ const updateServiceSchema = Joi.object({
   longitude: Joi.number().min(-180).max(180).optional(),
   neighborhood: Joi.string().max(255).optional().trim(),
   city: Joi.string().max(255).optional().trim(),
+  image_url: Joi.string().max(500).optional().allow('', null).trim(),
   is_active: Joi.boolean().optional()
 }).and('latitude', 'longitude');
 

@@ -3,7 +3,7 @@ import { pool, readPool } from '../db/database.js';
 import { normalizeLocation } from '../utils/location.js';
 import { invalidateCache } from '../cache/cache.js';
 import { logAudit, buildRequestContext } from '../audit/logger.js';
-import { uploadToS3 } from '../utils/s3.js';
+import { getFileUrl } from '../middleware/upload.js';
 
 const createService = async (req, res) => {
   try {
@@ -195,7 +195,8 @@ const updateServiceOwn = async (req, res) => {
       latitude,
       longitude,
       neighborhood,
-      city
+      city,
+      image_url
     } = req.body;
 
     const [services] = await pool.execute('SELECT id FROM services WHERE id = ?', [id]);
@@ -234,6 +235,7 @@ const updateServiceOwn = async (req, res) => {
     if (category !== undefined) { updates.push('category = ?'); params.push(category); }
     if (price !== undefined) { updates.push('price = ?'); params.push(price); }
     if (availability !== undefined) { updates.push('availability = ?'); params.push(availability); }
+    if (image_url !== undefined) { updates.push('image_url = ?'); params.push(image_url); }
 
     if (latitude !== undefined || longitude !== undefined) {
       if (latitude === undefined || longitude === undefined) {
@@ -370,13 +372,7 @@ const uploadServiceImage = async (req, res) => {
       return res.status(400).json({ error: 'No image file uploaded' });
     }
 
-    // req.file.buffer is available because we use memoryStorage
-    const imageUrl = await uploadToS3(
-      req.file.buffer,
-      req.file.originalname,
-      req.file.mimetype,
-      'services'
-    );
+    const imageUrl = getFileUrl(req.file.filename, 'service_image');
 
     res.status(200).json({ imageUrl });
   } catch (error) {

@@ -8,11 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { useListings } from '@/hooks/useListings';
 import { useBookings } from '@/hooks/useBookings';
 import { useChat } from '@/hooks/useChat';
+import { useAppSelector } from '@/store/hooks';
 import { api } from '@/lib/api';
 import { ServiceListing } from '@/models/types';
 import { formatPrice } from '@/utils/formatters';
 import { getCategoryImage } from '@/utils/categoryImages';
-import { MapPin, MessageSquare, Star, Clock, Calendar } from 'lucide-react';
+import { MapPin, MessageSquare, Star, Clock, Calendar, DollarSign, TrendingUp, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ListingDetailPage = () => {
@@ -21,6 +22,7 @@ const ListingDetailPage = () => {
   const { getListingById } = useListings();
   const { createBooking } = useBookings();
   const { startConversation } = useChat();
+  const { user } = useAppSelector(state => state.auth);
   const [listing, setListing] = useState<ServiceListing | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [bookingData, setBookingData] = useState({
@@ -109,6 +111,24 @@ const ListingDetailPage = () => {
     }
   };
 
+  const isOwner = user?.id === listing?.providerId;
+
+  const { receivedBookings } = useBookings();
+  const listingBookings = useMemo(() => 
+    receivedBookings.filter(b => b.listingId === listing?.id),
+    [receivedBookings, listing?.id]
+  );
+
+  const stats = useMemo(() => {
+    if (!listing) return null;
+    return [
+      { label: 'Total Bookings', value: listing.bookingCount || 0, icon: Calendar },
+      { label: 'Total Revenue', value: formatPrice((listing.bookingCount || 0) * listing.price, listing.priceType), icon: DollarSign },
+      { label: 'Rating', value: listing.rating.toFixed(1), icon: Star },
+      { label: 'Reviews', value: listing.reviewCount, icon: MessageSquare },
+    ];
+  }, [listing]);
+
   if (isLoading || !listing) {
     return <div className="p-6 flex items-center justify-center min-h-[400px] text-muted-foreground">Loading service details...</div>;
   }
@@ -194,80 +214,149 @@ const ListingDetailPage = () => {
             </div>
 
             <div className="flex flex-col gap-3">
-              <Button size="lg" variant="hero" onClick={() => document.getElementById('booking-section')?.scrollIntoView({ behavior: 'smooth'})} className="w-full text-base font-semibold shadow-sm">
-                Book Now
-              </Button>
-              <Button size="lg" variant="outline" className="w-full text-base font-semibold" onClick={handleMessage}>
-                <MessageSquare className="h-4 w-4 mr-2" /> Message Provider
-              </Button>
+              {isOwner ? (
+                <>
+                  <Button size="lg" variant="hero" onClick={() => navigate('/dashboard/bookings')} className="w-full text-base font-semibold shadow-sm">
+                    Manage Bookings
+                  </Button>
+                  <Button size="lg" variant="outline" className="w-full text-base font-semibold" onClick={() => navigate(`/dashboard/my-services/edit/${listing.id}`)}>
+                    Edit Listing
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button size="lg" variant="hero" onClick={() => document.getElementById('booking-section')?.scrollIntoView({ behavior: 'smooth'})} className="w-full text-base font-semibold shadow-sm">
+                    Book Now
+                  </Button>
+                  <Button size="lg" variant="outline" className="w-full text-base font-semibold" onClick={handleMessage}>
+                    <MessageSquare className="h-4 w-4 mr-2" /> Message Provider
+                  </Button>
+                </>
+              )}
             </div>
           </Card>
         </div>
       </div>
 
-      {/* Booking Form Section */}
+      {/* Conditional Bottom Section: Booking Form (Customer) or Service Performance (Owner) */}
       <div id="booking-section" className="pt-6">
-        <Card className="p-6 md:p-8 space-y-6 border-none shadow-md">
-          <div className="space-y-2">
-            <h3 className="text-2xl font-bold flex items-center gap-2">
-              <Calendar className="h-6 w-6 text-primary" /> Request a Booking
-            </h3>
-            <p className="text-muted-foreground">Select your preferred date, time, and provide any necessary details.</p>
+        {isOwner ? (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {stats?.map((stat) => (
+                <Card key={stat.label} className="p-4 border-none shadow-sm flex flex-col justify-center items-center text-center space-y-1">
+                  <stat.icon className="h-5 w-5 text-primary mb-1" />
+                  <p className="text-2xl font-bold">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{stat.label}</p>
+                </Card>
+              ))}
+            </div>
+
+            <Card className="p-6 md:p-8 space-y-6 border-none shadow-md">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h3 className="text-2xl font-bold flex items-center gap-2">
+                    <TrendingUp className="h-6 w-6 text-primary" /> Service Activity
+                  </h3>
+                  <p className="text-muted-foreground">Recent bookings and updates for this specific service listing.</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/bookings')}>View All Activity</Button>
+              </div>
+
+              <div className="space-y-4">
+                {listingBookings.length > 0 ? (
+                  listingBookings.slice(0, 5).map((booking) => (
+                    <div key={booking.id} className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-muted/50">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                          <Users className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">{booking.seekerName || 'Anonymous Seeker'}</p>
+                          <p className="text-xs text-muted-foreground">{booking.scheduledDate} at {booking.scheduledTime}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant={booking.status === 'confirmed' ? 'success' : booking.status === 'pending' ? 'warning' : 'secondary'} className="capitalize">
+                          {booking.status}
+                        </Badge>
+                        <p className="text-xs font-bold mt-1 text-primary">{formatPrice(booking.totalPrice, 'fixed')}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-12 bg-muted/20 rounded-2xl border border-dashed">
+                    <div className="bg-background w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-muted-foreground">
+                      <Calendar className="h-6 w-6" />
+                    </div>
+                    <p className="text-muted-foreground font-medium">No bookings yet for this service.</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">Once clients start booking, their activity will appear here.</p>
+                  </div>
+                )}
+              </div>
+            </Card>
           </div>
-          
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        ) : (
+          <Card className="p-6 md:p-8 space-y-6 border-none shadow-md">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Date</label>
-              <Input
-                type="date"
-                value={bookingData.date}
-                className="h-12"
-                onChange={(e) => setBookingData(prev => ({ ...prev, date: e.target.value }))}
-              />
+              <h3 className="text-2xl font-bold flex items-center gap-2">
+                <Calendar className="h-6 w-6 text-primary" /> Request a Booking
+              </h3>
+              <p className="text-muted-foreground">Select your preferred date, time, and provide any necessary details.</p>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Time</label>
-              <Input
-                type="time"
-                value={bookingData.time}
-                className="h-12"
-                onChange={(e) => setBookingData(prev => ({ ...prev, time: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Duration</label>
-              <div className="relative">
-                <Clock className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
+            
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Date</label>
                 <Input
-                  type="number"
-                  placeholder="Minutes"
-                  value={bookingData.duration}
-                  className="h-12 pl-10"
-                  onChange={(e) => setBookingData(prev => ({ ...prev, duration: e.target.value }))}
+                  type="date"
+                  value={bookingData.date}
+                  className="h-12"
+                  onChange={(e) => setBookingData(prev => ({ ...prev, date: e.target.value }))}
                 />
               </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Time</label>
+                <Input
+                  type="time"
+                  value={bookingData.time}
+                  className="h-12"
+                  onChange={(e) => setBookingData(prev => ({ ...prev, time: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Duration</label>
+                <div className="relative">
+                  <Clock className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    type="number"
+                    placeholder="Minutes"
+                    value={bookingData.duration}
+                    className="h-12 pl-10"
+                    onChange={(e) => setBookingData(prev => ({ ...prev, duration: e.target.value }))}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-          
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Additional Notes</label>
-            <Textarea
-              placeholder="Tell the provider what you need help with..."
-              className="min-h-[120px] resize-y"
-              value={bookingData.notes}
-              onChange={(e) => setBookingData(prev => ({ ...prev, notes: e.target.value }))}
-            />
-          </div>
-          
-          <div className="flex justify-end pt-4">
-            <Button size="lg" variant="hero" onClick={handleBooking} disabled={!canBook} className="px-8 text-base">
-              Submit Request
-            </Button>
-          </div>
-        </Card>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Additional Notes</label>
+              <Textarea
+                placeholder="Tell the provider what you need help with..."
+                className="min-h-[120px] resize-y"
+                value={bookingData.notes}
+                onChange={(e) => setBookingData(prev => ({ ...prev, notes: e.target.value }))}
+              />
+            </div>
+            
+            <div className="flex justify-end pt-4">
+              <Button size="lg" variant="hero" onClick={handleBooking} disabled={!canBook} className="px-8 text-base">
+                Submit Request
+              </Button>
+            </div>
+          </Card>
+        )}
       </div>
-
-
     </div>
   );
 };

@@ -128,3 +128,12 @@ export const api = {
   },
 };
 
+export async function apiCall(path: string, options: RequestOptions = {}) {
+  try {
+    const data = await request<any>(path, options);
+    return { ok: true, data };
+  } catch (error: any) {
+    return { ok: false, data: { error: error.message } };
+  }
+}
+

@@ -66,7 +66,7 @@ app.use('/uploads', (req, res, next) => {
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
-}, express.static(path.join(__dirname, '../uploads')));
+}, express.static(path.join(process.cwd(), 'uploads')));
 
 // Maintenance mode middleware
 app.use(maintenanceMiddleware);
