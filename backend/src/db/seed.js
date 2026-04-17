@@ -1,17 +1,20 @@
 import { pool } from './database.js';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const seedDatabase = async () => {
   console.log('🌱 Starting database seed...');
   
   try {
     // Create sample users (providers and seekers)
-    const hashedPassword = await bcrypt.hash('password123', 10);
+    const defaultPassword = process.env.SEED_DEFAULT_PASSWORD;
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
     
     const users = [
       // Admin
-      { id: uuidv4(), name: 'Admin User', email: 'admin@nearo.pk', role: 'admin', city: 'Karachi', neighborhood: 'DHA' },
+      { id: uuidv4(), name: 'Admin User', email: process.env.ADMIN_EMAIL, role: 'admin', city: 'Karachi', neighborhood: 'DHA' },
       // Providers (they are users who provide services)
       { id: uuidv4(), name: 'Ali Hassan', email: 'ali.hassan@gmail.com', role: 'user', city: 'Karachi', neighborhood: 'Gulshan-e-Iqbal' },
       { id: uuidv4(), name: 'Sara Ahmed', email: 'sara.ahmed@gmail.com', role: 'user', city: 'Karachi', neighborhood: 'Clifton' },
@@ -24,7 +27,7 @@ const seedDatabase = async () => {
       { id: uuidv4(), name: 'Bilal Ahmed', email: 'bilal.ahmed@gmail.com', role: 'user', city: 'Lahore', neighborhood: 'Model Town' },
       { id: uuidv4(), name: 'Hira Malik', email: 'hira.malik@gmail.com', role: 'user', city: 'Islamabad', neighborhood: 'F-7' },
       // Moderator
-      { id: uuidv4(), name: 'Moderator Ali', email: 'moderator@nearo.pk', role: 'moderator', city: 'Karachi', neighborhood: 'Clifton' },
+      { id: uuidv4(), name: 'Moderator Ali', email: process.env.MODERATOR_EMAIL, role: 'moderator', city: 'Karachi', neighborhood: 'Clifton' },
     ];
     
     console.log('👥 Creating users...');

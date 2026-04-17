@@ -108,10 +108,10 @@ async function createTables(connection) {
   `);
 
   // Seed hardcoded admin user if missing
-  const adminEmail = 'admin@example.com';
+  const adminEmail = process.env.ADMIN_EMAIL;
   const [adminRows] = await connection.execute('SELECT id FROM users WHERE email = ?', [adminEmail]);
   if (adminRows.length === 0) {
-    const adminPassword = 'Admin123';
+    const adminPassword = process.env.ADMIN_PASSWORD;
     const adminHash = await bcrypt.hash(adminPassword, 10);
     await connection.execute(
       'INSERT INTO users (id, name, email, password, role, is_active, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?)',

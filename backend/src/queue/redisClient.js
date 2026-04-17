@@ -78,5 +78,20 @@ async function getRedisClient() {
   }
 }
 
-export { getRedisClient };
+function isRedisConfigured() {
+  return !!(
+    process.env.REDIS_URL ||
+    process.env.REDIS_HOST ||
+    process.env.REDIS_PORT ||
+    process.env.REDIS_PASSWORD ||
+    process.env.REDIS_USERNAME
+  );
+}
+
+function getRedisStatus() {
+  if (!isRedisConfigured()) return 'Disabled';
+  return isConnected ? 'Connected' : 'Configured (Disconnected)';
+}
+
+export { getRedisClient, isRedisConfigured, getRedisStatus };
 

@@ -20,6 +20,7 @@ import securityMiddleware from './middleware/security.js';
 import { globalLimiter } from './middleware/rateLimit.js';
 import maintenanceMiddleware from './middleware/maintenance.js';
 import { initSocket } from './realtime/socket.js';
+import { getRedisStatus } from './queue/redisClient.js';
 
 // Routes
 import userRoutes from './routes/users.js';
@@ -182,17 +183,23 @@ app.use((error, req, res, next) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`🚀 Stage 3 Backend running on http://localhost:${PORT}`);
+  const isNotificationsEnabled = !!(process.env.SMTP_HOST && process.env.SMTP_USER);
+  const isRateLimitingActive = !!process.env.RATE_LIMIT_MAX_REQUESTS;
+  const dbStatus = process.env.DB_NAME ? `MySQL (${process.env.DB_NAME})` : 'Not configured';
+  const redisStatus = getRedisStatus();
+
+  console.log(`🚀 Backend running on http://localhost:${PORT}`);
   console.log(`📍 Health check: http://localhost:${PORT}/health`);
-  console.log(`🗄️  Database: MySQL (${process.env.DB_NAME})`);
+  console.log(`🗄️ Database: ${dbStatus}`);
   console.log(`🔐 Authentication: JWT enabled`);
   console.log(`🌍 Location Services: S2 Geometry enabled`);
   console.log(`👥 RBAC: Role-based access control enabled`);
-  console.log(`⚡ Rate Limiting: Active`);
+  console.log(`⚡ Rate Limiting: ${isRateLimitingActive ? 'Active' : 'Disabled'}`);
   console.log(`💬 Real-Time Messaging: WebSocket enabled`);
-  console.log(`🔔 Push Notifications: Enabled`);
-  console.log(`⚡ Redis Caching: Enabled`);
+  console.log(`🔔 Push Notifications: ${isNotificationsEnabled ? 'Enabled' : 'Disabled'}`);
+  console.log(`⚡ Redis Caching: ${redisStatus}`);
 });
+
 
 // Initialize WebSocket server
 initSocket(server);

@@ -6,15 +6,9 @@
 
 ## 🚀 Quick Start (30 seconds)
 
-### Windows
-```batch
-docker-build-and-run.bat
-```
-
-### Linux/Mac
+### Windows / Linux / Mac
 ```bash
-chmod +x docker-build-and-run.sh
-./docker-build-and-run.sh
+docker-compose up -d
 ```
 
 **Then open:** http://localhost:8080
@@ -30,7 +24,6 @@ chmod +x docker-build-and-run.sh
 - 🎨 **Vite Frontend** - Vue/React with HMR
 
 ### ✅ Complete Automation
-- One-click setup scripts (Windows/Linux/Mac)
 - Automatic health checks
 - Smart service orchestration
 - Automatic retries on failure
@@ -112,10 +105,6 @@ API (Express) ← Waits for MySQL + Redis
 - ✅ `frontend/Dockerfile` - Frontend image
 - ✅ `backend/entrypoint.sh` - Startup orchestration
 - ✅ `backend/wait-for-mysql.sh` - MySQL detection
-
-### Automation (2 files)
-- ✅ `docker-build-and-run.bat` - Windows setup
-- ✅ `docker-build-and-run.sh` - Linux/Mac setup
 
 ### Documentation (8 files)
 - ✅ Complete setup guides
@@ -230,8 +219,7 @@ Resource Usage:
 ### For Development
 ```bash
 # Start services
-docker-build-and-run.bat    # Windows
-./docker-build-and-run.sh   # Linux/Mac
+docker-compose up -d
 
 # Services stay running in background
 # Changes auto-reload
@@ -357,14 +345,8 @@ Everything is set up and ready to go:
 **Next step:** Run the setup script!
 
 ```bash
-# Windows
-docker-build-and-run.bat
-
-# Linux/Mac
-./docker-build-and-run.sh
-
-# Or manual
-docker-compose up
+# Manual Start
+docker-compose up -d
 ```
 
 **Then:** Open http://localhost:8080 🎊

@@ -69,19 +69,19 @@ git clone https://github.com/mwasiq11/NearO.git
 cd NearO
 ```
 
-### Step 3: Deploy Using the Automated Script
+### Step 3: Start the Application
+Once the repository is cloned, start the services using Docker Compose:
 
 ```bash
-chmod +x deploy-to-ec2.sh
-sudo ./deploy-to-ec2.sh
+# Start all services in the background
+docker-compose up -d
 ```
 
-**What this script does:**
-- Updates system packages
-- Installs Docker and Docker Compose
-- Creates production environment configuration
-- Builds and starts all containers
-- Verifies all services are running
+**What this does:**
+- Starts the Database (MySQL)
+- Starts the Cache (Redis)
+- Starts the Backend API
+- Starts the Frontend Application
 
 **Expected output:** ✓ All services running
 

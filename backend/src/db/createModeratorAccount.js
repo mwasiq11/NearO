@@ -1,14 +1,16 @@
 import { pool } from './database.js';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const createModerator = async () => {
   console.log('🔐 Creating Moderator Account...\n');
   
   try {
     // Create moderator account
-    const modEmail = 'moderator@nearo.pk';
-    const modPassword = 'Wasiq00001';
+    const modEmail = process.env.MODERATOR_EMAIL;
+    const modPassword = process.env.MODERATOR_PASSWORD;
     const hashedPassword = await bcrypt.hash(modPassword, 10);
     
     // Check if moderator already exists
@@ -35,25 +37,7 @@ const createModerator = async () => {
       console.log('✅ Created new Moderator account');
     }
     
-    console.log('\n📋 Moderator Credentials:');
-    console.log('   Email: moderator@nearo.pk');
-    console.log('   Password: Wasiq00001');
-    console.log('   Role: moderator');
-    
-    console.log('\n📋 Admin Credentials (existing):');
-    console.log('   Email: muhammadwasiq67585@gmail.com');
-    console.log('   Password: Wasiq00001');
-    console.log('   Role: admin');
-    
-    console.log('\n🔗 Login URLs:');
-    console.log('   Moderator: http://localhost:8080/auth/moderator-login');
-    console.log('   Admin: http://localhost:8080/auth/admin-login');
-    
-    console.log('\n⚠️  Important:');
-    console.log('   - Each role needs a SEPARATE account');
-    console.log('   - Cannot use same email for admin and moderator');
-    console.log('   - Admin account: muhammadwasiq67585@gmail.com');
-    console.log('   - Moderator account: moderator@nearo.pk\n');
+
     
   } catch (error) {
     console.error('❌ Error:', error.message);

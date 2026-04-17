@@ -143,3 +143,20 @@ curl -X POST http://localhost:3000/auth/admin-login \
 **Last Updated:** 2026-02-01  
 **Status:** ✅ Working  
 **Default Admin:** `admin@example.com` / `your_admin_password_here`
+
+
+ Moderator Credentials:
+   Email: moderator@nearo.pk
+   Password: Wasiq00001
+   Role: moderator
+
+📋 Admin Credentials (existing):'
+   Email: muhammadwasiq67585@gmail.com'
+   Password: Wasiq00001'
+   Role: admin'
+
+  Important:
+  - Each role needs a SEPARATE account'
+  - Cannot use same email for admin and moderator'
+  - Admin account: muhammadwasiq67585@gmail.com'
+ - Moderator account: moderator@nearo.pk\n'

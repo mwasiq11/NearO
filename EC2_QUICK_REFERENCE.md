@@ -18,8 +18,7 @@ ssh -i "your-key.pem" ec2-user@13.222.33.156
 cd /home/ec2-user && \
 git clone https://github.com/mwasiq11/NearO.git && \
 cd NearO && \
-chmod +x deploy-to-ec2.sh && \
-sudo ./deploy-to-ec2.sh
+docker-compose up -d
 ```
 
 ## ✅ Verification Commands
@@ -96,7 +95,7 @@ docker-compose -f docker-compose.prod.yml restart
 ## 🔄 Full Deployment Cycle
 1. SSH to instance
 2. Clone repository
-3. Run deploy script
+3. Run `docker-compose up -d`
 4. Wait 5-10 minutes
 5. Verify with `docker ps`
 6. Test URLs

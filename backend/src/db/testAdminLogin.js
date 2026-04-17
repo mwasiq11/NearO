@@ -1,11 +1,13 @@
 import fetch from 'node-fetch';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const testAdminLogin = async () => {
   console.log('🧪 Testing Admin Login Endpoint\n');
   
   const credentials = {
-    email: 'muhammadwasiq67585@gmail.com',
-    password: 'Wasiq00001'
+    email: process.env.ADMIN_EMAIL,
+    password: process.env.ADMIN_PASSWORD
   };
   
   console.log('Credentials:');

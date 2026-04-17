@@ -1,13 +1,15 @@
 import { pool } from './database.js';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const createAdminAndModerator = async () => {
   console.log('🔐 Creating Admin and Moderator accounts...\n');
   
   try {
-    const email = 'muhammadwasiq67585@gmail.com';
-    const password = 'Wasiq00001';
+    const email = process.env.ADMIN_EMAIL;
+    const password = process.env.ADMIN_PASSWORD;
     const hashedPassword = await bcrypt.hash(password, 10);
     
     // Check if user already exists
