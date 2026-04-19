@@ -55,7 +55,7 @@ const LandingPage = () => {
               />
             </div>
             <div className="overflow-hidden transition-all duration-500 ease-in-out w-0 opacity-0 group-hover:w-[90px] group-hover:opacity-100 flex items-center whitespace-nowrap transform-gpu relative -ml-1">
-              <span style={{ fontFamily: 'Poppins, sans-serif' }} className="font-bold text-2xl bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent tracking-tight transform -translate-x-8 group-hover:translate-x-0 transition-all duration-500 ease-out pl-2 py-1">NearO</span>
+              <span style={{ fontFamily: 'Poppins, sans-serif' }} className="font-bold text-2xl bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-zinc-100 dark:to-zinc-300 bg-clip-text text-transparent tracking-tight transform -translate-x-8 group-hover:translate-x-0 transition-all duration-500 ease-out pl-2 py-1">NearO</span>
             </div>
           </Link>
 
@@ -453,7 +453,7 @@ const LandingPage = () => {
                   />
                 </div>
                 <div className="overflow-hidden transition-all duration-500 ease-in-out w-0 opacity-0 group-hover:w-[80px] group-hover:opacity-100 flex items-center whitespace-nowrap transform-gpu relative -ml-1">
-                  <span style={{ fontFamily: 'Poppins, sans-serif' }} className="font-bold text-xl tracking-tight transform -translate-x-8 group-hover:translate-x-0 transition-all duration-500 ease-out pl-2 py-1">NearO</span>
+                  <span style={{ fontFamily: 'Poppins, sans-serif' }} className="font-bold text-xl bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-zinc-100 dark:to-zinc-300 bg-clip-text text-transparent tracking-tight transform -translate-x-8 group-hover:translate-x-0 transition-all duration-500 ease-out pl-2 py-1">NearO</span>
                 </div>
               </div>
               <p className="text-muted-foreground">
