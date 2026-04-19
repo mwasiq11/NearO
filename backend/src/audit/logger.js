@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { pool } from '../db/database.js';
+import prisma from '../db/prisma.js';
 
 async function logAudit({
   actorId = null,
@@ -12,22 +12,20 @@ async function logAudit({
   ipAddress = null,
   userAgent = null
 }) {
-  await pool.execute(
-    `INSERT INTO audit_logs (id, actor_id, action_type, entity_type, entity_id, old_value, new_value, metadata, ip_address, user_agent)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      uuidv4(),
-      actorId,
-      actionType,
-      entityType,
-      entityId,
-      oldValue ? JSON.stringify(oldValue) : null,
-      newValue ? JSON.stringify(newValue) : null,
-      metadata ? JSON.stringify(metadata) : null,
-      ipAddress,
-      userAgent
-    ]
-  );
+  await prisma.audit_logs.create({
+    data: {
+      id: uuidv4(),
+      actor_id: actorId,
+      action_type: actionType,
+      entity_type: entityType,
+      entity_id: entityId,
+      old_value: oldValue ? JSON.stringify(oldValue) : null,
+      new_value: newValue ? JSON.stringify(newValue) : null,
+      metadata: metadata ? JSON.stringify(metadata) : null,
+      ip_address: ipAddress,
+      user_agent: userAgent
+    }
+  });
 }
 
 function buildRequestContext(req) {

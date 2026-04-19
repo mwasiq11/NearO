@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcrypt';
-import { pool } from '../db/database.js';
+import prisma from '../db/prisma.js';
 import { generateTokenPair, verifyRefreshToken, generateAccessToken } from '../utils/jwt.js';
 import { sendVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail, sendOTPEmail } from '../services/emailService.js';
 import { logAudit, buildRequestContext } from '../audit/logger.js';
@@ -31,12 +31,12 @@ const register = async (req, res) => {
     }
 
     // Check if email already exists
-    const [existingUsers] = await pool.execute(
-      'SELECT id FROM users WHERE email = ?',
-      [normalizedEmail]
-    );
+    const existingUser = await prisma.users.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true }
+    });
 
-    if (existingUsers.length > 0) {
+    if (existingUser) {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
@@ -45,21 +45,30 @@ const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // Create user (not verified yet)
-    await pool.execute(
-      'INSERT INTO users (id, name, email, password, role, is_verified) VALUES (?, ?, ?, ?, ?, ?)',
-      [id, name, normalizedEmail, hashedPassword, 'user', false]
-    );
+    await prisma.users.create({
+      data: {
+        id,
+        name,
+        email: normalizedEmail,
+        password: hashedPassword,
+        role: 'user',
+        is_verified: false
+      }
+    });
 
     // Generate 6-digit OTP
     const otpCode = generateOTP();
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 10); // 10 minutes expiry
 
-    const otpId = uuidv4();
-    await pool.execute(
-      'INSERT INTO user_otps (id, user_id, otp_code, expires_at) VALUES (?, ?, ?, ?)',
-      [otpId, id, otpCode, expiresAt]
-    );
+    await prisma.user_otps.create({
+      data: {
+        id: uuidv4(),
+        user_id: id,
+        otp_code: otpCode,
+        expires_at: expiresAt
+      }
+    });
 
     // Send OTP email
     await sendOTPEmail(normalizedEmail, name, otpCode);
@@ -99,16 +108,13 @@ const login = async (req, res) => {
     }
 
     // Find user
-    const [users] = await pool.execute(
-      'SELECT id, name, email, password, role, is_active, is_verified FROM users WHERE email = ?',
-      [email]
-    );
+    const user = await prisma.users.findUnique({
+      where: { email }
+    });
 
-    if (users.length === 0) {
+    if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
-
-    const user = users[0];
 
     // Prevent moderator/admin login via user endpoint
     if (user.role !== 'user') {
@@ -127,10 +133,10 @@ const login = async (req, res) => {
     }
 
     // Update last login
-    await pool.execute(
-      'UPDATE users SET last_login_at = NOW() WHERE id = ?',
-      [user.id]
-    );
+    await prisma.users.update({
+      where: { id: user.id },
+      data: { last_login_at: new Date() }
+    });
 
     // Generate tokens
     const tokens = generateTokenPair({
@@ -145,10 +151,14 @@ const login = async (req, res) => {
     expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
 
     const sessionId = uuidv4();
-    await pool.execute(
-      'INSERT INTO user_sessions (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)',
-      [sessionId, user.id, tokenHash, expiresAt]
-    );
+    await prisma.user_sessions.create({
+      data: {
+        id: sessionId,
+        user_id: user.id,
+        token_hash: tokenHash,
+        expires_at: expiresAt
+      }
+    });
 
     // Log audit trail
     const ctx = buildRequestContext(req);
@@ -191,16 +201,13 @@ const moderatorLogin = async (req, res) => {
     }
 
     // Find user with moderator role
-    const [users] = await pool.execute(
-      'SELECT id, name, email, password, role, is_active FROM users WHERE email = ? AND role = ?',
-      [email, 'moderator']
-    );
+    const user = await prisma.users.findFirst({
+      where: { email, role: 'moderator' }
+    });
 
-    if (users.length === 0) {
+    if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
-
-    const user = users[0];
 
     // Check if account is active
     if (!user.is_active) {
@@ -214,10 +221,10 @@ const moderatorLogin = async (req, res) => {
     }
 
     // Update last login
-    await pool.execute(
-      'UPDATE users SET last_login_at = NOW() WHERE id = ?',
-      [user.id]
-    );
+    await prisma.users.update({
+      where: { id: user.id },
+      data: { last_login_at: new Date() }
+    });
 
     // Generate tokens
     const tokens = generateTokenPair({
@@ -232,10 +239,14 @@ const moderatorLogin = async (req, res) => {
     expiresAt.setDate(expiresAt.getDate() + 30);
 
     const sessionId = uuidv4();
-    await pool.execute(
-      'INSERT INTO user_sessions (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)',
-      [sessionId, user.id, tokenHash, expiresAt]
-    );
+    await prisma.user_sessions.create({
+      data: {
+        id: sessionId,
+        user_id: user.id,
+        token_hash: tokenHash,
+        expires_at: expiresAt
+      }
+    });
 
     // Log audit trail
     const ctx = buildRequestContext(req);
@@ -277,16 +288,13 @@ const adminLogin = async (req, res) => {
     }
 
     // Find user with admin role
-    const [users] = await pool.execute(
-      'SELECT id, name, email, password, role, is_active FROM users WHERE email = ? AND role = ?',
-      [email, 'admin']
-    );
+    const user = await prisma.users.findFirst({
+      where: { email, role: 'admin' }
+    });
 
-    if (users.length === 0) {
+    if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
-
-    const user = users[0];
 
     // Check if account is active
     if (!user.is_active) {
@@ -300,10 +308,10 @@ const adminLogin = async (req, res) => {
     }
 
     // Update last login
-    await pool.execute(
-      'UPDATE users SET last_login_at = NOW() WHERE id = ?',
-      [user.id]
-    );
+    await prisma.users.update({
+      where: { id: user.id },
+      data: { last_login_at: new Date() }
+    });
 
     // Generate tokens
     const tokens = generateTokenPair({
@@ -318,10 +326,14 @@ const adminLogin = async (req, res) => {
     expiresAt.setDate(expiresAt.getDate() + 30);
 
     const sessionId = uuidv4();
-    await pool.execute(
-      'INSERT INTO user_sessions (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)',
-      [sessionId, user.id, tokenHash, expiresAt]
-    );
+    await prisma.user_sessions.create({
+      data: {
+        id: sessionId,
+        user_id: user.id,
+        token_hash: tokenHash,
+        expires_at: expiresAt
+      }
+    });
 
     // Log audit trail
     const ctx = buildRequestContext(req);
@@ -369,10 +381,12 @@ const refresh = async (req, res) => {
     }
 
     // Check if refresh token exists in database
-    const [sessions] = await pool.execute(
-      'SELECT * FROM user_sessions WHERE user_id = ? AND expires_at > NOW()',
-      [decoded.id]
-    );
+    const sessions = await prisma.user_sessions.findMany({
+      where: {
+        user_id: decoded.id,
+        expires_at: { gt: new Date() }
+      }
+    });
 
     let tokenFound = false;
     for (const session of sessions) {
@@ -387,16 +401,21 @@ const refresh = async (req, res) => {
     }
 
     // Get user
-    const [users] = await pool.execute(
-      'SELECT id, email, role FROM users WHERE id = ? AND is_active = TRUE',
-      [decoded.id]
-    );
+    const user = await prisma.users.findFirst({
+      where: {
+        id: decoded.id,
+        is_active: true
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true
+      }
+    });
 
-    if (users.length === 0) {
+    if (!user) {
       return res.status(401).json({ error: 'User not found or inactive' });
     }
-
-    const user = users[0];
 
     // Generate new access token
     const accessToken = generateAccessToken({
@@ -424,13 +443,15 @@ const logout = async (req, res) => {
 
     if (refreshToken) {
       // Delete refresh token from database
-      const [sessions] = await pool.execute(
-        'SELECT * FROM user_sessions WHERE expires_at > NOW()'
-      );
+      const sessions = await prisma.user_sessions.findMany({
+        where: { expires_at: { gt: new Date() } }
+      });
 
       for (const session of sessions) {
         if (await bcrypt.compare(refreshToken, session.token_hash)) {
-          await pool.execute('DELETE FROM user_sessions WHERE id = ?', [session.id]);
+          await prisma.user_sessions.delete({
+            where: { id: session.id }
+          });
           break;
         }
       }
@@ -462,16 +483,14 @@ const verifyOTP = async (req, res) => {
     }
 
     // Find user by email
-    const [users] = await pool.execute(
-      'SELECT id, name, email, is_verified FROM users WHERE email = ?',
-      [normalizedEmail]
-    );
+    const user = await prisma.users.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true, name: true, email: true, is_verified: true }
+    });
 
-    if (users.length === 0) {
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-
-    const user = users[0];
 
     // Check if already verified
     if (user.is_verified) {
@@ -479,21 +498,24 @@ const verifyOTP = async (req, res) => {
     }
 
     // Find valid OTP
-    const [otps] = await pool.execute(
-      'SELECT * FROM user_otps WHERE user_id = ? AND otp_code = ? AND expires_at > NOW() AND verified_at IS NULL ORDER BY created_at DESC LIMIT 1',
-      [user.id, normalizedOtp]
-    );
+    const otpRecord = await prisma.user_otps.findFirst({
+      where: {
+        user_id: user.id,
+        otp_code: normalizedOtp,
+        expires_at: { gt: new Date() },
+        verified_at: null
+      },
+      orderBy: { created_at: 'desc' }
+    });
 
-    if (otps.length === 0) {
+    if (!otpRecord) {
       // Increment attempts
-      await pool.execute(
-        'UPDATE user_otps SET attempts = attempts + 1 WHERE user_id = ? AND verified_at IS NULL',
-        [user.id]
-      );
+      await prisma.user_otps.updateMany({
+        where: { user_id: user.id, verified_at: null },
+        data: { attempts: { increment: 1 } }
+      });
       return res.status(400).json({ error: 'Invalid or expired OTP' });
     }
-
-    const otpRecord = otps[0];
 
     // Check if too many attempts (security measure)
     if (otpRecord.attempts >= 5) {
@@ -501,16 +523,16 @@ const verifyOTP = async (req, res) => {
     }
 
     // Mark user as verified
-    await pool.execute(
-      'UPDATE users SET is_verified = TRUE, email_verified_at = NOW() WHERE id = ?',
-      [user.id]
-    );
+    await prisma.users.update({
+      where: { id: user.id },
+      data: { is_verified: true, email_verified_at: new Date() }
+    });
 
     // Mark OTP as used
-    await pool.execute(
-      'UPDATE user_otps SET verified_at = NOW() WHERE id = ?',
-      [otpRecord.id]
-    );
+    await prisma.user_otps.update({
+      where: { id: otpRecord.id },
+      data: { verified_at: new Date() }
+    });
 
     // Send welcome email
     await sendWelcomeEmail(user.email, user.name);
@@ -528,10 +550,14 @@ const verifyOTP = async (req, res) => {
     expiresAt.setDate(expiresAt.getDate() + 30);
 
     const sessionId = uuidv4();
-    await pool.execute(
-      'INSERT INTO user_sessions (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)',
-      [sessionId, user.id, tokenHash, expiresAt]
-    );
+    await prisma.user_sessions.create({
+      data: {
+        id: sessionId,
+        user_id: user.id,
+        token_hash: tokenHash,
+        expires_at: expiresAt
+      }
+    });
 
     // Log audit trail
     const ctx = buildRequestContext(req);
@@ -575,16 +601,14 @@ const resendOTP = async (req, res) => {
     }
 
     // Find user by email
-    const [users] = await pool.execute(
-      'SELECT id, name, email, is_verified FROM users WHERE email = ?',
-      [normalizedEmail]
-    );
+    const user = await prisma.users.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true, name: true, email: true, is_verified: true }
+    });
 
-    if (users.length === 0) {
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-
-    const user = users[0];
 
     // Check if already verified
     if (user.is_verified) {
@@ -592,13 +616,14 @@ const resendOTP = async (req, res) => {
     }
 
     // Check for recent OTP (rate limiting)
-    const [recentOtps] = await pool.execute(
-      'SELECT created_at FROM user_otps WHERE user_id = ? ORDER BY created_at DESC LIMIT 1',
-      [user.id]
-    );
+    const lastOtp = await prisma.user_otps.findFirst({
+      where: { user_id: user.id },
+      orderBy: { created_at: 'desc' },
+      select: { created_at: true }
+    });
 
-    if (recentOtps.length > 0) {
-      const lastOtpTime = new Date(recentOtps[0].created_at);
+    if (lastOtp) {
+      const lastOtpTime = new Date(lastOtp.created_at);
       const now = new Date();
       const timeDiff = (now - lastOtpTime) / 1000; // seconds
 
@@ -611,21 +636,24 @@ const resendOTP = async (req, res) => {
     }
 
     // Invalidate old OTPs
-    await pool.execute(
-      'UPDATE user_otps SET verified_at = NOW() WHERE user_id = ? AND verified_at IS NULL',
-      [user.id]
-    );
+    await prisma.user_otps.updateMany({
+      where: { user_id: user.id, verified_at: null },
+      data: { verified_at: new Date() }
+    });
 
     // Generate new 6-digit OTP
     const otpCode = generateOTP();
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 10); // 10 minutes expiry
 
-    const otpId = uuidv4();
-    await pool.execute(
-      'INSERT INTO user_otps (id, user_id, otp_code, expires_at) VALUES (?, ?, ?, ?)',
-      [otpId, user.id, otpCode, expiresAt]
-    );
+    await prisma.user_otps.create({
+      data: {
+        id: uuidv4(),
+        user_id: user.id,
+        otp_code: otpCode,
+        expires_at: expiresAt
+      }
+    });
 
     // Send OTP email
     await sendOTPEmail(user.email, user.name, otpCode);
@@ -651,33 +679,37 @@ const verifyEmail = async (req, res) => {
     }
 
     // Find verification record
-    const [verifications] = await pool.execute(
-      'SELECT * FROM email_verifications WHERE token = ? AND expires_at > NOW() AND verified_at IS NULL',
-      [token]
-    );
+    const verification = await prisma.email_verifications.findFirst({
+      where: {
+        token,
+        expires_at: { gt: new Date() },
+        verified_at: null
+      }
+    });
 
-    if (verifications.length === 0) {
+    if (!verification) {
       return res.status(400).json({ error: 'Invalid or expired verification token' });
     }
 
-    const verification = verifications[0];
-
     // Update user as verified
-    await pool.execute(
-      'UPDATE users SET is_verified = TRUE, email_verified_at = NOW() WHERE id = ?',
-      [verification.user_id]
-    );
+    await prisma.users.update({
+      where: { id: verification.user_id },
+      data: { is_verified: true, email_verified_at: new Date() }
+    });
 
     // Mark verification as used
-    await pool.execute(
-      'UPDATE email_verifications SET verified_at = NOW() WHERE id = ?',
-      [verification.id]
-    );
+    await prisma.email_verifications.update({
+      where: { id: verification.id },
+      data: { verified_at: new Date() }
+    });
 
     // Get user and send welcome email
-    const [users] = await pool.execute('SELECT name, email FROM users WHERE id = ?', [verification.user_id]);
-    if (users.length > 0) {
-      await sendWelcomeEmail(users[0].email, users[0].name);
+    const user = await prisma.users.findUnique({
+      where: { id: verification.user_id },
+      select: { name: true, email: true }
+    });
+    if (user) {
+      await sendWelcomeEmail(user.email, user.name);
     }
 
     res.json({ message: 'Email verified successfully' });
@@ -699,20 +731,25 @@ const forgotPassword = async (req, res) => {
     }
 
     // Find user
-    const [users] = await pool.execute('SELECT id, name, email FROM users WHERE email = ?', [email]);
+    const user = await prisma.users.findUnique({
+      where: { email },
+      select: { id: true, name: true, email: true }
+    });
 
     // Don't reveal if email exists or not (security best practice)
-    if (users.length > 0) {
-      const user = users[0];
+    if (user) {
       const resetToken = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 1); // 1 hour expiry
 
-      const resetId = uuidv4();
-      await pool.execute(
-        'INSERT INTO password_resets (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)',
-        [resetId, user.id, resetToken, expiresAt]
-      );
+      await prisma.password_resets.create({
+        data: {
+          id: uuidv4(),
+          user_id: user.id,
+          token: resetToken,
+          expires_at: expiresAt
+        }
+      });
 
       await sendPasswordResetEmail(user.email, user.name, resetToken);
     }
@@ -740,26 +777,33 @@ const resetPassword = async (req, res) => {
     }
 
     // Find reset record
-    const [resets] = await pool.execute(
-      'SELECT * FROM password_resets WHERE token = ? AND expires_at > NOW() AND used_at IS NULL',
-      [token]
-    );
+    const reset = await prisma.password_resets.findFirst({
+      where: {
+        token,
+        expires_at: { gt: new Date() },
+        used_at: null
+      }
+    });
 
-    if (resets.length === 0) {
+    if (!reset) {
       return res.status(400).json({ error: 'Invalid or expired reset token' });
     }
-
-    const reset = resets[0];
 
     // Hash new password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
     // Update password
-    await pool.execute('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, reset.user_id]);
+    await prisma.users.update({
+      where: { id: reset.user_id },
+      data: { password: hashedPassword }
+    });
 
     // Mark reset token as used
-    await pool.execute('UPDATE password_resets SET used_at = NOW() WHERE id = ?', [reset.id]);
+    await prisma.password_resets.update({
+      where: { id: reset.id },
+      data: { used_at: new Date() }
+    });
 
     res.json({ message: 'Password reset successfully' });
   } catch (error) {

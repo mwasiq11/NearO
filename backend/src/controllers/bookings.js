@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { pool, readPool } from '../db/database.js';
+import prisma from '../db/prisma.js';
 import { logAudit, buildRequestContext } from '../audit/logger.js';
 import { getIO } from '../realtime/socket.js';
 
@@ -13,28 +13,26 @@ const createBooking = async (req, res) => {
     }
 
     // Check if service exists and get provider_id
-    const [services] = await pool.execute(
-      'SELECT id, provider_id FROM services WHERE id = ?',
-      [service_id]
-    );
+    const service = await prisma.services.findUnique({
+      where: { id: service_id },
+      select: { id: true, provider_id: true }
+    });
 
-    if (services.length === 0) {
+    if (!service) {
       return res.status(400).json({ error: 'Service does not exist' });
     }
 
-    const service = services[0];
-
     // Check if seeker exists
-    const [seekers] = await pool.execute(
-      'SELECT id FROM users WHERE id = ?',
-      [seeker_id]
-    );
+    const seeker = await prisma.users.findUnique({
+      where: { id: seeker_id },
+      select: { id: true }
+    });
 
-    if (seekers.length === 0) {
+    if (!seeker) {
       return res.status(400).json({ error: 'Seeker does not exist' });
     }
 
-    // CRITICAL: Prevent self-booking (Stage 1 requirement)
+    // CRITICAL: Prevent self-booking
     if (service.provider_id === seeker_id) {
       return res.status(400).json({ error: 'Users cannot book their own services' });
     }
@@ -42,19 +40,32 @@ const createBooking = async (req, res) => {
     const id = uuidv4();
 
     // Insert booking
-    await pool.execute(
-      'INSERT INTO bookings (id, service_id, seeker_id, requested_time) VALUES (?, ?, ?, ?)',
-      [id, service_id, seeker_id, requested_time]
-    );
+    const booking = await prisma.bookings.create({
+      data: {
+        id,
+        service_id,
+        seeker_id,
+        requested_time: String(requested_time),
+        status: 'pending'
+      }
+    });
 
     // Create notification for provider about new booking
     try {
       const notificationId = uuidv4();
-      await pool.execute(
-        `INSERT INTO notifications (id, user_id, type, title, message, entity_type, entity_id)
-         VALUES (?, ?, 'booking_new', 'New Booking Request', 'You have a new service booking request', 'booking', ?)`,
-        [notificationId, service.provider_id, id]
-      );
+      await prisma.notifications.create({
+        data: {
+          id: notificationId,
+          user_id: service.provider_id,
+          type: 'booking_new',
+          payload: {
+            title: 'New Booking Request',
+            message: 'You have a new service booking request',
+            entity_type: 'booking',
+            entity_id: id
+          }
+        }
+      });
       console.log(`✅ Notification created for provider about new booking`);
 
       // Emit real-time notification to provider via Socket.io
@@ -73,32 +84,32 @@ const createBooking = async (req, res) => {
 
     // Auto-create conversation for messaging
     try {
-      const [existingConv] = await pool.execute(
-        `SELECT id FROM conversations WHERE seeker_id = ? AND provider_id = ? AND service_id = ?`,
-        [seeker_id, service.provider_id, service_id]
-      );
+      const existingConv = await prisma.conversations.findFirst({
+        where: {
+          seeker_id,
+          provider_id: service.provider_id,
+          service_id
+        }
+      });
       
-      if (existingConv.length === 0) {
+      if (!existingConv) {
         const conversationId = uuidv4();
-        await pool.execute(
-          `INSERT INTO conversations (id, seeker_id, provider_id, service_id, last_message_at)
-           VALUES (?, ?, ?, ?, NOW())`,
-          [conversationId, seeker_id, service.provider_id, service_id]
-        );
+        await prisma.conversations.create({
+          data: {
+            id: conversationId,
+            seeker_id,
+            provider_id: service.provider_id,
+            service_id,
+            last_message_at: new Date()
+          }
+        });
         console.log(`✅ Created conversation ${conversationId} for booking ${id}`);
       }
     } catch (convError) {
       console.error('Warning: Failed to create conversation:', convError);
-      // Don't fail the booking if conversation creation fails
     }
 
-    res.status(201).json({
-      id,
-      service_id,
-      seeker_id,
-      requested_time,
-      status: 'pending'
-    });
+    res.status(201).json(booking);
 
     const ctx = buildRequestContext(req);
     await logAudit({
@@ -124,29 +135,43 @@ const createBooking = async (req, res) => {
 const getBookings = async (req, res) => {
   try {
     const { user_id } = req.query;
-    let query = `
-      SELECT b.*, s.title as service_title, s.category, s.image_url as service_image_url, s.provider_id, u.name as seeker_name
-      FROM bookings b
-      JOIN services s ON b.service_id = s.id
-      JOIN users u ON b.seeker_id = u.id
-      ORDER BY b.created_at DESC
-    `;
-    let params = [];
-
+    
+    const where = {};
     if (user_id) {
-      query = `
-        SELECT b.*, s.title as service_title, s.category, s.image_url as service_image_url, s.provider_id, u.name as seeker_name
-        FROM bookings b
-        JOIN services s ON b.service_id = s.id
-        JOIN users u ON b.seeker_id = u.id
-        WHERE b.seeker_id = ? OR s.provider_id = ?
-        ORDER BY b.created_at DESC
-      `;
-      params = [user_id, user_id];
+      where.OR = [
+        { seeker_id: user_id },
+        { services: { provider_id: user_id } }
+      ];
     }
 
-    const [bookings] = await readPool.execute(query, params);
-    res.json(bookings);
+    const bookings = await prisma.bookings.findMany({
+      where,
+      include: {
+        services: {
+          select: {
+            title: true,
+            category: true,
+            image_url: true,
+            provider_id: true
+          }
+        },
+        users: {
+          select: { name: true }
+        }
+      },
+      orderBy: { created_at: 'desc' }
+    });
+
+    const mappedBookings = bookings.map(b => ({
+      ...b,
+      service_title: b.services.title,
+      category: b.services.category,
+      service_image_url: b.services.image_url,
+      provider_id: b.services.provider_id,
+      seeker_name: b.users?.name
+    }));
+
+    res.json(mappedBookings);
   } catch (error) {
     console.error('Error getting bookings:', error);
     res.status(500).json({ error: error.message });
@@ -163,40 +188,43 @@ const acceptBooking = async (req, res) => {
     }
 
     // Verify the user is the provider
-    const [bookings] = await pool.execute(
-      `SELECT b.*, s.provider_id FROM bookings b
-       JOIN services s ON b.service_id = s.id
-       WHERE b.id = ?`,
-      [id]
-    );
+    const booking = await prisma.bookings.findUnique({
+      where: { id },
+      include: {
+        services: { select: { provider_id: true } }
+      }
+    });
 
-    if (bookings.length === 0) {
+    if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
 
-    const booking = bookings[0];
-    console.log(`[ACCEPT] Provider ID: ${booking.provider_id}, Current User: ${userId}`);
-
-    if (booking.provider_id !== userId) {
+    if (booking.services.provider_id !== userId) {
       return res.status(403).json({ error: 'Only the service provider can accept bookings' });
     }
 
     // Update booking status
-    await pool.execute(
-      `UPDATE bookings SET status = 'approved' WHERE id = ?`,
-      [id]
-    );
-    console.log(`✅ Booking ${id} updated to approved`);
+    await prisma.bookings.update({
+      where: { id },
+      data: { status: 'approved' }
+    });
 
     // Create notification for seeker
     const notificationId = uuidv4();
     try {
-      await pool.execute(
-        `INSERT INTO notifications (id, user_id, type, title, message, entity_type, entity_id)
-         VALUES (?, ?, 'booking_accepted', 'Booking Accepted', 'Your booking has been accepted by the provider', 'booking', ?)`,
-        [notificationId, booking.seeker_id, id]
-      );
-      console.log(`✅ Notification ${notificationId} created for seeker ${booking.seeker_id}`);
+      await prisma.notifications.create({
+        data: {
+          id: notificationId,
+          user_id: booking.seeker_id,
+          type: 'booking_accepted',
+          payload: {
+            title: 'Booking Accepted',
+            message: 'Your booking has been accepted by the provider',
+            entity_type: 'booking',
+            entity_id: id
+          }
+        }
+      });
 
       // Emit real-time notification to seeker via Socket.io
       const io = getIO();
@@ -212,7 +240,6 @@ const acceptBooking = async (req, res) => {
             message: 'Your booking has been accepted by the provider'
           }
         });
-        console.log(`📡 Socket.io event emitted for booking status change`);
       }
     } catch (notifError) {
       console.error('Warning: Failed to create notification:', notifError);
@@ -246,40 +273,43 @@ const rejectBooking = async (req, res) => {
     }
 
     // Verify the user is the provider
-    const [bookings] = await pool.execute(
-      `SELECT b.*, s.provider_id FROM bookings b
-       JOIN services s ON b.service_id = s.id
-       WHERE b.id = ?`,
-      [id]
-    );
+    const booking = await prisma.bookings.findUnique({
+      where: { id },
+      include: {
+        services: { select: { provider_id: true } }
+      }
+    });
 
-    if (bookings.length === 0) {
+    if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
 
-    const booking = bookings[0];
-    console.log(`[REJECT] Provider ID: ${booking.provider_id}, Current User: ${userId}`);
-
-    if (booking.provider_id !== userId) {
+    if (booking.services.provider_id !== userId) {
       return res.status(403).json({ error: 'Only the service provider can reject bookings' });
     }
 
     // Update booking status
-    await pool.execute(
-      `UPDATE bookings SET status = 'rejected' WHERE id = ?`,
-      [id]
-    );
-    console.log(`✅ Booking ${id} updated to rejected`);
+    await prisma.bookings.update({
+      where: { id },
+      data: { status: 'rejected' }
+    });
 
     // Create notification for seeker
     const notificationId = uuidv4();
     try {
-      await pool.execute(
-        `INSERT INTO notifications (id, user_id, type, title, message, entity_type, entity_id)
-         VALUES (?, ?, 'booking_rejected', 'Booking Declined', 'Your booking has been declined by the provider', 'booking', ?)`,
-        [notificationId, booking.seeker_id, id]
-      );
-      console.log(`✅ Notification ${notificationId} created for seeker ${booking.seeker_id}`);
+      await prisma.notifications.create({
+        data: {
+          id: notificationId,
+          user_id: booking.seeker_id,
+          type: 'booking_rejected',
+          payload: {
+            title: 'Booking Declined',
+            message: 'Your booking has been declined by the provider',
+            entity_type: 'booking',
+            entity_id: id
+          }
+        }
+      });
 
       // Emit real-time notification to seeker via Socket.io
       const io = getIO();
@@ -295,7 +325,6 @@ const rejectBooking = async (req, res) => {
             message: 'Your booking has been declined by the provider'
           }
         });
-        console.log(`📡 Socket.io event emitted for booking status change`);
       }
     } catch (notifError) {
       console.error('Warning: Failed to create notification:', notifError);

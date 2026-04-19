@@ -1,5 +1,6 @@
-import { pool, readPool } from '../db/database.js';
-import { saveSubscription, removeSubscription, removeAllSubscriptions } from '../services/pushNotificationService.js';
+import { v4 as uuidv4 } from 'uuid';
+import prisma from '../db/prisma.js';
+import { saveSubscription, removeSubscription } from '../services/pushNotificationService.js';
 
 /**
  * Get all notifications for the current user
@@ -12,28 +13,20 @@ const getNotifications = async (req, res) => {
     const unread_only = req.query.unread_only === 'true';
     const offset = (page - 1) * limit;
 
-    let query = `SELECT * FROM notifications WHERE user_id = ?`;
-    const params = [userId];
-
+    const where = { user_id: userId };
     if (unread_only) {
-      query += ` AND is_read = FALSE`;
+      where.is_read = false;
     }
 
-    // Use string interpolation for LIMIT/OFFSET since mysql2 execute() doesn't support number params for these
-    query += ` ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
-
-    console.log('📋 Notification query:', { query, params });
-
-    const [notifications] = await readPool.query(query, params);
-
-    // Get total count
-    let countQuery = `SELECT COUNT(*) as total FROM notifications WHERE user_id = ?`;
-    const countParams = [userId];
-    if (unread_only) {
-      countQuery += ' AND is_read = FALSE';
-    }
-    const [countResult] = await readPool.query(countQuery, countParams);
-    const total = countResult[0].total;
+    const [notifications, total] = await Promise.all([
+      prisma.notifications.findMany({
+        where,
+        orderBy: { created_at: 'desc' },
+        skip: offset,
+        take: limit
+      }),
+      prisma.notifications.count({ where })
+    ]);
 
     res.json({
       notifications: notifications.map(n => ({
@@ -59,11 +52,10 @@ const getNotifications = async (req, res) => {
 const getUnreadCount = async (req, res) => {
   try {
     const userId = req.user.id;
-    const [result] = await readPool.execute(
-      `SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = FALSE`,
-      [userId]
-    );
-    res.json({ unread_count: result[0].count });
+    const count = await prisma.notifications.count({
+      where: { user_id: userId, is_read: false }
+    });
+    res.json({ unread_count: count });
   } catch (error) {
     console.error('Error getting unread count:', error);
     res.status(500).json({ error: error.message });
@@ -78,12 +70,12 @@ const markAsRead = async (req, res) => {
     const userId = req.user.id;
     const { id } = req.params;
 
-    const [result] = await pool.execute(
-      `UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?`,
-      [id, userId]
-    );
+    const result = await prisma.notifications.updateMany({
+      where: { id, user_id: userId },
+      data: { is_read: true }
+    });
 
-    if (result.affectedRows === 0) {
+    if (result.count === 0) {
       return res.status(404).json({ error: 'Notification not found' });
     }
 
@@ -101,10 +93,10 @@ const markAllAsRead = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    await pool.execute(
-      `UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND is_read = FALSE`,
-      [userId]
-    );
+    await prisma.notifications.updateMany({
+      where: { user_id: userId, is_read: false },
+      data: { is_read: true }
+    });
 
     res.json({ success: true, message: 'All notifications marked as read' });
   } catch (error) {
@@ -121,12 +113,11 @@ const deleteNotification = async (req, res) => {
     const userId = req.user.id;
     const { id } = req.params;
 
-    const [result] = await pool.execute(
-      `DELETE FROM notifications WHERE id = ? AND user_id = ?`,
-      [id, userId]
-    );
+    const result = await prisma.notifications.deleteMany({
+      where: { id, user_id: userId }
+    });
 
-    if (result.affectedRows === 0) {
+    if (result.count === 0) {
       return res.status(404).json({ error: 'Notification not found' });
     }
 
@@ -190,12 +181,11 @@ const getPreferences = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const [prefs] = await readPool.execute(
-      `SELECT * FROM notification_preferences WHERE user_id = ?`,
-      [userId]
-    );
+    const preferences = await prisma.notification_preferences.findUnique({
+      where: { user_id: userId }
+    });
 
-    if (prefs.length === 0) {
+    if (!preferences) {
       // Return defaults
       return res.json({
         user_id: userId,
@@ -208,7 +198,7 @@ const getPreferences = async (req, res) => {
       });
     }
 
-    res.json(prefs[0]);
+    res.json(preferences);
   } catch (error) {
     console.error('Error getting notification preferences:', error);
     res.status(500).json({ error: error.message });
@@ -230,74 +220,28 @@ const updatePreferences = async (req, res) => {
       push_notifications
     } = req.body;
 
-    // Check if preferences exist
-    const [existing] = await pool.execute(
-      `SELECT user_id FROM notification_preferences WHERE user_id = ?`,
-      [userId]
-    );
+    const preferences = await prisma.notification_preferences.upsert({
+      where: { user_id: userId },
+      update: {
+        messages_enabled: messages_enabled ?? undefined,
+        bookings_enabled: bookings_enabled ?? undefined,
+        reviews_enabled: reviews_enabled ?? undefined,
+        promotions_enabled: promotions_enabled ?? undefined,
+        email_notifications: email_notifications ?? undefined,
+        push_notifications: push_notifications ?? undefined
+      },
+      create: {
+        user_id: userId,
+        messages_enabled: messages_enabled ?? true,
+        bookings_enabled: bookings_enabled ?? true,
+        reviews_enabled: reviews_enabled ?? true,
+        promotions_enabled: promotions_enabled ?? false,
+        email_notifications: email_notifications ?? true,
+        push_notifications: push_notifications ?? true
+      }
+    });
 
-    if (existing.length === 0) {
-      // Create new preferences
-      await pool.execute(
-        `INSERT INTO notification_preferences 
-         (user_id, messages_enabled, bookings_enabled, reviews_enabled, promotions_enabled, email_notifications, push_notifications)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-          userId,
-          messages_enabled !== undefined ? messages_enabled : true,
-          bookings_enabled !== undefined ? bookings_enabled : true,
-          reviews_enabled !== undefined ? reviews_enabled : true,
-          promotions_enabled !== undefined ? promotions_enabled : false,
-          email_notifications !== undefined ? email_notifications : true,
-          push_notifications !== undefined ? push_notifications : true
-        ]
-      );
-    } else {
-      // Update existing preferences
-      const updates = [];
-      const values = [];
-
-      if (messages_enabled !== undefined) {
-        updates.push('messages_enabled = ?');
-        values.push(messages_enabled);
-      }
-      if (bookings_enabled !== undefined) {
-        updates.push('bookings_enabled = ?');
-        values.push(bookings_enabled);
-      }
-      if (reviews_enabled !== undefined) {
-        updates.push('reviews_enabled = ?');
-        values.push(reviews_enabled);
-      }
-      if (promotions_enabled !== undefined) {
-        updates.push('promotions_enabled = ?');
-        values.push(promotions_enabled);
-      }
-      if (email_notifications !== undefined) {
-        updates.push('email_notifications = ?');
-        values.push(email_notifications);
-      }
-      if (push_notifications !== undefined) {
-        updates.push('push_notifications = ?');
-        values.push(push_notifications);
-      }
-
-      if (updates.length > 0) {
-        values.push(userId);
-        await pool.execute(
-          `UPDATE notification_preferences SET ${updates.join(', ')} WHERE user_id = ?`,
-          values
-        );
-      }
-    }
-
-    // Return updated preferences
-    const [updated] = await readPool.execute(
-      `SELECT * FROM notification_preferences WHERE user_id = ?`,
-      [userId]
-    );
-
-    res.json(updated[0]);
+    res.json(preferences);
   } catch (error) {
     console.error('Error updating notification preferences:', error);
     res.status(500).json({ error: error.message });

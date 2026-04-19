@@ -34,12 +34,20 @@ const chatSlice = createSlice({
         }
       }
     },
+    // Set all messages for a conversation at once (replaces existing)
+    setMessages: (state, action: PayloadAction<{ conversationId: string; messages: Message[] }>) => {
+      state.messages[action.payload.conversationId] = action.payload.messages;
+    },
     addMessage: (state, action: PayloadAction<Message>) => {
       const { conversationId } = action.payload;
       if (!state.messages[conversationId]) {
         state.messages[conversationId] = [];
       }
-      state.messages[conversationId].push(action.payload);
+      // Dedup — only add if message ID doesn't already exist
+      const exists = state.messages[conversationId].some(m => m.id === action.payload.id);
+      if (!exists) {
+        state.messages[conversationId].push(action.payload);
+      }
       
       // Update last message in conversation
       const conv = state.conversations.find(c => c.id === conversationId);
@@ -76,6 +84,7 @@ const chatSlice = createSlice({
 export const {
   setConversations,
   setCurrentConversation,
+  setMessages,
   addMessage,
   markAsRead,
   createConversation,

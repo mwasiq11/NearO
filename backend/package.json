@@ -7,10 +7,14 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
-    "db:init": "node src/db/ensure_db.js"
+    "db:init": "npx prisma db push && npx prisma db seed"
+  },
+  "prisma": {
+    "seed": "node src/db/prisma-seed.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1009.0",
+    "@prisma/client": "6.2.1",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -25,6 +29,7 @@
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.6.5",
     "nodemailer": "^6.9.0",
+    "prisma": "6.2.1",
     "redis": "^4.7.0",
     "s2-geometry": "^1.2.10",
     "socket.io": "^4.7.5",

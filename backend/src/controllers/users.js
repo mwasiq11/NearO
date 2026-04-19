@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcrypt';
-import { pool } from '../db/database.js';
+import prisma from '../db/prisma.js';
 
 const createUser = async (req, res) => {
   try {
@@ -23,12 +23,12 @@ const createUser = async (req, res) => {
     const id = uuidv4();
 
     // Check if email already exists
-    const [existingUsers] = await pool.execute(
-      'SELECT id FROM users WHERE email = ?',
-      [email]
-    );
+    const existingUser = await prisma.users.findUnique({
+      where: { email },
+      select: { id: true }
+    });
 
-    if (existingUsers.length > 0) {
+    if (existingUser) {
       return res.status(400).json({ error: 'Email already exists' });
     }
 
@@ -37,10 +37,15 @@ const createUser = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // Insert user with hashed password
-    await pool.execute(
-      'INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)',
-      [id, name, email, hashedPassword, role]
-    );
+    await prisma.users.create({
+      data: {
+        id,
+        name,
+        email,
+        password: hashedPassword,
+        role: role
+      }
+    });
 
     res.status(201).json({ id, name, email, role });
   } catch (error) {
@@ -51,18 +56,13 @@ const createUser = async (req, res) => {
 
 const getMyProfile = async (req, res) => {
   try {
-    const [users] = await pool.execute(
-      `SELECT id, name, email, role, phone, neighborhood, city, latitude, longitude, 
-              profile_picture, is_active, is_verified, created_at, last_login_at 
-       FROM users WHERE id = ?`,
-      [req.user.id]
-    );
+    const user = await prisma.users.findUnique({
+      where: { id: req.user.id }
+    });
 
-    if (users.length === 0) {
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-
-    const user = users[0];
     
     // Convert relative profile picture path to full URL
     if (user.profile_picture) {
@@ -84,39 +84,35 @@ const updateMyProfile = async (req, res) => {
     const { name, email, password } = req.body;
 
     if (email) {
-      const [existingUsers] = await pool.execute(
-        'SELECT id FROM users WHERE email = ? AND id != ?',
-        [email, req.user.id]
-      );
-      if (existingUsers.length > 0) {
+      const existingUser = await prisma.users.findFirst({
+        where: {
+          email,
+          id: { not: req.user.id }
+        }
+      });
+      if (existingUser) {
         return res.status(400).json({ error: 'Email already exists' });
       }
     }
 
-    const updates = [];
-    const params = [];
-
-    if (name !== undefined) { updates.push('name = ?'); params.push(name); }
-    if (email !== undefined) { updates.push('email = ?'); params.push(email); }
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (email !== undefined) updateData.email = email;
     if (password !== undefined) {
       const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash(password, saltRounds);
-      updates.push('password = ?'); params.push(hashedPassword);
+      updateData.password = await bcrypt.hash(password, saltRounds);
     }
 
-    if (updates.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
 
-    params.push(req.user.id);
-    await pool.execute(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
+    const updatedUser = await prisma.users.update({
+      where: { id: req.user.id },
+      data: updateData
+    });
 
-    const [updatedUsers] = await pool.execute(
-      'SELECT id, name, email, role, is_active, is_verified, created_at, last_login_at FROM users WHERE id = ?',
-      [req.user.id]
-    );
-
-    res.json(updatedUsers[0]);
+    res.json(updatedUser);
   } catch (error) {
     console.error('Error updating profile:', error);
     res.status(500).json({ error: error.message });
@@ -125,9 +121,9 @@ const updateMyProfile = async (req, res) => {
 
 const getUsers = async (req, res) => {
   try {
-    const [users] = await pool.execute(
-      'SELECT * FROM users ORDER BY created_at DESC'
-    );
+    const users = await prisma.users.findMany({
+      orderBy: { created_at: 'desc' }
+    });
     res.json(users);
   } catch (error) {
     console.error('Error getting users:', error);
@@ -161,18 +157,25 @@ const uploadProfilePicture = async (req, res) => {
     console.log('📸 Profile picture uploaded:', { userId, fileUrl, filename: file.filename });
 
     // Update user profile picture in database
-    await pool.execute(
-      'UPDATE users SET profile_picture = ? WHERE id = ?',
-      [dbPath, userId]
-    );
+    await prisma.users.update({
+      where: { id: userId },
+      data: { profile_picture: dbPath }
+    });
 
     // Store file upload record
     const uploadId = uuidv4();
-    await pool.execute(
-      `INSERT INTO file_uploads (id, user_id, file_name, original_name, file_path, file_type, file_size, upload_context)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'profile_picture')`,
-      [uploadId, userId, file.filename, file.originalname, file.path, file.mimetype, file.size]
-    );
+    await prisma.file_uploads.create({
+      data: {
+        id: uploadId,
+        user_id: userId,
+        file_name: file.filename,
+        original_name: file.originalname,
+        file_path: file.path,
+        file_type: file.mimetype,
+        file_size: file.size,
+        upload_context: 'profile_picture'
+      }
+    });
 
     res.json({ 
       profile_picture: fileUrl,

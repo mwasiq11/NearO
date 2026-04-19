@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { TrendingUp, Users, ShieldCheck, AlertTriangle, CheckCircle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
+import { getSocket } from '@/lib/socket';
+import { UserDetailModal, ServiceDetailModal } from '@/components/admin/AdminResourceModals';
 
 interface DashboardCounts {
   users: { total: number; active_users: number };
@@ -13,11 +15,18 @@ interface DashboardCounts {
 }
 
 interface PendingItem {
-  id: string;
-  title: string;
-  owner: string;
   age: string;
   severity: 'low' | 'medium' | 'high';
+  type: 'service' | 'report';
+  originalId: string; // The ID of the service or report
+}
+
+interface ActivityLog {
+  id: string;
+  action: string;
+  actor_id: string;
+  target_type: string;
+  created_at: string;
 }
 
 const AdminDashboard = () => {
@@ -30,7 +39,14 @@ const AdminDashboard = () => {
     badge: string;
   }>>([]);
   const [pendingItems, setPendingItems] = useState<PendingItem[]>([]);
+  const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Modal state
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [selectedService, setSelectedService] = useState<string | null>(null);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
 
   const refreshData = () => setRefreshKey(prev => prev + 1);
 
@@ -51,29 +67,62 @@ const AdminDashboard = () => {
         ]);
 
         const pending = [
-          ...(services.services || []).slice(0, 3).map((s) => ({
-            id: s.id,
+          ...(services.services || []).slice(0, 3).map((s: any) => ({
+            id: `service-${s.id}`,
+            originalId: s.id,
             title: `Service approval: ${s.title}`,
             owner: s.provider_name || s.provider_email || 'Provider',
             age: 'new',
             severity: 'medium' as const,
+            type: 'service' as const,
           })),
-          ...(reports.reports || []).slice(0, 3).map((r) => ({
-            id: r.id,
+          ...(reports.reports || []).slice(0, 3).map((r: any) => ({
+            id: `report-${r.id}`,
+            originalId: r.id,
             title: `Report: ${r.reason || 'User report'}`,
             owner: r.reporter_name || 'Reporter',
             age: 'new',
             severity: 'high' as const,
+            type: 'report' as const,
           })),
         ];
         setPendingItems(pending.slice(0, 5));
+        const logData = await api.get<{ logs: ActivityLog[] }>('/admin/system/logs?limit=10', { auth: true }).catch(() => ({ logs: [] }));
+        setLogs(logData.logs || []);
+
       } catch (err) {
         toast.error('Failed to load dashboard data');
       }
     };
 
     load();
+
+    // Socket listeners for real-time updates
+    const socket = getSocket();
+    const handleModeration = () => {
+      refreshData();
+      toast('Moderation update', { description: 'New items pending review' });
+    };
+
+    socket.on('service:new', handleModeration);
+    socket.on('report:new', handleModeration);
+
+    return () => {
+      socket.off('service:new', handleModeration);
+      socket.off('report:new', handleModeration);
+    };
   }, [refreshKey]);
+
+  const openItem = (item: PendingItem) => {
+    if (item.type === 'service') {
+      setSelectedService(item.originalId);
+      setIsServiceModalOpen(true);
+    } else {
+      // In a real app we might open the report detail, but for now we'll show the service it relates to if available
+      // Or just toast. Let's assume most reports are about services for now.
+      toast.info('Report details');
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -130,7 +179,7 @@ const AdminDashboard = () => {
                 <div className="flex items-center gap-3">
                   <Badge variant="outline" className="capitalize">{item.severity}</Badge>
                   <span className="text-sm text-muted-foreground">{item.age}</span>
-                  <Button size="sm">Open</Button>
+                  <Button size="sm" onClick={() => openItem(item)}>Open</Button>
                 </div>
               </div>
             ))}
@@ -145,11 +194,43 @@ const AdminDashboard = () => {
             <CardTitle>Recent activity</CardTitle>
             <p className="text-sm text-muted-foreground">Last 24 hours</p>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm text-muted-foreground">
-            Activity feed integration pending.
+          <CardContent className="space-y-4 text-sm">
+            {logs.length > 0 ? (
+              <div className="space-y-4">
+                {logs.map((log) => (
+                  <div key={log.id} className="flex flex-col gap-1 border-b pb-2 last:border-0 last:pb-0">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-foreground capitalize">
+                        {log.action.replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-[10px] uppercase text-muted-foreground">
+                        {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground truncate">
+                      Target: {log.target_type} • {log.id.slice(0, 8)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">No recent activity found.</p>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      <UserDetailModal 
+        userId={selectedUser}
+        isOpen={isUserModalOpen}
+        onClose={() => { setIsUserModalOpen(false); setSelectedUser(null); }}
+      />
+
+      <ServiceDetailModal 
+        serviceId={selectedService}
+        isOpen={isServiceModalOpen}
+        onClose={() => { setIsServiceModalOpen(false); setSelectedService(null); }}
+      />
     </div>
   );
 };

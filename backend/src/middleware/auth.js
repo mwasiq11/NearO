@@ -1,5 +1,5 @@
 import { verifyAccessToken } from '../utils/jwt.js';
-import { pool } from '../db/database.js';
+import prisma from '../db/prisma.js';
 
 /**
  * Authentication middleware - verifies JWT token
@@ -26,19 +26,24 @@ async function authenticate(req, res, next) {
     }
 
     // Fetch user from database to ensure they still exist and are active
-    const [users] = await pool.execute(
-      'SELECT id, email, role, is_active, is_verified, suspended_until FROM users WHERE id = ?',
-      [decoded.id]
-    );
+    const user = await prisma.users.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        is_active: true,
+        is_verified: true,
+        suspended_until: true
+      }
+    });
 
-    if (users.length === 0) {
+    if (!user) {
       return res.status(401).json({ 
         error: 'User not found',
         message: 'User account does not exist'
       });
     }
-
-    const user = users[0];
 
     // Check if user is active
     if (!user.is_active) {
@@ -87,13 +92,12 @@ async function optionalAuthenticate(req, res, next) {
       const decoded = verifyAccessToken(token);
 
       if (decoded) {
-        const [users] = await pool.execute(
-          'SELECT id, email, role, is_active, is_verified FROM users WHERE id = ? AND is_active = TRUE',
-          [decoded.id]
-        );
+        const user = await prisma.users.findUnique({
+          where: { id: decoded.id, is_active: true },
+          select: { id: true, email: true, role: true, is_verified: true }
+        });
 
-        if (users.length > 0) {
-          const user = users[0];
+        if (user) {
           req.user = {
             id: user.id,
             email: user.email,

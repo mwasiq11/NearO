@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   setCurrentConversation,
   addMessage,
+  setMessages,
   markAsRead,
   createConversation,
   setConversations,
@@ -10,16 +11,20 @@ import {
 import { Conversation, Message, ServiceListing } from '@/models/types';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
+import { useSounds } from '@/hooks/useSounds';
 import { toast } from 'sonner';
 
 export const useChat = () => {
   const dispatch = useAppDispatch();
+  const { playMessageReceived } = useSounds();
   const { conversations, currentConversation, messages, isLoading } = useAppSelector(
     state => state.chat
   );
   const { user } = useAppSelector(state => state.auth);
   const socketRef = useRef<ReturnType<typeof getSocket> | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  // Track which conversations have already been loaded to avoid redundant fetches
+  const loadedConversationsRef = useRef<Set<string>>(new Set());
 
   const mapConversation = useCallback((conv: any): Conversation => {
     const defaultReputation = {
@@ -113,6 +118,10 @@ export const useChat = () => {
 
     const handleReceived = ({ message }: { message: any }) => {
       dispatch(addMessage(mapMessage(message)));
+      // Play sound if message is incoming (not from self)
+      if (message.sender_id !== user.id) {
+        playMessageReceived();
+      }
     };
 
     const handleUserStatus = ({ userId, status }: { userId: string; status: 'online' | 'offline' }) => {
@@ -260,10 +269,19 @@ export const useChat = () => {
     return conversations.find(c => c.id === id);
   }, [conversations]);
 
-  const loadMessages = useCallback(async (conversationId: string) => {
+  const loadMessages = useCallback(async (conversationId: string, force = false) => {
+    // Skip if already loaded and not forced
+    if (!force && loadedConversationsRef.current.has(conversationId)) {
+      return;
+    }
     try {
       const data = await api.get<{ messages: any[] }>(`/messages/${conversationId}`, { auth: true });
-      data.messages.map(mapMessage).forEach(msg => dispatch(addMessage(msg)));
+      // Use setMessages to replace all at once — avoids duplicate pushes
+      dispatch(setMessages({
+        conversationId,
+        messages: data.messages.map(mapMessage),
+      }));
+      loadedConversationsRef.current.add(conversationId);
       const socket = socketRef.current;
       if (socket) {
         socket.emit('conversation:join', { conversationId });

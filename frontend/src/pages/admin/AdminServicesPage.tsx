@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Search, Check, XCircle, Eye } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
+import { ServiceDetailModal } from '@/components/admin/AdminResourceModals';
 
 interface ServiceRow {
   id: string;
@@ -30,6 +31,8 @@ const AdminServicesPage = () => {
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const refreshServices = () => setRefreshKey(prev => prev + 1);
 
@@ -148,7 +151,15 @@ const AdminServicesPage = () => {
                   </TableCell>
                   <TableCell>{s.price}</TableCell>
                   <TableCell className="text-right space-x-2">
-                    <Button size="sm" variant="ghost" className="gap-1" disabled>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="gap-1"
+                      onClick={() => {
+                        setSelectedServiceId(s.id);
+                        setIsModalOpen(true);
+                      }}
+                    >
                       <Eye className="h-4 w-4" /> View
                     </Button>
                     <Button size="sm" variant="outline" className="gap-1" onClick={() => approveService(s.id)}>
@@ -170,6 +181,15 @@ const AdminServicesPage = () => {
           )}
         </CardContent>
       </Card>
+
+      <ServiceDetailModal 
+        serviceId={selectedServiceId}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedServiceId(null);
+        }}
+      />
     </div>
   );
 };

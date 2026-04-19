@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Search, Ban, CheckCircle, Shield } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
+import { UserDetailModal } from '@/components/admin/AdminResourceModals';
 
 interface AdminUser {
   id: string;
@@ -29,6 +30,8 @@ const AdminUsersPage = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const refreshUsers = () => setRefreshKey(prev => prev + 1);
 
@@ -164,7 +167,16 @@ const AdminUsersPage = () => {
                   </TableCell>
                   <TableCell>{u.createdAt}</TableCell>
                   <TableCell className="text-right space-x-2">
-                    <Button size="sm" variant="outline">View</Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedUserId(u.id);
+                        setIsModalOpen(true);
+                      }}
+                    >
+                      View
+                    </Button>
                     {u.status !== 'suspended' ? (
                       <Button size="sm" variant="destructive" className="gap-1" onClick={() => suspendUser(u.id)}>
                         <Ban className="h-4 w-4" /> Suspend
@@ -192,6 +204,15 @@ const AdminUsersPage = () => {
           )}
         </CardContent>
       </Card>
+
+      <UserDetailModal 
+        userId={selectedUserId}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedUserId(null);
+        }}
+      />
     </div>
   );
 };

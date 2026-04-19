@@ -3,14 +3,17 @@ import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
 import { requirePermission, requireResourcePermission } from '../middleware/permissions.js';
 import { validate } from '../middleware/validation.js';
 import { createServiceSchema, reportServiceSchema, updateOwnServiceSchema } from '../utils/validationSchemas.js';
-import { createService, getServices, getServiceById, updateServiceOwn, deleteServiceOwn, reportService, uploadServiceImage } from '../controllers/services.js';
-import { pool } from '../db/database.js';
+import { createService, getServices, getServiceById, updateServiceOwn, deleteServiceOwn, reportService, uploadServiceImage, getMyServices } from '../controllers/services.js';
+import prisma from '../db/prisma.js';
 import { uploadSingle } from '../middleware/upload.js';
 
 const router = express.Router();
 
 // GET /services - Get all services (with optional category filter)
 router.get('/', optionalAuthenticate, getServices);
+
+// GET /services/owned/me - Get full list of services owned by the provider
+router.get('/owned/me', authenticate, getMyServices);
 
 // GET /services/:id - Get a specific service by ID
 router.get('/:id', optionalAuthenticate, getServiceById);
@@ -26,8 +29,11 @@ router.put(
   '/:id',
   authenticate,
   requireResourcePermission('services.update_own', async (req) => {
-    const [services] = await pool.execute('SELECT provider_id FROM services WHERE id = ?', [req.params.id]);
-    return services.length > 0 ? services[0].provider_id : null;
+    const service = await prisma.services.findUnique({
+      where: { id: req.params.id },
+      select: { provider_id: true }
+    });
+    return service ? service.provider_id : null;
   }),
   validate(updateOwnServiceSchema),
   updateServiceOwn
@@ -38,8 +44,11 @@ router.delete(
   '/:id',
   authenticate,
   requireResourcePermission('services.delete_own', async (req) => {
-    const [services] = await pool.execute('SELECT provider_id FROM services WHERE id = ?', [req.params.id]);
-    return services.length > 0 ? services[0].provider_id : null;
+    const service = await prisma.services.findUnique({
+      where: { id: req.params.id },
+      select: { provider_id: true }
+    });
+    return service ? service.provider_id : null;
   }),
   deleteServiceOwn
 );

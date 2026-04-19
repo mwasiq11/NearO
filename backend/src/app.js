@@ -1,21 +1,14 @@
+import './env.js';
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
-import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import prisma from './db/prisma.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables: use .env by default, .env.test in test
-if (process.env.NODE_ENV === 'test') {
-  dotenv.config({ path: '.env.test' });
-} else {
-  dotenv.config();
-}
-
-import { initializeDatabase } from './db/database.js';
 import securityMiddleware from './middleware/security.js';
 import { globalLimiter } from './middleware/rateLimit.js';
 import maintenanceMiddleware from './middleware/maintenance.js';
@@ -49,6 +42,7 @@ app.use(securityMiddleware);
 app.use(cors({
   origin: [
     'http://localhost:8080',
+    'http://127.0.0.1:8080',
     'http://localhost:8081',
     'http://localhost:8082',
     'http://localhost:8083',
@@ -72,14 +66,6 @@ app.use('/uploads', (req, res, next) => {
 // Maintenance mode middleware
 app.use(maintenanceMiddleware);
 
-// Initialize database
-initializeDatabase().then(() => {
-  console.log('✅ Database initialized successfully');
-}).catch((error) => {
-  console.error('❌ Failed to initialize database:', error);
-  process.exit(1);
-});
-
 // Health check (no rate limiting)
 app.get('/health', (req, res) => {
   res.json({
@@ -87,7 +73,7 @@ app.get('/health', (req, res) => {
     stage: '3',
     version: API_VERSION,
     message: 'National Scale Up - High Scale & Real Time',
-    database: 'MySQL',
+    database: 'Prisma/PostgreSQL',
     features: {
       authentication: true,
       locationServices: true,
@@ -166,8 +152,8 @@ app.use((error, req, res, next) => {
     });
   }
 
-  // Database errors
-  if (error.code === 'ER_DUP_ENTRY') {
+  // Prisma unique constraint violation
+  if (error.code === 'P2002') {
     return res.status(409).json({
       error: 'Duplicate Entry',
       message: 'A record with this information already exists'
@@ -182,22 +168,30 @@ app.use((error, req, res, next) => {
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   const isNotificationsEnabled = !!(process.env.SMTP_HOST && process.env.SMTP_USER);
   const isRateLimitingActive = !!process.env.RATE_LIMIT_MAX_REQUESTS;
-  const dbStatus = process.env.DB_NAME ? `MySQL (${process.env.DB_NAME})` : 'Not configured';
+  const dbStatus = 'Prisma Connected';
   const redisStatus = getRedisStatus();
 
   console.log(`🚀 Backend running on http://localhost:${PORT}`);
   console.log(`📍 Health check: http://localhost:${PORT}/health`);
   console.log(`🗄️ Database: ${dbStatus}`);
   console.log(`🔐 Authentication: JWT enabled`);
-  console.log(`🌍 Location Services: S2 Geometry enabled`);
+  console.log(`🌍 Location Services: Google Maps + S2 Geometry enabled`);
   console.log(`👥 RBAC: Role-based access control enabled`);
   console.log(`⚡ Rate Limiting: ${isRateLimitingActive ? 'Active' : 'Disabled'}`);
   console.log(`💬 Real-Time Messaging: WebSocket enabled`);
   console.log(`🔔 Push Notifications: ${isNotificationsEnabled ? 'Enabled' : 'Disabled'}`);
   console.log(`⚡ Redis Caching: ${redisStatus}`);
+
+  // Test Prisma connection
+  try {
+    await prisma.$connect();
+    console.log('✅ Prisma connected to database successfully');
+  } catch (err) {
+    console.error('❌ Prisma failed to connect to database:', err.message);
+  }
 });
 
 

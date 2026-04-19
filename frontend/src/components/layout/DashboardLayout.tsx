@@ -68,7 +68,7 @@ const DashboardLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="h-[100dvh] overflow-hidden bg-background flex">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-64 border-r bg-card">
         {/* Logo */}
@@ -191,7 +191,7 @@ const DashboardLayout = () => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto flex flex-col">
           <Outlet />
         </main>
 

@@ -1,4 +1,4 @@
-import { pool } from '../db/database.js';
+import prisma from '../db/prisma.js';
 
 /**
  * Get audit history - role-based access control
@@ -9,63 +9,35 @@ import { pool } from '../db/database.js';
 const getHistory = async (req, res) => {
   try {
     const { page = 1, limit = 50, entity_type, action_type, user_id, start_date, end_date } = req.query;
-    const offset = (page - 1) * limit;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
     const userId = req.user.id;
     const userRole = req.user.role;
 
-    let query = `
-      SELECT 
-        al.id,
-        al.actor_id,
-        u.name as actor_name,
-        u.email as actor_email,
-        al.action_type,
-        al.entity_type,
-        al.entity_id,
-        al.old_value,
-        al.new_value,
-        al.metadata,
-        al.ip_address,
-        al.created_at
-      FROM audit_logs al
-      LEFT JOIN users u ON al.actor_id = u.id
-      WHERE 1=1
-    `;
-    const params = [];
+    const where = {};
 
-    // Role-based access control
+    // Role-based access control filters
     if (userRole === 'user') {
-      // Users can only see their own history
-      query += ' AND al.actor_id = ?';
-      params.push(userId);
+      where.actor_id = userId;
     } else if (userRole === 'moderator') {
-      // Moderators can see:
-      // 1. Service moderation actions
-      // 2. User actions (but not admin-specific actions)
-      query += ` AND (
-        (al.action_type IN ('service_approved', 'service_rejected', 'service_moderated'))
-        OR (al.entity_type = 'user' AND al.action_type NOT IN ('admin_login', 'user_suspended', 'user_banned', 'role_changed'))
-      )`;
+      where.OR = [
+        { action_type: { in: ['service_approved', 'service_rejected', 'service_moderated'] } },
+        { 
+          entity_type: 'user', 
+          action_type: { notIn: ['admin_login', 'user_suspended', 'user_banned', 'role_changed'] } 
+        }
+      ];
     }
-    // Admin has access to everything
 
     // Additional filters
-    if (entity_type) {
-      query += ' AND al.entity_type = ?';
-      params.push(entity_type);
-    }
-
-    if (action_type) {
-      query += ' AND al.action_type = ?';
-      params.push(action_type);
-    }
-
+    if (entity_type) where.entity_type = entity_type;
+    if (action_type) where.action_type = action_type;
+    
     if (user_id) {
       if (userRole === 'admin') {
-        query += ' AND al.actor_id = ?';
-        params.push(user_id);
+        where.actor_id = user_id;
       } else if (userRole !== 'user') {
-        // Moderators can't filter by other users
         return res.status(403).json({ 
           error: 'Unauthorized',
           message: 'Moderators cannot filter history by specific users'
@@ -73,56 +45,40 @@ const getHistory = async (req, res) => {
       }
     }
 
-    if (start_date) {
-      query += ' AND al.created_at >= ?';
-      params.push(start_date);
+    if (start_date || end_date) {
+      where.created_at = {};
+      if (start_date) where.created_at.gte = new Date(start_date);
+      if (end_date) where.created_at.lte = new Date(end_date);
     }
 
-    if (end_date) {
-      query += ' AND al.created_at <= ?';
-      params.push(end_date);
-    }
+    const [history, total] = await Promise.all([
+      prisma.audit_logs.findMany({
+        where,
+        include: {
+          users: {
+            select: { name: true, email: true }
+          }
+        },
+        orderBy: { created_at: 'desc' },
+        skip: offset,
+        take: limitNum
+      }),
+      prisma.audit_logs.count({ where })
+    ]);
 
-    query += ' ORDER BY al.created_at DESC LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), offset);
-
-    const [history] = await pool.execute(query, params);
-
-    // Get total count
-    let countQuery = `
-      SELECT COUNT(*) as total FROM audit_logs al
-      WHERE 1=1
-    `;
-    const countParams = [...params.slice(0, -2)]; // Remove limit and offset
-
-    if (userRole === 'user') {
-      countQuery += ' AND al.actor_id = ?';
-      countParams.push(userId);
-    } else if (userRole === 'moderator') {
-      countQuery += ` AND (
-        (al.action_type IN ('service_approved', 'service_rejected', 'service_moderated'))
-        OR (al.entity_type = 'user' AND al.action_type NOT IN ('admin_login', 'user_suspended', 'user_banned', 'role_changed'))
-      )`;
-    }
-
-    if (entity_type) {
-      countQuery += ' AND al.entity_type = ?';
-    }
-
-    if (action_type) {
-      countQuery += ' AND al.action_type = ?';
-    }
-
-    const [countResult] = await pool.execute(countQuery, countParams);
-    const total = countResult[0].total;
+    const mappedHistory = history.map(h => ({
+      ...h,
+      actor_name: h.users?.name,
+      actor_email: h.users?.email
+    }));
 
     res.json({
-      history,
+      history: mappedHistory,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         total,
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.ceil(total / limitNum)
       }
     });
   } catch (error) {
@@ -136,98 +92,97 @@ const getHistory = async (req, res) => {
  */
 const getUserServiceHistory = async (req, res) => {
   try {
-    const { page = 1, limit = 20, type } = req.query; // type: 'provider' or 'seeker'
-    const offset = (page - 1) * limit;
+    const { page = 1, limit = 20, type = 'seeker' } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
     const userId = req.user.id;
 
     if (!type || !['provider', 'seeker'].includes(type)) {
       return res.status(400).json({ error: 'Type must be either "provider" or "seeker"' });
     }
 
-    let query, params = [userId];
-
     if (type === 'provider') {
-      // Services provided
-      query = `
-        SELECT 
-          s.id,
-          s.title,
-          s.description,
-          s.category,
-          s.price,
-          s.created_at,
-          s.is_active,
-          (SELECT COUNT(*) FROM bookings WHERE service_id = s.id) as booking_count,
-          (SELECT AVG(rating) FROM reviews WHERE service_id = s.id) as avg_rating
-        FROM services s
-        WHERE s.provider_id = ?
-        ORDER BY s.created_at DESC
-        LIMIT ? OFFSET ?
-      `;
-      params.push(parseInt(limit), offset);
+      const [services, total] = await Promise.all([
+        prisma.services.findMany({
+          where: { provider_id: userId },
+          include: {
+            _count: {
+              select: { bookings: true }
+            },
+            reviews: {
+              select: { rating: true }
+            }
+          },
+          orderBy: { created_at: 'desc' },
+          skip: offset,
+          take: limitNum
+        }),
+        prisma.services.count({ where: { provider_id: userId } })
+      ]);
 
-      const [services] = await pool.execute(query, params);
-
-      const [countResult] = await pool.execute(
-        'SELECT COUNT(*) as total FROM services WHERE provider_id = ?',
-        [userId]
-      );
-
-      const total = countResult[0].total;
+      const mappedServices = services.map(s => {
+        const avgRating = s.reviews.length > 0 
+          ? s.reviews.reduce((acc, curr) => acc + curr.rating, 0) / s.reviews.length 
+          : 0;
+        return {
+          ...s,
+          booking_count: s._count.bookings,
+          avg_rating: avgRating
+        };
+      });
 
       res.json({
-        services: services.map(s => ({
-          ...s,
-          avg_rating: parseFloat(s.avg_rating) || 0
-        })),
+        services: mappedServices,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: pageNum,
+          limit: limitNum,
           total,
-          totalPages: Math.ceil(total / limit)
+          totalPages: Math.ceil(total / limitNum)
         }
       });
     } else {
-      // Services booked (as seeker)
-      query = `
-        SELECT 
-          b.id as booking_id,
-          b.requested_time,
-          b.status,
-          b.created_at,
-          s.id as service_id,
-          s.title,
-          s.description,
-          s.category,
-          s.price,
-          u.id as provider_id,
-          u.name as provider_name,
-          u.email as provider_email
-        FROM bookings b
-        JOIN services s ON b.service_id = s.id
-        JOIN users u ON s.provider_id = u.id
-        WHERE b.seeker_id = ?
-        ORDER BY b.created_at DESC
-        LIMIT ? OFFSET ?
-      `;
-      params.push(parseInt(limit), offset);
+      const [bookings, total] = await Promise.all([
+        prisma.bookings.findMany({
+          where: { seeker_id: userId },
+          include: {
+            services: {
+              include: {
+                users_services_provider_idTousers: {
+                  select: { id: true, name: true, email: true }
+                }
+              }
+            }
+          },
+          orderBy: { created_at: 'desc' },
+          skip: offset,
+          take: limitNum
+        }),
+        prisma.bookings.count({ where: { seeker_id: userId } })
+      ]);
 
-      const [bookings] = await pool.execute(query, params);
-
-      const [countResult] = await pool.execute(
-        'SELECT COUNT(*) as total FROM bookings WHERE seeker_id = ?',
-        [userId]
-      );
-
-      const total = countResult[0].total;
+      const mappedBookings = bookings.map(b => ({
+        booking_id: b.id,
+        requested_time: b.requested_time,
+        status: b.status,
+        created_at: b.created_at,
+        service_id: b.services.id,
+        title: b.services.title,
+        description: b.services.description,
+        category: b.services.category,
+        price: b.services.price,
+        provider_id: b.services.users_services_provider_idTousers.id,
+        provider_name: b.services.users_services_provider_idTousers.name,
+        provider_email: b.services.users_services_provider_idTousers.email
+      }));
 
       res.json({
-        bookings,
+        bookings: mappedBookings,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: pageNum,
+          limit: limitNum,
           total,
-          totalPages: Math.ceil(total / limit)
+          totalPages: Math.ceil(total / limitNum)
         }
       });
     }
@@ -246,63 +201,47 @@ const getDashboardStats = async (req, res) => {
     const userId = req.user.id;
 
     if (userRole === 'admin') {
-      // Admin dashboard stats
-      const [totalUsersResult] = await pool.execute('SELECT COUNT(*) as total FROM users');
-      const [totalServicesResult] = await pool.execute('SELECT COUNT(*) as total FROM services WHERE is_active = TRUE');
-      const [totalBookingsResult] = await pool.execute('SELECT COUNT(*) as total FROM bookings');
-      const [pendingModerationsResult] = await pool.execute('SELECT COUNT(*) as total FROM services WHERE is_active = FALSE AND moderated_at IS NULL');
-      const [totalReportsResult] = await pool.execute('SELECT COUNT(*) as total FROM user_reports WHERE status = "pending"');
+      const [totalUsers, totalServices, totalBookings, pendingModerations, pendingReports] = await Promise.all([
+        prisma.users.count(),
+        prisma.services.count({ where: { is_active: true } }),
+        prisma.bookings.count(),
+        prisma.services.count({ where: { is_active: false, moderated_at: null } }),
+        prisma.user_reports.count({ where: { status: 'pending' } })
+      ]);
 
       res.json({
         role: 'admin',
-        stats: {
-          totalUsers: totalUsersResult[0].total,
-          totalServices: totalServicesResult[0].total,
-          totalBookings: totalBookingsResult[0].total,
-          pendingModerations: pendingModerationsResult[0].total,
-          pendingReports: totalReportsResult[0].total
-        }
+        stats: { totalUsers, totalServices, totalBookings, pendingModerations, pendingReports }
       });
     } else if (userRole === 'moderator') {
-      // Moderator dashboard stats
-      const [totalServicesResult] = await pool.execute('SELECT COUNT(*) as total FROM services WHERE is_active = TRUE');
-      const [pendingModerationsResult] = await pool.execute('SELECT COUNT(*) as total FROM services WHERE moderated_at IS NULL');
-      const [totalReportsResult] = await pool.execute('SELECT COUNT(*) as total FROM user_reports WHERE status = "pending"');
+      const [totalServices, pendingModerations, pendingReports] = await Promise.all([
+        prisma.services.count({ where: { is_active: true } }),
+        prisma.services.count({ where: { moderated_at: null } }),
+        prisma.user_reports.count({ where: { status: 'pending' } })
+      ]);
 
       res.json({
         role: 'moderator',
-        stats: {
-          totalServices: totalServicesResult[0].total,
-          pendingModerations: pendingModerationsResult[0].total,
-          pendingReports: totalReportsResult[0].total
-        }
+        stats: { totalServices, pendingModerations, pendingReports }
       });
     } else {
-      // User dashboard stats
-      const [servicesProvidedResult] = await pool.execute(
-        'SELECT COUNT(*) as total FROM services WHERE provider_id = ?',
-        [userId]
-      );
-      const [bookingsMadeResult] = await pool.execute(
-        'SELECT COUNT(*) as total FROM bookings WHERE seeker_id = ?',
-        [userId]
-      );
-      const [reviewsReceivedResult] = await pool.execute(
-        'SELECT COUNT(*) as total FROM reviews WHERE provider_id = ?',
-        [userId]
-      );
-      const [avgRatingResult] = await pool.execute(
-        'SELECT AVG(rating) as avg_rating FROM reviews WHERE provider_id = ?',
-        [userId]
-      );
+      const [servicesProvided, bookingsMade, reviewsReceived, avgRatingResult] = await Promise.all([
+        prisma.services.count({ where: { provider_id: userId } }),
+        prisma.bookings.count({ where: { seeker_id: userId } }),
+        prisma.reviews.count({ where: { provider_id: userId } }),
+        prisma.reviews.aggregate({
+          where: { provider_id: userId },
+          _avg: { rating: true }
+        })
+      ]);
 
       res.json({
         role: 'user',
         stats: {
-          servicesProvided: servicesProvidedResult[0].total,
-          bookingsMade: bookingsMadeResult[0].total,
-          reviewsReceived: reviewsReceivedResult[0].total,
-          avgRating: parseFloat(avgRatingResult[0].avg_rating) || 0
+          servicesProvided,
+          bookingsMade,
+          reviewsReceived,
+          avgRating: avgRatingResult._avg.rating || 0
         }
       });
     }

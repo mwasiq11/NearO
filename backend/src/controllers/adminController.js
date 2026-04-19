@@ -1,17 +1,23 @@
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcrypt';
-import { pool } from '../db/database.js';
+import prisma from '../db/prisma.js';
 import { normalizeLocation } from '../utils/location.js';
 import { invalidateCache } from '../cache/cache.js';
 import { logAudit, buildRequestContext } from '../audit/logger.js';
+import { getIO } from '../realtime/socket.js';
 
 async function logAdminAction(action, actorId, targetType = null, targetId = null, metadata = null, req = null) {
   try {
-    await pool.execute(
-      `INSERT INTO admin_action_logs (id, action, actor_id, target_type, target_id, metadata)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [uuidv4(), action, actorId, targetType, targetId, metadata ? JSON.stringify(metadata) : null]
-    );
+    await prisma.admin_action_logs.create({
+      data: {
+        id: uuidv4(),
+        action,
+        actor_id: actorId,
+        target_type: targetType,
+        target_id: targetId,
+        metadata: metadata ? (typeof metadata === 'string' ? metadata : JSON.stringify(metadata)) : null
+      }
+    });
     if (req) {
       const ctx = buildRequestContext(req);
       await logAudit({
@@ -39,44 +45,35 @@ const getAllUsers = async (req, res) => {
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
 
-    let query = 'SELECT id, name, email, role, is_active, is_verified, created_at, last_login_at FROM users WHERE 1=1';
-    const params = [];
-
-    if (role) {
-      query += ' AND role = ?';
-      params.push(role);
-    }
-
-    if (is_active !== undefined) {
-      query += ' AND is_active = ?';
-      params.push(is_active === 'true');
-    }
-
+    const where = {};
+    if (role) where.role = role;
+    if (is_active !== undefined) where.is_active = is_active === 'true';
     if (search) {
-      query += ' AND (name LIKE ? OR email LIKE ?)';
-      const searchTerm = `%${search}%`;
-      params.push(searchTerm, searchTerm);
+      where.OR = [
+        { name: { contains: search } },
+        { email: { contains: search } }
+      ];
     }
 
-    query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-    params.push(limitNum, offset);
-
-    const [users] = await pool.execute(query, params);
-
-    // Get total count with same filters
-    let countQuery = 'SELECT COUNT(*) as total FROM users WHERE 1=1';
-    if (role) {
-      countQuery += ' AND role = ?';
-    }
-    if (is_active !== undefined) {
-      countQuery += ' AND is_active = ?';
-    }
-    if (search) {
-      countQuery += ' AND (name LIKE ? OR email LIKE ?)';
-    }
-    const countParams = params.slice(0, -2); // Remove limit and offset
-    const [countResult] = await pool.execute(countQuery, countParams);
-    const total = countResult[0].total;
+    const [users, total] = await Promise.all([
+      prisma.users.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          is_active: true,
+          is_verified: true,
+          created_at: true,
+          last_login_at: true
+        },
+        orderBy: { created_at: 'desc' },
+        skip: offset,
+        take: limitNum
+      }),
+      prisma.users.count({ where })
+    ]);
 
     res.json({
       users,
@@ -100,24 +97,32 @@ const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [users] = await pool.execute(
-      'SELECT id, name, email, role, is_active, is_verified, created_at, last_login_at, suspended_until, suspension_reason FROM users WHERE id = ?',
-      [id]
-    );
+    const user = await prisma.users.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        is_active: true,
+        is_verified: true,
+        created_at: true,
+        last_login_at: true,
+        suspended_until: true,
+        suspension_reason: true
+      }
+    });
 
-    if (users.length === 0) {
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const [warnings] = await pool.execute(
-      'SELECT id, reason, warned_by, created_at FROM user_warnings WHERE user_id = ? ORDER BY created_at DESC',
-      [id]
-    );
-
-    res.json({
-      user: users[0],
-      warnings
+    const warnings = await prisma.user_warnings.findMany({
+      where: { user_id: id },
+      orderBy: { created_at: 'desc' }
     });
+
+    res.json({ user, warnings });
   } catch (error) {
     console.error('Error getting user details:', error);
     res.status(500).json({ error: error.message });
@@ -137,12 +142,14 @@ const suspendUser = async (req, res) => {
     }
 
     // Check if user exists
-    const [users] = await pool.execute('SELECT id, role FROM users WHERE id = ?', [id]);
-    if (users.length === 0) {
+    const user = await prisma.users.findUnique({
+      where: { id },
+      select: { id: true, role: true }
+    });
+
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-
-    const user = users[0];
 
     // Prevent suspending admins (unless current user is also admin)
     if (user.role === 'admin' && req.user.role !== 'admin') {
@@ -153,15 +160,22 @@ const suspendUser = async (req, res) => {
     const suspendedUntil = new Date();
     suspendedUntil.setHours(suspendedUntil.getHours() + parseInt(duration_hours));
 
-    await pool.execute(
-      'UPDATE users SET is_active = FALSE, suspended_until = ?, suspension_reason = ? WHERE id = ?',
-      [suspendedUntil, reason || 'Suspended by moderator', id]
-    );
+    await prisma.users.update({
+      where: { id },
+      data: {
+        is_active: false,
+        suspended_until: suspendedUntil,
+        suspension_reason: reason || 'Suspended by moderator'
+      }
+    });
 
     res.json({ 
       message: 'User suspended successfully',
       suspended_until: suspendedUntil
     });
+
+    // Notify moderators/admins
+    getIO()?.to('moderation').emit('user:suspended', { userId: id, actorId: req.user.id });
 
     await logAdminAction('user_suspend', req.user.id, 'user', id, {
       duration_hours: duration_hours,
@@ -180,12 +194,19 @@ const unsuspendUser = async (req, res) => {
   try {
     const { id } = req.params;
 
-    await pool.execute(
-      'UPDATE users SET is_active = TRUE, suspended_until = NULL, suspension_reason = NULL WHERE id = ?',
-      [id]
-    );
+    await prisma.users.update({
+      where: { id },
+      data: {
+        is_active: true,
+        suspended_until: null,
+        suspension_reason: null
+      }
+    });
 
     res.json({ message: 'User unsuspended successfully' });
+
+    // Notify moderators/admins
+    getIO()?.to('moderation').emit('user:unsuspended', { userId: id, actorId: req.user.id });
 
     await logAdminAction('user_unsuspend', req.user.id, 'user', id, null, req);
   } catch (error) {
@@ -202,16 +223,24 @@ const warnUser = async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
 
-    const [users] = await pool.execute('SELECT id FROM users WHERE id = ?', [id]);
-    if (users.length === 0) {
+    const user = await prisma.users.findUnique({
+      where: { id },
+      select: { id: true }
+    });
+
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
     const warningId = uuidv4();
-    await pool.execute(
-      'INSERT INTO user_warnings (id, user_id, warned_by, reason) VALUES (?, ?, ?, ?)',
-      [warningId, id, req.user.id, reason]
-    );
+    await prisma.user_warnings.create({
+      data: {
+        id: warningId,
+        user_id: id,
+        warned_by: req.user.id,
+        reason
+      }
+    });
 
     res.status(201).json({ message: 'User warned successfully' });
 
@@ -230,20 +259,27 @@ const banUser = async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
 
-    const [users] = await pool.execute('SELECT id, role FROM users WHERE id = ?', [id]);
-    if (users.length === 0) {
+    const user = await prisma.users.findUnique({
+      where: { id },
+      select: { id: true, role: true }
+    });
+
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const user = users[0];
     if (user.role === 'admin') {
       return res.status(403).json({ error: 'Cannot ban admin users' });
     }
 
-    await pool.execute(
-      'UPDATE users SET is_active = FALSE, suspended_until = NULL, suspension_reason = ? WHERE id = ?',
-      [reason ? `Banned: ${reason}` : 'Banned by admin', id]
-    );
+    await prisma.users.update({
+      where: { id },
+      data: {
+        is_active: false,
+        suspended_until: null,
+        suspension_reason: reason ? `Banned: ${reason}` : 'Banned by admin'
+      }
+    });
 
     res.json({ message: 'User banned successfully' });
 
@@ -262,12 +298,19 @@ const updateUserRole = async (req, res) => {
     const { id } = req.params;
     const { role } = req.body;
 
-    const [users] = await pool.execute('SELECT id, role FROM users WHERE id = ?', [id]);
-    if (users.length === 0) {
+    const user = await prisma.users.findUnique({
+      where: { id },
+      select: { id: true, role: true }
+    });
+
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    await pool.execute('UPDATE users SET role = ? WHERE id = ?', [role, id]);
+    await prisma.users.update({
+      where: { id },
+      data: { role }
+    });
 
     res.json({ message: 'User role updated successfully' });
 
@@ -288,23 +331,29 @@ const getPendingServices = async (req, res) => {
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
 
-    const [services] = await pool.execute(
-      `SELECT s.*, u.name as provider_name, u.email as provider_email 
-       FROM services s 
-       JOIN users u ON s.provider_id = u.id 
-       WHERE s.moderated_at IS NULL 
-       ORDER BY s.created_at ASC 
-       LIMIT ? OFFSET ?`,
-      [limitNum, offset]
-    );
+    const [services, total] = await Promise.all([
+      prisma.services.findMany({
+        where: { moderated_at: null },
+        include: {
+          users_services_provider_idTousers: {
+            select: { name: true, email: true }
+          }
+        },
+        orderBy: { created_at: 'asc' },
+        skip: offset,
+        take: limitNum
+      }),
+      prisma.services.count({ where: { moderated_at: null } })
+    ]);
 
-    const [countResult] = await pool.execute(
-      'SELECT COUNT(*) as total FROM services WHERE moderated_at IS NULL'
-    );
-    const total = countResult[0].total;
+    const mappedServices = services.map(s => ({
+      ...s,
+      provider_name: s.users_services_provider_idTousers.name,
+      provider_email: s.users_services_provider_idTousers.email
+    }));
 
     res.json({
-      services,
+      services: mappedServices,
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -325,19 +374,24 @@ const getServiceByIdAdmin = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [services] = await pool.execute(
-      `SELECT s.*, u.name as provider_name, u.email as provider_email
-       FROM services s
-       JOIN users u ON s.provider_id = u.id
-       WHERE s.id = ?`,
-      [id]
-    );
+    const service = await prisma.services.findUnique({
+      where: { id },
+      include: {
+        users_services_provider_idTousers: {
+          select: { name: true, email: true }
+        }
+      }
+    });
 
-    if (services.length === 0) {
+    if (!service) {
       return res.status(404).json({ error: 'Service not found' });
     }
 
-    res.json(services[0]);
+    res.json({
+      ...service,
+      provider_name: service.users_services_provider_idTousers.name,
+      provider_email: service.users_services_provider_idTousers.email
+    });
   } catch (error) {
     console.error('Error getting service details:', error);
     res.status(500).json({ error: error.message });
@@ -363,20 +417,23 @@ const updateServiceAny = async (req, res) => {
       is_active
     } = req.body;
 
-    const [services] = await pool.execute('SELECT id FROM services WHERE id = ?', [id]);
-    if (services.length === 0) {
+    const service = await prisma.services.findUnique({
+      where: { id }
+    });
+
+    if (!service) {
       return res.status(404).json({ error: 'Service not found' });
     }
 
-    const updates = [];
-    const params = [];
-
-    if (title !== undefined) { updates.push('title = ?'); params.push(title); }
-    if (description !== undefined) { updates.push('description = ?'); params.push(description); }
-    if (category !== undefined) { updates.push('category = ?'); params.push(category); }
-    if (price !== undefined) { updates.push('price = ?'); params.push(price); }
-    if (availability !== undefined) { updates.push('availability = ?'); params.push(availability); }
-    if (is_active !== undefined) { updates.push('is_active = ?'); params.push(is_active); }
+    const updateData = {};
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (category !== undefined) updateData.category = category;
+    if (price !== undefined) updateData.price = price;
+    if (availability !== undefined) updateData.availability = availability;
+    if (is_active !== undefined) updateData.is_active = is_active;
+    if (neighborhood !== undefined) updateData.neighborhood = neighborhood;
+    if (city !== undefined) updateData.city = city;
 
     if (latitude !== undefined || longitude !== undefined) {
       if (latitude === undefined || longitude === undefined) {
@@ -386,31 +443,26 @@ const updateServiceAny = async (req, res) => {
       if (!locationData) {
         return res.status(400).json({ error: 'Invalid location data' });
       }
-      updates.push('latitude = ?', 'longitude = ?', 's2_cell_id = ?', 'neighborhood = ?', 'city = ?');
-      params.push(
-        locationData.latitude,
-        locationData.longitude,
-        locationData.s2_cell_id ? locationData.s2_cell_id.toString() : null,
-        locationData.neighborhood,
-        locationData.city
-      );
-    } else {
-      if (neighborhood !== undefined) { updates.push('neighborhood = ?'); params.push(neighborhood); }
-      if (city !== undefined) { updates.push('city = ?'); params.push(city); }
+      updateData.latitude = locationData.latitude;
+      updateData.longitude = locationData.longitude;
+      updateData.s2_cell_id = locationData.s2_cell_id ? locationData.s2_cell_id.toString() : null;
+      updateData.neighborhood = locationData.neighborhood;
+      updateData.city = locationData.city;
     }
 
-    if (updates.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
 
-    params.push(id);
-    await pool.execute(`UPDATE services SET ${updates.join(', ')} WHERE id = ?`, params);
+    const updated = await prisma.services.update({
+      where: { id },
+      data: updateData
+    });
 
-    const [updated] = await pool.execute('SELECT * FROM services WHERE id = ?', [id]);
-    res.json(updated[0]);
+    res.json(updated);
 
     await logAdminAction('service_update_any', req.user.id, 'service', id, {
-      fields: updates.map(entry => entry.split('=')[0].trim())
+      fields: Object.keys(updateData)
     }, req);
   } catch (error) {
     console.error('Error updating service:', error);
@@ -425,12 +477,18 @@ const deleteServiceAny = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [services] = await pool.execute('SELECT id FROM services WHERE id = ?', [id]);
-    if (services.length === 0) {
+    const service = await prisma.services.findUnique({
+      where: { id },
+      select: { id: true }
+    });
+
+    if (!service) {
       return res.status(404).json({ error: 'Service not found' });
     }
 
-    await pool.execute('DELETE FROM services WHERE id = ?', [id]);
+    await prisma.services.delete({
+      where: { id }
+    });
 
     res.json({ message: 'Service deleted successfully' });
 
@@ -448,12 +506,22 @@ const approveService = async (req, res) => {
   try {
     const { id } = req.params;
 
-    await pool.execute(
-      'UPDATE services SET moderated_at = NOW(), moderated_by = ?, is_active = TRUE WHERE id = ?',
-      [req.user.id, id]
-    );
+    await prisma.services.update({
+      where: { id },
+      data: {
+        moderated_at: new Date(),
+        moderated_by: req.user.id,
+        is_active: true
+      }
+    });
 
     res.json({ message: 'Service approved successfully' });
+
+    // Notify moderators/admins and the owner
+    const io = getIO();
+    if (io) {
+      io.to('moderation').emit('service:approved', { serviceId: id, actorId: req.user.id });
+    }
 
     await logAdminAction('service_approve', req.user.id, 'service', id, null, req);
   } catch (error) {
@@ -470,12 +538,19 @@ const rejectService = async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
 
-    await pool.execute(
-      'UPDATE services SET moderated_at = NOW(), moderated_by = ?, is_active = FALSE WHERE id = ?',
-      [req.user.id, id]
-    );
+    await prisma.services.update({
+      where: { id },
+      data: {
+        moderated_at: new Date(),
+        moderated_by: req.user.id,
+        is_active: false
+      }
+    });
 
     res.json({ message: 'Service rejected successfully' });
+
+    // Notify moderators/admins
+    getIO()?.to('moderation').emit('service:rejected', { serviceId: id, actorId: req.user.id });
 
     await logAdminAction('service_reject', req.user.id, 'service', id, { reason: reason || null }, req);
   } catch (error) {
@@ -494,37 +569,33 @@ const getUserReports = async (req, res) => {
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
 
-    let query = `
-      SELECT r.*, 
-             u1.name as reported_user_name, 
-             u2.name as reporter_name,
-             u3.name as reviewer_name
-      FROM user_reports r
-      LEFT JOIN users u1 ON r.reported_user_id = u1.id
-      LEFT JOIN users u2 ON r.reported_by = u2.id
-      LEFT JOIN users u3 ON r.reviewed_by = u3.id
-      WHERE 1=1
-    `;
-    const params = [];
+    const where = {};
+    if (status) where.status = status;
 
-    if (status) {
-      query += ' AND r.status = ?';
-      params.push(status);
-    }
+    const [reports, total] = await Promise.all([
+      prisma.user_reports.findMany({
+        where,
+        include: {
+          users_user_reports_reported_user_idTousers: { select: { name: true } },
+          users_user_reports_reported_byTousers: { select: { name: true } },
+          users_user_reports_reviewed_byTousers: { select: { name: true } }
+        },
+        orderBy: { created_at: 'desc' },
+        skip: offset,
+        take: limitNum
+      }),
+      prisma.user_reports.count({ where })
+    ]);
 
-    query += ' ORDER BY r.created_at DESC LIMIT ? OFFSET ?';
-    params.push(limitNum, offset);
-
-    const [reports] = await pool.execute(query, params);
-
-    const [countResult] = await pool.execute(
-      'SELECT COUNT(*) as total FROM user_reports' + (status ? ' WHERE status = ?' : ''),
-      status ? [status] : []
-    );
-    const total = countResult[0].total;
+    const mappedReports = reports.map(r => ({
+      ...r,
+      reported_user_name: r.users_user_reports_reported_user_idTousers?.name,
+      reporter_name: r.users_user_reports_reported_byTousers?.name,
+      reviewer_name: r.users_user_reports_reviewed_byTousers?.name
+    }));
 
     res.json({
-      reports,
+      reports: mappedReports,
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -550,12 +621,19 @@ const updateReportStatus = async (req, res) => {
       return res.status(400).json({ error: 'Invalid status' });
     }
 
-    await pool.execute(
-      'UPDATE user_reports SET status = ?, reviewed_by = ?, reviewed_at = NOW() WHERE id = ?',
-      [status, req.user.id, id]
-    );
+    await prisma.user_reports.update({
+      where: { id },
+      data: {
+        status,
+        reviewed_by: req.user.id,
+        reviewed_at: new Date()
+      }
+    });
 
     res.json({ message: 'Report status updated successfully' });
+
+    // Notify moderators/admins
+    getIO()?.to('moderation').emit('report:updated', { reportId: id, status, actorId: req.user.id });
 
     await logAdminAction('report_status_update', req.user.id, 'report', id, { status }, req);
   } catch (error) {
@@ -570,16 +648,15 @@ const updateReportStatus = async (req, res) => {
 const listCategoriesAdmin = async (req, res) => {
   try {
     const { include_inactive } = req.query;
-    let query = 'SELECT * FROM service_categories';
-    const params = [];
-
+    const where = {};
     if (!include_inactive) {
-      query += ' WHERE is_active = TRUE';
+      where.is_active = true;
     }
 
-    query += ' ORDER BY name ASC';
-
-    const [categories] = await pool.execute(query, params);
+    const categories = await prisma.service_categories.findMany({
+      where,
+      orderBy: { name: 'asc' }
+    });
     res.json({ categories });
   } catch (error) {
     console.error('Error listing categories:', error);
@@ -592,13 +669,15 @@ const createCategory = async (req, res) => {
     const { name, description } = req.body;
     const id = uuidv4();
 
-    await pool.execute(
-      'INSERT INTO service_categories (id, name, description) VALUES (?, ?, ?)',
-      [id, name, description || null]
-    );
+    const category = await prisma.service_categories.create({
+      data: {
+        id,
+        name,
+        description: description || null
+      }
+    });
 
-    const [categories] = await pool.execute('SELECT * FROM service_categories WHERE id = ?', [id]);
-    res.status(201).json(categories[0]);
+    res.status(201).json(category);
 
     await logAdminAction('category_create', req.user.id, 'category', id, { name }, req);
     await invalidateCache('cache:categories:active');
@@ -613,28 +692,24 @@ const updateCategory = async (req, res) => {
     const { id } = req.params;
     const { name, description, is_active } = req.body;
 
-    const updates = [];
-    const params = [];
-    if (name !== undefined) { updates.push('name = ?'); params.push(name); }
-    if (description !== undefined) { updates.push('description = ?'); params.push(description); }
-    if (is_active !== undefined) { updates.push('is_active = ?'); params.push(is_active); }
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (is_active !== undefined) updateData.is_active = is_active;
 
-    if (updates.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
 
-    params.push(id);
-    await pool.execute(`UPDATE service_categories SET ${updates.join(', ')} WHERE id = ?`, params);
+    const category = await prisma.service_categories.update({
+      where: { id },
+      data: updateData
+    });
 
-    const [categories] = await pool.execute('SELECT * FROM service_categories WHERE id = ?', [id]);
-    if (categories.length === 0) {
-      return res.status(404).json({ error: 'Category not found' });
-    }
-
-    res.json(categories[0]);
+    res.json(category);
 
     await logAdminAction('category_update', req.user.id, 'category', id, {
-      fields: updates.map(entry => entry.split('=')[0].trim())
+      fields: Object.keys(updateData)
     }, req);
     await invalidateCache('cache:categories:active');
   } catch (error) {
@@ -647,7 +722,10 @@ const deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
 
-    await pool.execute('UPDATE service_categories SET is_active = FALSE WHERE id = ?', [id]);
+    await prisma.service_categories.update({
+      where: { id },
+      data: { is_active: false }
+    });
     res.json({ message: 'Category deactivated successfully' });
 
     await logAdminAction('category_deactivate', req.user.id, 'category', id, null, req);
@@ -670,15 +748,13 @@ const createModerator = async (req, res) => {
     }
 
     // Check if user already exists
-    const [existing] = await pool.execute(
-      'SELECT id, role, password FROM users WHERE email = ?', 
-      [email]
-    );
+    const existingUser = await prisma.users.findUnique({
+      where: { email },
+      select: { id: true, role: true }
+    });
 
-    if (existing.length > 0) {
+    if (existingUser) {
       // User exists - promote them to moderator
-      const existingUser = existing[0];
-      
       if (existingUser.role === 'admin') {
         return res.status(400).json({ error: 'Cannot modify admin users' });
       }
@@ -688,10 +764,10 @@ const createModerator = async (req, res) => {
       }
 
       // Promote existing user to moderator
-      await pool.execute(
-        'UPDATE users SET role = ?, is_verified = ? WHERE id = ?',
-        ['moderator', true, existingUser.id]
-      );
+      await prisma.users.update({
+        where: { id: existingUser.id },
+        data: { role: 'moderator', is_verified: true }
+      });
 
       await logAdminAction('moderator_promote', req.user.id, 'user', existingUser.id, null, req);
 
@@ -713,10 +789,17 @@ const createModerator = async (req, res) => {
       const hashedPassword = await bcrypt.hash(password, 10);
 
       // Create moderator with verified status
-      await pool.execute(
-        'INSERT INTO users (id, name, email, password, role, is_active, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [id, name, email, hashedPassword, 'moderator', true, true]
-      );
+      await prisma.users.create({
+        data: {
+          id,
+          name,
+          email,
+          password: hashedPassword,
+          role: 'moderator',
+          is_active: true,
+          is_verified: true
+        }
+      });
 
       await logAdminAction('moderator_create', req.user.id, 'user', id, null, req);
 
@@ -736,9 +819,20 @@ const createModerator = async (req, res) => {
 
 const listModerators = async (req, res) => {
   try {
-    const [moderators] = await pool.execute(
-      'SELECT id, name, email, role, is_active, created_at FROM users WHERE role IN (\'moderator\', \'admin\') ORDER BY created_at DESC'
-    );
+    const moderators = await prisma.users.findMany({
+      where: {
+        role: { in: ['moderator', 'admin'] }
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        is_active: true,
+        created_at: true
+      },
+      orderBy: { created_at: 'desc' }
+    });
     res.json({ moderators });
   } catch (error) {
     console.error('Error listing moderators:', error);
@@ -749,7 +843,10 @@ const listModerators = async (req, res) => {
 const promoteToModerator = async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.execute('UPDATE users SET role = ? WHERE id = ?', ['moderator', id]);
+    await prisma.users.update({
+      where: { id },
+      data: { role: 'moderator' }
+    });
     res.json({ message: 'User promoted to moderator' });
 
     await logAdminAction('moderator_promote', req.user.id, 'user', id, null, req);
@@ -762,14 +859,22 @@ const promoteToModerator = async (req, res) => {
 const demoteModerator = async (req, res) => {
   try {
     const { id } = req.params;
-    const [users] = await pool.execute('SELECT role FROM users WHERE id = ?', [id]);
-    if (users.length === 0) {
+    const user = await prisma.users.findUnique({
+      where: { id },
+      select: { role: true }
+    });
+
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    if (users[0].role === 'admin') {
+    if (user.role === 'admin') {
       return res.status(403).json({ error: 'Cannot demote admin user' });
     }
-    await pool.execute('UPDATE users SET role = ? WHERE id = ?', ['user', id]);
+
+    await prisma.users.update({
+      where: { id },
+      data: { role: 'user' }
+    });
     res.json({ message: 'Moderator demoted to user' });
 
     await logAdminAction('moderator_demote', req.user.id, 'user', id, null, req);
@@ -784,38 +889,56 @@ const demoteModerator = async (req, res) => {
  */
 const getAnalyticsDashboard = async (req, res) => {
   try {
-    const [[userCounts]] = await pool.execute(
-      `SELECT 
-         COUNT(*) as total,
-         SUM(role = 'user') as users,
-         SUM(role = 'moderator') as moderators,
-         SUM(role = 'admin') as admins,
-         SUM(is_active = TRUE) as active_users
-       FROM users`
-    );
+    const [userCounts, serviceCounts, reportCounts] = await Promise.all([
+      prisma.users.aggregate({
+        _count: { _all: true }
+      }),
+      prisma.services.aggregate({
+        _count: { _all: true }
+      }),
+      prisma.user_reports.groupBy({
+        by: ['status'],
+        _count: { _all: true }
+      })
+    ]);
 
-    const [[serviceCounts]] = await pool.execute(
-      `SELECT 
-         COALESCE(COUNT(*), 0) as total,
-         COALESCE(SUM(is_active = TRUE), 0) as active,
-         COALESCE(SUM(moderated_at IS NULL AND is_active = TRUE), 0) as pending
-       FROM services`
-    );
+    // Role-specific counts for users
+    const [roleCounts] = await Promise.all([
+      prisma.users.groupBy({
+        by: ['role'],
+        _count: { _all: true }
+      })
+    ]);
 
-    const [[reportCounts]] = await pool.execute(
-      `SELECT 
-         COALESCE(COUNT(*), 0) as total,
-         COALESCE(SUM(status = 'pending'), 0) as pending,
-         COALESCE(SUM(status = 'reviewed'), 0) as reviewed,
-         COALESCE(SUM(status = 'resolved'), 0) as resolved,
-         COALESCE(SUM(status = 'dismissed'), 0) as dismissed
-       FROM user_reports`
-    );
+    const formattedUserCounts = {
+      total: userCounts._count._all,
+      users: roleCounts.find(r => r.role === 'user')?._count._all || 0,
+      moderators: roleCounts.find(r => r.role === 'moderator')?._count._all || 0,
+      admins: roleCounts.find(r => r.role === 'admin')?._count._all || 0,
+      active_users: 0
+    };
+    
+    // Accurate active user count
+    formattedUserCounts.active_users = await prisma.users.count({ where: { is_active: true } });
+
+    const formattedServiceCounts = {
+      total: serviceCounts._count._all,
+      active: await prisma.services.count({ where: { is_active: true } }),
+      pending: await prisma.services.count({ where: { moderated_at: null, is_active: true } })
+    };
+
+    const formattedReportCounts = {
+      total: await prisma.user_reports.count(),
+      pending: reportCounts.find(r => r.status === 'pending')?._count._all || 0,
+      reviewed: reportCounts.find(r => r.status === 'reviewed')?._count._all || 0,
+      resolved: reportCounts.find(r => r.status === 'resolved')?._count._all || 0,
+      dismissed: reportCounts.find(r => r.status === 'dismissed')?._count._all || 0
+    };
 
     res.json({
-      users: userCounts,
-      services: serviceCounts,
-      reports: reportCounts
+      users: formattedUserCounts,
+      services: formattedServiceCounts,
+      reports: formattedReportCounts
     });
   } catch (error) {
     console.error('Error getting analytics dashboard:', error);
@@ -825,12 +948,18 @@ const getAnalyticsDashboard = async (req, res) => {
 
 const getAnalyticsUsers = async (req, res) => {
   try {
-    const [rows] = await pool.execute(
-      `SELECT role, is_active, COUNT(*) as count
-       FROM users
-       GROUP BY role, is_active`
-    );
-    res.json({ users: rows });
+    const rows = await prisma.users.groupBy({
+      by: ['role', 'is_active'],
+      _count: { _all: true }
+    });
+    
+    const mappedRows = rows.map(r => ({
+      role: r.role,
+      is_active: r.is_active,
+      count: r._count._all
+    }));
+
+    res.json({ users: mappedRows });
   } catch (error) {
     console.error('Error getting user analytics:', error);
     res.status(500).json({ error: error.message });
@@ -839,12 +968,18 @@ const getAnalyticsUsers = async (req, res) => {
 
 const getAnalyticsServices = async (req, res) => {
   try {
-    const [rows] = await pool.execute(
-      `SELECT category, city, COUNT(*) as count
-       FROM services
-       GROUP BY category, city`
-    );
-    res.json({ services: rows });
+    const rows = await prisma.services.groupBy({
+      by: ['category', 'city'],
+      _count: { _all: true }
+    });
+
+    const mappedRows = rows.map(r => ({
+      category: r.category,
+      city: r.city,
+      count: r._count._all
+    }));
+
+    res.json({ services: mappedRows });
   } catch (error) {
     console.error('Error getting service analytics:', error);
     res.status(500).json({ error: error.message });
@@ -853,37 +988,45 @@ const getAnalyticsServices = async (req, res) => {
 
 const getAnalyticsExport = async (req, res) => {
   try {
-    const [[userCounts]] = await pool.execute(
-      `SELECT 
-         COUNT(*) as total,
-         SUM(role = 'user') as users,
-         SUM(role = 'moderator') as moderators,
-         SUM(role = 'admin') as admins,
-         SUM(is_active = TRUE) as active_users
-       FROM users`
-    );
-    const [[serviceCounts]] = await pool.execute(
-      `SELECT 
-         COUNT(*) as total,
-         SUM(is_active = TRUE) as active,
-         SUM(moderated_at IS NULL) as pending
-       FROM services`
-    );
-    const [[reportCounts]] = await pool.execute(
-      `SELECT 
-         COUNT(*) as total,
-         SUM(status = 'pending') as pending,
-         SUM(status = 'reviewed') as reviewed,
-         SUM(status = 'resolved') as resolved,
-         SUM(status = 'dismissed') as dismissed
-       FROM user_reports`
-    );
+    const [userCounts, serviceCounts, reportCountsResult] = await Promise.all([
+      prisma.users.aggregate({
+        _count: { _all: true }
+      }),
+      prisma.services.aggregate({
+        _count: { _all: true }
+      }),
+      prisma.user_reports.groupBy({
+        by: ['status'],
+        _count: { _all: true }
+      })
+    ]);
+
+    const activeUsers = await prisma.users.count({ where: { is_active: true } });
+    const roles = await prisma.users.groupBy({ by: ['role'], _count: { _all: true } });
+    const activeServices = await prisma.services.count({ where: { is_active: true } });
+    const pendingServices = await prisma.services.count({ where: { moderated_at: null } });
 
     res.json({
       generated_at: new Date().toISOString(),
-      users: userCounts,
-      services: serviceCounts,
-      reports: reportCounts
+      users: {
+        total: userCounts._count._all,
+        users: roles.find(r => r.role === 'user')?._count._all || 0,
+        moderators: roles.find(r => r.role === 'moderator')?._count._all || 0,
+        admins: roles.find(r => r.role === 'admin')?._count._all || 0,
+        active_users: activeUsers
+      },
+      services: {
+        total: serviceCounts._count._all,
+        active: activeServices,
+        pending: pendingServices
+      },
+      reports: {
+        total: await prisma.user_reports.count(),
+        pending: reportCountsResult.find(r => r.status === 'pending')?._count._all || 0,
+        reviewed: reportCountsResult.find(r => r.status === 'reviewed')?._count._all || 0,
+        resolved: reportCountsResult.find(r => r.status === 'resolved')?._count._all || 0,
+        dismissed: reportCountsResult.find(r => r.status === 'dismissed')?._count._all || 0
+      }
     });
   } catch (error) {
     console.error('Error exporting analytics:', error);
@@ -896,9 +1039,9 @@ const getAnalyticsExport = async (req, res) => {
  */
 const getSystemConfig = async (req, res) => {
   try {
-    const [settings] = await pool.execute(
-      'SELECT setting_key, setting_value, updated_at, updated_by FROM system_settings ORDER BY setting_key'
-    );
+    const settings = await prisma.system_settings.findMany({
+      orderBy: { setting_key: 'asc' }
+    });
     res.json({ settings });
   } catch (error) {
     console.error('Error getting system config:', error);
@@ -910,12 +1053,20 @@ const updateSystemConfig = async (req, res) => {
   try {
     const { setting_key, setting_value } = req.body;
 
-    await pool.execute(
-      `INSERT INTO system_settings (id, setting_key, setting_value, updated_by)
-       VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_by = VALUES(updated_by)`,
-      [uuidv4(), setting_key, setting_value, req.user.id]
-    );
+    await prisma.system_settings.upsert({
+      where: { setting_key },
+      update: {
+        setting_value,
+        updated_by: req.user.id,
+        updated_at: new Date()
+      },
+      create: {
+        id: uuidv4(),
+        setting_key,
+        setting_value,
+        updated_by: req.user.id
+      }
+    });
 
     res.json({ message: 'System setting updated' });
 
@@ -932,20 +1083,36 @@ const setMaintenanceMode = async (req, res) => {
   try {
     const { enabled, message } = req.body;
 
-    await pool.execute(
-      `INSERT INTO system_settings (id, setting_key, setting_value, updated_by)
-       VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_by = VALUES(updated_by)`,
-      [uuidv4(), 'maintenance_mode', enabled ? 'true' : 'false', req.user.id]
-    );
+    await prisma.system_settings.upsert({
+      where: { setting_key: 'maintenance_mode' },
+      update: {
+        setting_value: enabled ? 'true' : 'false',
+        updated_by: req.user.id,
+        updated_at: new Date()
+      },
+      create: {
+        id: uuidv4(),
+        setting_key: 'maintenance_mode',
+        setting_value: enabled ? 'true' : 'false',
+        updated_by: req.user.id
+      }
+    });
 
     if (message !== undefined) {
-      await pool.execute(
-        `INSERT INTO system_settings (id, setting_key, setting_value, updated_by)
-         VALUES (?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_by = VALUES(updated_by)`,
-        [uuidv4(), 'maintenance_message', message, req.user.id]
-      );
+      await prisma.system_settings.upsert({
+        where: { setting_key: 'maintenance_message' },
+        update: {
+          setting_value: message,
+          updated_by: req.user.id,
+          updated_at: new Date()
+        },
+        create: {
+          id: uuidv4(),
+          setting_key: 'maintenance_message',
+          setting_value: message,
+          updated_by: req.user.id
+        }
+      });
     }
 
     res.json({ message: 'Maintenance mode updated', enabled: !!enabled });
@@ -963,36 +1130,31 @@ const setMaintenanceMode = async (req, res) => {
 const getSystemLogs = async (req, res) => {
   try {
     const { page = 1, limit = 20, action, actor_id } = req.query;
-    const offset = (page - 1) * limit;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
 
-    let query = 'SELECT * FROM admin_action_logs WHERE 1=1';
-    const params = [];
+    const where = {};
+    if (action) where.action = action;
+    if (actor_id) where.actor_id = actor_id;
 
-    if (action) {
-      query += ' AND action = ?';
-      params.push(action);
-    }
-
-    if (actor_id) {
-      query += ' AND actor_id = ?';
-      params.push(actor_id);
-    }
-
-    query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), offset);
-
-    const [logs] = await pool.execute(query, params);
-    const [countResult] = await pool.execute(
-      'SELECT COUNT(*) as total FROM admin_action_logs'
-    );
+    const [logs, total] = await Promise.all([
+      prisma.admin_action_logs.findMany({
+        where,
+        orderBy: { created_at: 'desc' },
+        skip: offset,
+        take: limitNum
+      }),
+      prisma.admin_action_logs.count({ where })
+    ]);
 
     res.json({
       logs,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: countResult[0].total,
-        totalPages: Math.ceil(countResult[0].total / limit)
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
       }
     });
   } catch (error) {

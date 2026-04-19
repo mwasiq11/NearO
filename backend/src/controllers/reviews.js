@@ -1,24 +1,24 @@
 import { v4 as uuidv4 } from 'uuid';
-import { pool, readPool } from '../db/database.js';
+import prisma from '../db/prisma.js';
 import { logAudit, buildRequestContext } from '../audit/logger.js';
 
 const createReview = async (req, res) => {
   try {
     const { booking_id, rating, comment } = req.body;
 
-    const [bookings] = await pool.execute(
-      `SELECT b.id, b.seeker_id, b.status, s.id as service_id, s.provider_id
-       FROM bookings b
-       JOIN services s ON b.service_id = s.id
-       WHERE b.id = ?`,
-      [booking_id]
-    );
+    const booking = await prisma.bookings.findUnique({
+      where: { id: booking_id },
+      include: {
+        services: {
+          select: { id: true, provider_id: true }
+        }
+      }
+    });
 
-    if (bookings.length === 0) {
+    if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
 
-    const booking = bookings[0];
     if (booking.seeker_id !== req.user.id) {
       return res.status(403).json({ error: 'You can only review your own bookings' });
     }
@@ -28,34 +28,37 @@ const createReview = async (req, res) => {
     }
 
     const reviewId = uuidv4();
-    await pool.execute(
-      `INSERT INTO reviews (id, provider_id, reviewer_id, service_id, booking_id, rating, comment)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [reviewId, booking.provider_id, req.user.id, booking.service_id, booking.id, rating, comment || null]
-    );
+    const review = await prisma.reviews.create({
+      data: {
+        id: reviewId,
+        provider_id: booking.services.provider_id,
+        reviewer_id: req.user.id,
+        service_id: booking.service_id,
+        booking_id: booking.id,
+        rating,
+        comment: comment || null
+      }
+    });
 
     // Create notification for provider about new review
     try {
-      const notificationId = uuidv4();
-      await pool.execute(
-        `INSERT INTO notifications (id, user_id, type, title, message, entity_type, entity_id)
-         VALUES (?, ?, 'review_posted', 'New Review', 'You received a new review from a customer', 'review', ?)`,
-        [notificationId, booking.provider_id, reviewId]
-      );
+      await prisma.notifications.create({
+        data: {
+          id: uuidv4(),
+          user_id: booking.services.provider_id,
+          type: 'review_posted',
+          title: 'New Review',
+          message: 'You received a new review from a customer',
+          entity_type: 'review',
+          entity_id: reviewId
+        }
+      });
       console.log(`✅ Notification created for provider about review`);
     } catch (notifError) {
       console.error('Warning: Failed to create notification:', notifError);
     }
 
-    res.status(201).json({
-      id: reviewId,
-      provider_id: booking.provider_id,
-      reviewer_id: req.user.id,
-      service_id: booking.service_id,
-      booking_id: booking.id,
-      rating,
-      comment: comment || null
-    });
+    res.status(201).json(review);
 
     const ctx = buildRequestContext(req);
     await logAudit({
@@ -77,23 +80,30 @@ const listProviderReviews = async (req, res) => {
   try {
     const { providerId } = req.params;
     const { page = 1, limit = 20 } = req.query;
-    const offset = (page - 1) * limit;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
 
-    const [reviews] = await readPool.execute(
-      `SELECT r.*, u.name as reviewer_name
-       FROM reviews r
-       JOIN users u ON r.reviewer_id = u.id
-       WHERE r.provider_id = ?
-       ORDER BY r.created_at DESC
-       LIMIT ? OFFSET ?`,
-      [providerId, parseInt(limit), offset]
-    );
+    const reviews = await prisma.reviews.findMany({
+      where: { provider_id: providerId },
+      include: {
+        users_reviews_reviewer_idTousers: { select: { name: true } }
+      },
+      orderBy: { created_at: 'desc' },
+      skip: offset,
+      take: limitNum
+    });
+
+    const mappedReviews = reviews.map(r => ({
+      ...r,
+      reviewer_name: r.users_reviews_reviewer_idTousers.name
+    }));
 
     res.json({
-      reviews,
+      reviews: mappedReviews,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         count: reviews.length
       }
     });
@@ -107,35 +117,35 @@ const getReputation = async (req, res) => {
   try {
     const { providerId } = req.params;
 
-    const [ratings] = await readPool.execute(
-      'SELECT rating FROM reviews WHERE provider_id = ?',
-      [providerId]
-    );
-    const [avgRow] = await readPool.execute(
-      'SELECT AVG(rating) as avg_rating, COUNT(*) as count FROM reviews WHERE provider_id = ?',
-      [providerId]
-    );
+    const reviews = await prisma.reviews.findMany({
+      where: { provider_id: providerId },
+      select: { rating: true }
+    });
 
-    const [bookingStats] = await readPool.execute(
-      `SELECT 
-         SUM(b.status = 'approved') as approved_count,
-         COUNT(*) as total_count
-       FROM bookings b
-       JOIN services s ON b.service_id = s.id
-       WHERE s.provider_id = ?`,
-      [providerId]
-    );
+    const stats = await prisma.reviews.aggregate({
+      where: { provider_id: providerId },
+      _avg: { rating: true },
+      _count: { _all: true }
+    });
 
-    const avgRating = avgRow[0].avg_rating ? parseFloat(avgRow[0].avg_rating) : 0;
-    const ratingCount = avgRow[0].count || 0;
-    const approvedCount = bookingStats[0].approved_count || 0;
-    const totalCount = bookingStats[0].total_count || 0;
+    const bookingStats = await prisma.bookings.groupBy({
+      by: ['status'],
+      where: {
+        services: { provider_id: providerId }
+      },
+      _count: { _all: true }
+    });
+
+    const avgRating = stats._avg.rating || 0;
+    const ratingCount = stats._count._all || 0;
+    const approvedCount = bookingStats.find(s => s.status === 'approved')?._count._all || 0;
+    const totalCount = bookingStats.reduce((acc, s) => acc + s._count._all, 0);
     const completionRate = totalCount > 0 ? approvedCount / totalCount : 0;
 
     let variance = 0;
-    if (ratings.length > 1) {
+    if (reviews.length > 1) {
       const mean = avgRating;
-      variance = ratings.reduce((acc, r) => acc + Math.pow(r.rating - mean, 2), 0) / ratings.length;
+      variance = reviews.reduce((acc, r) => acc + Math.pow(r.rating - mean, 2), 0) / reviews.length;
     }
     const stddev = Math.sqrt(variance);
     const consistencyBonus = Math.max(0, 1 - stddev / 2);

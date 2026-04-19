@@ -1,5 +1,5 @@
 import { getRedisClient } from '../queue/redisClient.js';
-import { pool } from '../db/database.js';
+import prisma from '../db/prisma.js';
 import { sendPushNotification, createNotificationPayload } from '../services/pushNotificationService.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -11,11 +11,14 @@ let subscriber = null;
  */
 async function createNotification(userId, type, payload) {
   const notificationId = uuidv4();
-  await pool.execute(
-    `INSERT INTO notifications (id, user_id, type, payload)
-     VALUES (?, ?, ?, ?)`,
-    [notificationId, userId, type, JSON.stringify(payload)]
-  );
+  await prisma.notifications.create({
+    data: {
+      id: notificationId,
+      user_id: userId,
+      type: type,
+      payload: JSON.stringify(payload)
+    }
+  });
   return notificationId;
 }
 

@@ -76,8 +76,27 @@ export const useListings = () => {
     const loadInitialData = async () => {
       dispatch(setLoading(true));
       try {
+        // Automatically detect location for 25km radius filtering
+        let latitude: number | undefined;
+        let longitude: number | undefined;
+
+        if (navigator.geolocation) {
+          const position = await new Promise<GeolocationPosition | null>((resolve) => {
+            navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), { timeout: 5000 });
+          });
+          if (position) {
+            latitude = position.coords.latitude;
+            longitude = position.coords.longitude;
+            console.log('📍 Live location detected for filtering:', { latitude, longitude });
+          }
+        }
+
+        const params = new URLSearchParams();
+        if (latitude) params.append('latitude', latitude.toString());
+        if (longitude) params.append('longitude', longitude.toString());
+
         const [services, trending, categoryData] = await Promise.all([
-          api.get<any[]>('/services'),
+          api.get<any[]>(`/services?${params.toString()}`),
           api.get<{ services: any[] }>('/discover/trending').catch(() => ({ services: [] })),
           api.get<{ categories: any[] }>('/search/categories').catch(() => ({ categories: [] })),
         ]);
@@ -213,8 +232,16 @@ export const useListings = () => {
       dispatch(setMyListings([]));
       return;
     }
-    dispatch(setMyListings(listings.filter(l => l.providerId === user.id)));
-  }, [dispatch, listings, user]);
+    const fetchOwnedServices = async () => {
+      try {
+        const owned = await api.get<any[]>('/services/owned/me', { auth: true });
+        dispatch(setMyListings(owned.map(mapService)));
+      } catch (err) {
+        console.error('Failed to load owned services');
+      }
+    };
+    fetchOwnedServices();
+  }, [dispatch, mapService, user]);
 
   const editListing = useCallback(async (id: string, updates: Partial<ServiceListing>): Promise<boolean> => {
     dispatch(setLoading(true));
@@ -298,8 +325,26 @@ export const useListings = () => {
 
     try {
       dispatch(setLoading(true));
-      const result = await api.get<{ services: any[] }>(`/search/services?${params.toString()}`);
-      dispatch(setListings(result.services.map(mapService)));
+      
+      // Attempt to get fresh location for search
+      let latitude: number | undefined;
+      let longitude: number | undefined;
+
+      if (navigator.geolocation) {
+        const position = await new Promise<GeolocationPosition | null>((resolve) => {
+          navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), { timeout: 3000 });
+        });
+        if (position) {
+          latitude = position.coords.latitude;
+          longitude = position.coords.longitude;
+        }
+      }
+
+      if (latitude) params.append('latitude', latitude.toString());
+      if (longitude) params.append('longitude', longitude.toString());
+
+      const result = await api.get<{ services: any[] }>(`/services?${params.toString()}`);
+      dispatch(setListings((result as any).map(mapService)));
     } catch (err) {
       toast.error('Search failed');
     } finally {

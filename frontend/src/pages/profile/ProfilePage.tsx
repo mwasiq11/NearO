@@ -175,221 +175,233 @@ const ProfilePage = () => {
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-6 max-w-6xl mx-auto space-y-8 pb-20">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Profile</h2>
-        <p className="text-muted-foreground mt-2">Manage your account details and preferences</p>
+        <h2 className="text-3xl font-bold tracking-tight">Account Settings</h2>
+        <p className="text-muted-foreground mt-2">Manage your profile information and security preferences.</p>
       </div>
 
-      {/* Profile Picture Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile Picture</CardTitle>
-          <CardDescription>Upload a profile picture to personalize your account</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-6">
-            <div className="relative group">
-              <Avatar key={user?.profile_picture || 'default'} className="h-24 w-24">
-                <AvatarImage src={user?.profile_picture} />
-                <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
-                  {user?.name?.[0]?.toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              {isUploadingImage && (
-                <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                  <Loader2 className="h-6 w-6 text-white animate-spin" />
-                </div>
-              )}
-              <button
-                onClick={handleImageClick}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* Left Column: Overview Profile Card */}
+        <div className="lg:col-span-4 space-y-6">
+          <Card className="overflow-hidden border-zinc-200/60 dark:border-zinc-800/80 shadow-md transition-all">
+            <div className="h-32 bg-gradient-to-tr from-primary/30 via-primary/10 to-primary/5 dark:from-primary/20 dark:to-zinc-900 w-full" />
+            <CardContent className="px-6 pb-6 pt-0 flex flex-col items-center text-center relative">
+              <div className="relative -mt-16 mb-4 group rounded-full ring-4 ring-background shadow-lg">
+                <Avatar key={user?.profile_picture || 'default'} className="h-32 w-32 object-cover">
+                  <AvatarImage src={user?.profile_picture} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-4xl font-semibold">
+                    {user?.name?.[0]?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                {isUploadingImage && (
+                  <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center backdrop-blur-sm transition-all z-10">
+                    <Loader2 className="h-8 w-8 text-white animate-spin" />
+                  </div>
+                )}
+                <button
+                  onClick={handleImageClick}
+                  disabled={isUploadingImage}
+                  className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded-full flex items-center justify-center transition-all z-10 cursor-pointer"
+                >
+                  <Camera className="h-8 w-8 text-white" />
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+              </div>
+              
+              <h3 className="text-2xl font-bold mb-1 tracking-tight">{user?.name}</h3>
+              <p className="text-sm font-semibold uppercase tracking-wider text-primary mb-2">
+                {user?.role || 'User'}
+              </p>
+              <p className="text-sm text-muted-foreground mb-6 flex items-center justify-center gap-2">
+                <Mail className="h-4 w-4" />
+                {user?.email}
+              </p>
+
+              <Separator className="mb-6 w-full" />
+              
+              <Button 
+                onClick={handleImageClick} 
+                variant="outline" 
+                className="w-full h-11 w-full rounded-xl transition-all shadow-sm group font-medium" 
                 disabled={isUploadingImage}
-                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded-full flex items-center justify-center transition-opacity"
               >
-                <Camera className="h-6 w-6 text-white" />
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="hidden"
-              />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold mb-1">{user?.name}</h3>
-              <p className="text-sm text-muted-foreground mb-3">{user?.email}</p>
-              <Button onClick={handleImageClick} variant="outline" size="sm" disabled={isUploadingImage}>
                 {isUploadingImage ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Uploading...
-                  </>
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Uploading...</>
                 ) : (
-                  <>
-                    <Camera className="h-4 w-4 mr-2" />
-                    Change Picture
-                  </>
+                  <><Camera className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" /> Change Avatar</>
                 )}
               </Button>
-              <p className="text-xs text-muted-foreground mt-2">JPG, PNG or GIF. Max size 5MB</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+              <p className="text-[11px] text-muted-foreground mt-3 font-medium">JPEG, PNG or GIF. Max 5MB.</p>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Personal Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Personal Information</CardTitle>
-          <CardDescription>Update your account details and contact information</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Full Name
-                </Label>
-                <Input 
-                  id="name" 
-                  name="name" 
-                  value={formData.name} 
-                  onChange={handleChange}
-                  placeholder="Enter your full name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email" className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  Email
-                </Label>
-                <Input 
-                  id="email" 
-                  name="email" 
-                  type="email" 
-                  value={formData.email} 
-                  onChange={handleChange}
-                  placeholder="your.email@example.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  Phone Number
-                </Label>
-                <Input 
-                  id="phone" 
-                  name="phone" 
-                  value={formData.phone} 
-                  onChange={handleChange}
-                  placeholder="+1 (555) 123-4567"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="city" className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  City
-                </Label>
-                <Input 
-                  id="city" 
-                  name="city" 
-                  value={formData.city} 
-                  onChange={handleChange}
-                  placeholder="Your city"
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="neighborhood" className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  Neighborhood
-                </Label>
-                <Input 
-                  id="neighborhood" 
-                  name="neighborhood" 
-                  value={formData.neighborhood} 
-                  onChange={handleChange}
-                  placeholder="Your neighborhood or area"
-                />
-              </div>
-            </div>
-            <Separator />
-            <div className="flex justify-end">
-              <Button type="submit" variant="hero" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  'Save Changes'
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+        {/* Right Column: Information & Security */}
+        <div className="lg:col-span-8 space-y-8">
+          
+          {/* Personal Information */}
+          <Card className="border-zinc-200/60 dark:border-zinc-800/80 shadow-md">
+            <CardHeader className="pb-6 border-b border-zinc-100 dark:border-zinc-800/40 bg-zinc-50/50 dark:bg-zinc-900/50 px-6 py-5">
+              <CardTitle className="text-xl flex items-center gap-2">
+                <User className="h-5 w-5 text-primary" />
+                Personal Information
+              </CardTitle>
+              <CardDescription className="text-[13px]">Update your public-facing details and contact coordinates.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-2.5">
+                    <Label htmlFor="name" className="text-[13px] font-semibold text-zinc-600 dark:text-zinc-300">
+                      Full Name
+                    </Label>
+                    <Input 
+                      id="name" 
+                      name="name" 
+                      value={formData.name} 
+                      onChange={handleChange}
+                      placeholder="e.g. John Doe"
+                      className="h-11 rounded-lg bg-zinc-50 dark:bg-[#1a2328] focus-visible:ring-primary shadow-inner-sm transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2.5">
+                    <Label htmlFor="email" className="text-[13px] font-semibold text-zinc-600 dark:text-zinc-300">
+                      Email Address
+                    </Label>
+                    <Input 
+                      id="email" 
+                      name="email" 
+                      type="email" 
+                      value={formData.email} 
+                      onChange={handleChange}
+                      placeholder="john@example.com"
+                      className="h-11 rounded-lg bg-zinc-50 dark:bg-[#1a2328] focus-visible:ring-primary shadow-inner-sm transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2.5">
+                    <Label htmlFor="phone" className="text-[13px] font-semibold text-zinc-600 dark:text-zinc-300">
+                      Phone Number
+                    </Label>
+                    <Input 
+                      id="phone" 
+                      name="phone" 
+                      value={formData.phone} 
+                      onChange={handleChange}
+                      placeholder="+1 (555) 000-0000"
+                      className="h-11 rounded-lg bg-zinc-50 dark:bg-[#1a2328] focus-visible:ring-primary shadow-inner-sm transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2.5">
+                    <Label htmlFor="city" className="text-[13px] font-semibold text-zinc-600 dark:text-zinc-300">
+                      City
+                    </Label>
+                    <Input 
+                      id="city" 
+                      name="city" 
+                      value={formData.city} 
+                      onChange={handleChange}
+                      placeholder="Enter city"
+                      className="h-11 rounded-lg bg-zinc-50 dark:bg-[#1a2328] focus-visible:ring-primary shadow-inner-sm transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2.5 md:col-span-2">
+                    <Label htmlFor="neighborhood" className="text-[13px] font-semibold text-zinc-600 dark:text-zinc-300">
+                      Local Neighborhood
+                    </Label>
+                    <Input 
+                      id="neighborhood" 
+                      name="neighborhood" 
+                      value={formData.neighborhood} 
+                      onChange={handleChange}
+                      placeholder="Specify your residential area or borough"
+                      className="h-11 rounded-lg bg-zinc-50 dark:bg-[#1a2328] focus-visible:ring-primary shadow-inner-sm transition-all"
+                    />
+                  </div>
+                </div>
+                <Separator className="my-6" />
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">Changes applied to your profile will be synchronized worldwide instantly.</p>
+                  <Button type="submit" className="h-11 px-8 rounded-xl bg-primary hover:bg-primary/90 text-white shadow-md font-medium tracking-wide transition-all active:scale-95" disabled={isLoading}>
+                    {isLoading ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+                    ) : (
+                      'Save Changes'
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
 
-      {/* Security Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Security</CardTitle>
-          <CardDescription>Update your password to keep your account secure</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handlePasswordSubmit} className="space-y-4">
-            <div className="space-y-4 max-w-md">
-              <div className="space-y-2">
-                <Label htmlFor="currentPassword">Current Password</Label>
-                <Input 
-                  id="currentPassword" 
-                  name="currentPassword" 
-                  type="password"
-                  value={passwordData.currentPassword} 
-                  onChange={handlePasswordChange}
-                  placeholder="Enter current password"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">New Password</Label>
-                <Input 
-                  id="newPassword" 
-                  name="newPassword" 
-                  type="password"
-                  value={passwordData.newPassword} 
-                  onChange={handlePasswordChange}
-                  placeholder="Enter new password (min 6 characters)"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                <Input 
-                  id="confirmPassword" 
-                  name="confirmPassword" 
-                  type="password"
-                  value={passwordData.confirmPassword} 
-                  onChange={handlePasswordChange}
-                  placeholder="Confirm new password"
-                />
-              </div>
-            </div>
-            <Separator />
-            <div className="flex justify-end">
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Updating...
-                  </>
-                ) : (
-                  'Update Password'
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          {/* Security & Password */}
+          <Card className="border-zinc-200/60 dark:border-zinc-800/80 shadow-md">
+            <CardHeader className="pb-6 border-b border-zinc-100 dark:border-zinc-800/40 bg-zinc-50/50 dark:bg-zinc-900/50 px-6 py-5">
+              <CardTitle className="text-xl text-red-600 dark:text-red-500">Security Parameters</CardTitle>
+              <CardDescription className="text-[13px]">Manage sensitive authentication rules and update your credentials securely.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              <form onSubmit={handlePasswordSubmit} className="space-y-6">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-2.5 md:col-span-2">
+                    <Label htmlFor="currentPassword" className="text-[13px] font-semibold">Current Password</Label>
+                    <Input 
+                      id="currentPassword" 
+                      name="currentPassword" 
+                      type="password"
+                      value={passwordData.currentPassword} 
+                      onChange={handlePasswordChange}
+                      placeholder="Enter verification password"
+                      className="h-11 rounded-lg focus-visible:ring-red-500 shadow-inner-sm"
+                    />
+                  </div>
+                  <div className="space-y-2.5">
+                    <Label htmlFor="newPassword" className="text-[13px] font-semibold">New Password</Label>
+                    <Input 
+                      id="newPassword" 
+                      name="newPassword" 
+                      type="password"
+                      value={passwordData.newPassword} 
+                      onChange={handlePasswordChange}
+                      placeholder="Strong password required"
+                      className="h-11 rounded-lg focus-visible:ring-red-500 shadow-inner-sm"
+                    />
+                  </div>
+                  <div className="space-y-2.5">
+                    <Label htmlFor="confirmPassword" className="text-[13px] font-semibold">Confirm Password</Label>
+                    <Input 
+                      id="confirmPassword" 
+                      name="confirmPassword" 
+                      type="password"
+                      value={passwordData.confirmPassword} 
+                      onChange={handlePasswordChange}
+                      placeholder="Must match new password"
+                      className="h-11 rounded-lg focus-visible:ring-red-500 shadow-inner-sm"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end pt-4">
+                  <Button type="submit" variant="destructive" className="h-11 px-6 rounded-xl font-medium shadow-sm active:scale-95 transition-all" disabled={isLoading}>
+                    {isLoading ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Authorizing...</>
+                    ) : (
+                      'Update Identity'
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+        </div>
+      </div>
     </div>
   );
 };

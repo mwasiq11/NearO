@@ -1,4 +1,4 @@
-import { pool } from '../db/database.js';
+import prisma from '../db/prisma.js';
 
 let cache = {
   enabled: false,
@@ -9,10 +9,11 @@ let cache = {
 const CACHE_TTL_MS = 30000;
 
 async function loadMaintenanceSettings() {
-  const [settings] = await pool.execute(
-    'SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (?, ?)',
-    ['maintenance_mode', 'maintenance_message']
-  );
+  const settings = await prisma.system_settings.findMany({
+    where: {
+      setting_key: { in: ['maintenance_mode', 'maintenance_message'] }
+    }
+  });
 
   const map = {};
   for (const setting of settings) {

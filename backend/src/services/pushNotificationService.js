@@ -1,5 +1,6 @@
 import webpush from 'web-push';
-import { pool } from '../db/database.js';
+import prisma from '../db/prisma.js';
+import { v4 as uuidv4 } from 'uuid';
 
 // Initialize web-push with VAPID keys (should be in environment variables)
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_SUBJECT) {
@@ -14,10 +15,11 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env
  * Get user's push subscriptions
  */
 async function getUserSubscriptions(userId) {
-  const [subscriptions] = await pool.execute(
-    `SELECT endpoint, p256dh_key, auth_key FROM user_push_subscriptions WHERE user_id = ?`,
-    [userId]
-  );
+  const subscriptions = await prisma.user_push_subscriptions.findMany({
+    where: { user_id: userId },
+    select: { endpoint: true, p256dh_key: true, auth_key: true }
+  });
+
   return subscriptions.map(sub => ({
     endpoint: sub.endpoint,
     keys: {
@@ -31,15 +33,16 @@ async function getUserSubscriptions(userId) {
  * Check if user has push notifications enabled
  */
 async function isPushEnabled(userId) {
-  const [prefs] = await pool.execute(
-    `SELECT push_notifications FROM notification_preferences WHERE user_id = ?`,
-    [userId]
-  );
-  if (prefs.length === 0) {
+  const prefs = await prisma.notification_preferences.findUnique({
+    where: { user_id: userId },
+    select: { push_notifications: true }
+  });
+
+  if (!prefs) {
     // Default to enabled if no preferences set
     return true;
   }
-  return prefs[0].push_notifications === 1 || prefs[0].push_notifications === true;
+  return prefs.push_notifications === true;
 }
 
 /**
@@ -94,43 +97,52 @@ async function sendPushNotification(userId, notification) {
  * Save push subscription for a user
  */
 async function saveSubscription(userId, subscription) {
-  const { v4: uuidv4 } = await import('uuid');
-  const subscriptionId = uuidv4();
+  // We'll use findFirst/create pattern since endpoint might not be uniquely indexed in Prisma 
+  // but logically it should be unique per user.
+  const existing = await prisma.user_push_subscriptions.findFirst({
+    where: { user_id: userId, endpoint: subscription.endpoint }
+  });
 
-  await pool.execute(
-    `INSERT INTO user_push_subscriptions (id, user_id, endpoint, p256dh_key, auth_key)
-     VALUES (?, ?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE p256dh_key = VALUES(p256dh_key), auth_key = VALUES(auth_key)`,
-    [
-      subscriptionId,
-      userId,
-      subscription.endpoint,
-      subscription.keys.p256dh,
-      subscription.keys.auth
-    ]
-  );
-
-  return subscriptionId;
+  if (existing) {
+    await prisma.user_push_subscriptions.update({
+      where: { id: existing.id },
+      data: {
+        p256dh_key: subscription.keys.p256dh,
+        auth_key: subscription.keys.auth
+      }
+    });
+    return existing.id;
+  } else {
+    const id = uuidv4();
+    await prisma.user_push_subscriptions.create({
+      data: {
+        id,
+        user_id: userId,
+        endpoint: subscription.endpoint,
+        p256dh_key: subscription.keys.p256dh,
+        auth_key: subscription.keys.auth
+      }
+    });
+    return id;
+  }
 }
 
 /**
  * Remove push subscription
  */
 async function removeSubscription(userId, endpoint) {
-  await pool.execute(
-    `DELETE FROM user_push_subscriptions WHERE user_id = ? AND endpoint = ?`,
-    [userId, endpoint]
-  );
+  await prisma.user_push_subscriptions.deleteMany({
+    where: { user_id: userId, endpoint: endpoint }
+  });
 }
 
 /**
  * Remove all subscriptions for a user
  */
 async function removeAllSubscriptions(userId) {
-  await pool.execute(
-    `DELETE FROM user_push_subscriptions WHERE user_id = ?`,
-    [userId]
-  );
+  await prisma.user_push_subscriptions.deleteMany({
+    where: { user_id: userId }
+  });
 }
 
 /**

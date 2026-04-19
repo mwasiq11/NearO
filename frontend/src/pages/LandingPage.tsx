@@ -1,10 +1,10 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  MapPin, 
-  Star, 
-  Shield, 
-  Users, 
+import {
+  MapPin,
+  Star,
+  Shield,
+  Users,
   Sparkles,
   ArrowRight,
   ChevronRight,
@@ -14,7 +14,10 @@ import {
   Dumbbell,
   Leaf,
   Search,
-  MessageSquare
+  MessageSquare,
+  Compass,
+  HeartHandshake,
+  PartyPopper
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,13 +46,19 @@ const LandingPage = () => {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl overflow-hidden bg-white shadow-sm flex items-center justify-center p-1.5">
-              <img src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" alt="NearO" className="h-full w-full object-contain" />
+          <Link to="/" className="flex items-center gap-1 group">
+            <div className="h-10 w-10 flex items-center justify-center -ml-2">
+              <img 
+                src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" 
+                alt="NearO" 
+                className="h-[120%] w-[120%] object-contain mix-blend-multiply dark:invert dark:-hue-rotate-180 dark:mix-blend-screen transform-gpu drop-shadow-sm relative z-10" 
+              />
             </div>
-            <span style={{fontFamily: 'Poppins, sans-serif'}} className="font-bold text-2xl bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent tracking-tight">NearO</span>
+            <div className="overflow-hidden transition-all duration-500 ease-in-out w-0 opacity-0 group-hover:w-[90px] group-hover:opacity-100 flex items-center whitespace-nowrap transform-gpu relative -ml-1">
+              <span style={{ fontFamily: 'Poppins, sans-serif' }} className="font-bold text-2xl bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent tracking-tight transform -translate-x-8 group-hover:translate-x-0 transition-all duration-500 ease-out pl-2 py-1">NearO</span>
+            </div>
           </Link>
-          
+
           <nav className="hidden md:flex items-center gap-8">
             <Link to="/dashboard/browse" className="text-muted-foreground hover:text-foreground transition-colors">
               Browse Services
@@ -61,7 +70,7 @@ const LandingPage = () => {
               About
             </Link>
           </nav>
-          
+
           <div className="flex items-center gap-3">
             <Button variant="ghost" onClick={() => navigate('/login')}>
               Log In
@@ -82,48 +91,52 @@ const LandingPage = () => {
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-4 overflow-hidden">
         <div className="container mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="space-y-6"
+              className="flex flex-col items-center space-y-8"
             >
-              <Badge variant="secondary" className="px-4 py-1.5">
-                <Sparkles className="h-3 w-3 mr-1" />
-                Trusted by 10,000+ neighbors
-              </Badge>
-              
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight">
-                Your Community,{' '}
-                <span className="text-gradient-hero">Your Services</span>
-              </h1>
-              
-              <p className="text-lg text-muted-foreground max-w-lg">
-                Connect with trusted local providers for home repairs, tutoring, pet care, and more. 
+            
+
+              <div className="space-y-4">
+                <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight">
+                  <span style={{ fontFamily: 'Poppins, sans-serif' }} className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent pb-2 block">
+                    NearO
+                  </span>
+                </h1>
+                
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight">
+                  Your Community, Your Services
+                </h2>
+              </div>
+
+              <p className="text-xl text-muted-foreground max-w-2xl leading-relaxed">
+                Connect with trusted local providers for home repairs, tutoring, pet care, and more.
                 Build relationships with your neighbors while getting things done.
               </p>
-              
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button 
-                  size="xl" 
-                  variant="hero" 
+
+              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <Button
+                  size="xl"
+                  variant="hero"
                   className="group"
                   onClick={() => navigate('/signup')}
                 >
                   Find Services
-                  <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
-                <Button 
-                  size="xl" 
+                <Button
+                  size="xl"
                   variant="outline"
                   onClick={() => navigate('/signup')}
                 >
                   Become a Provider
                 </Button>
               </div>
-              
-              <div className="flex items-center gap-6 pt-4">
+
+              <div className="flex flex-col sm:flex-row items-center gap-6 pt-8 justify-center">
                 <div className="flex -space-x-3">
                   {[1, 2, 3, 4].map((i) => (
                     <div
@@ -138,8 +151,8 @@ const LandingPage = () => {
                     </div>
                   ))}
                 </div>
-                <div>
-                  <div className="flex items-center gap-1">
+                <div className="text-center sm:text-left">
+                  <div className="flex w-full items-center justify-center sm:justify-start gap-1">
                     {[1, 2, 3, 4, 5].map((i) => (
                       <Star key={i} className="h-4 w-4 fill-accent text-accent" />
                     ))}
@@ -148,78 +161,6 @@ const LandingPage = () => {
                   <p className="text-sm text-muted-foreground">Based on 2,500+ reviews</p>
                 </div>
               </div>
-            </motion.div>
-            
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="relative hidden lg:block"
-            >
-              <div className="absolute inset-0 bg-gradient-primary rounded-3xl blur-3xl opacity-20" />
-              <div className="relative bg-card rounded-3xl border shadow-xl p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-full bg-muted overflow-hidden">
-                      <img
-                        src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100"
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                    <div>
-                      <p className="font-medium">Sarah Mitchell</p>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        Mission District
-                      </p>
-                    </div>
-                  </div>
-                  <Badge variant="gold">Gold Provider</Badge>
-                </div>
-                
-                <div className="bg-muted/50 rounded-xl p-4">
-                  <h3 className="font-semibold mb-1">Professional Home Repairs</h3>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Expert plumbing, electrical, and general maintenance.
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <Star className="h-4 w-4 fill-accent text-accent" />
-                      <span className="font-medium">4.9</span>
-                      <span className="text-muted-foreground">(87)</span>
-                    </div>
-                    <span className="font-semibold text-primary">$75/hr</span>
-                  </div>
-                </div>
-                
-                <Button className="w-full" variant="hero">
-                  Book Now
-                </Button>
-              </div>
-              
-              {/* Floating elements */}
-              <motion.div
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 3, repeat: Infinity }}
-                className="absolute -top-4 -right-4 bg-card rounded-xl border shadow-lg p-3"
-              >
-                <div className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-success" />
-                  <span className="text-sm font-medium">Verified</span>
-                </div>
-              </motion.div>
-              
-              <motion.div
-                animate={{ y: [0, 10, 0] }}
-                transition={{ duration: 4, repeat: Infinity }}
-                className="absolute -bottom-4 -left-4 bg-card rounded-xl border shadow-lg p-3"
-              >
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" />
-                  <span className="text-sm font-medium">156 bookings</span>
-                </div>
-              </motion.div>
             </motion.div>
           </div>
         </div>
@@ -247,84 +188,167 @@ const LandingPage = () => {
       </section>
 
       {/* Categories Section */}
-      <section className="py-20 px-4">
+      <section className="py-24 px-4 bg-muted/10 relative">
         <div className="container mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Popular Categories</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
+          <div className="text-center mb-16">
+            <Badge variant="outline" className="mb-4 border-primary/20 bg-primary/5 text-primary px-4 py-1.5">
+              <Sparkles className="h-4 w-4 mr-2 inline-block" />
+              Explore Services
+            </Badge>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">Popular Categories</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Discover trusted local providers across a wide range of services
             </p>
           </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {categories.map((category, index) => {
-              const Icon = category.icon;
-              return (
-                <motion.button
-                  key={category.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.05 }}
-                  whileHover={{ y: -5 }}
-                  onClick={() => navigate(`/dashboard/browse?category=${category.id}`)}
-                  className="bg-card border rounded-2xl p-6 text-center hover:shadow-xl transition-all group relative overflow-hidden"
-                >
-                  <div className={`h-16 w-16 mx-auto mb-4 rounded-2xl ${category.color} flex items-center justify-center transition-transform group-hover:scale-110 duration-300`}>
-                    <Icon className="h-8 w-8" />
-                  </div>
-                  <p className="font-semibold mb-1">{category.name}</p>
-                  <p className="text-sm text-muted-foreground">{category.count} providers</p>
-                  
-                  <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </motion.button>
-              );
-            })}
+
+          <div className="relative overflow-hidden group">
+            {/* Extended Fade Edges */}
+            <div className="absolute inset-y-0 left-0 w-40 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+            <div className="absolute inset-y-0 right-0 w-40 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+
+            <motion.div
+              className="flex gap-6 py-6 pr-6"
+              animate={{ x: [0, "-50%"] }}
+              transition={{
+                x: {
+                  repeat: Infinity,
+                  repeatType: "loop",
+                  duration: 35,
+                  ease: "linear",
+                },
+              }}
+              whileHover={{ animationPlayState: "paused" }}
+              style={{ width: "max-content" }}
+            >
+              {[...categories, ...categories].map((category, index) => {
+                const Icon = category.icon;
+                return (
+                  <motion.button
+                    key={`${category.id}-${index}`}
+                    whileHover={{ y: -6 }}
+                    onClick={() => navigate(`/dashboard/browse?category=${category.id}`)}
+                    className="flex-shrink-0 w-[200px] bg-background/80 backdrop-blur-md border border-border/50 hover:border-primary/40 rounded-3xl p-6 text-center hover:shadow-xl hover:shadow-primary/10 dark:hover:shadow-primary/5 transition-all duration-500 group/card relative overflow-hidden"
+                  >
+                    {/* Vibrant Theme Hover Sheen */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                    
+                    <div className={`relative h-14 w-14 mx-auto mb-4 rounded-xl ${category.color} flex items-center justify-center transition-all duration-500 group-hover/card:scale-110 group-hover/card:-translate-y-1 group-hover/card:shadow-md`}>
+                      <Icon className="h-6 w-6 transition-transform duration-500 group-hover/card:scale-110" />
+                    </div>
+                    <h3 className="text-base font-semibold mb-1 relative z-10 transition-colors duration-300 group-hover/card:text-primary">{category.name}</h3>
+                    <p className="text-muted-foreground text-sm font-medium relative z-10">{category.count} providers</p>
+
+                    <div className="absolute top-3 right-3 p-1.5 bg-primary/10 backdrop-blur-sm rounded-full opacity-0 group-hover/card:opacity-100 transition-all duration-300 transform translate-x-4 -translate-y-4 group-hover/card:translate-x-0 group-hover/card:translate-y-0 border border-primary/20">
+                      <ArrowRight className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </motion.div>
           </div>
-          
-          <div className="text-center mt-8">
-            <Button variant="outline" size="lg" onClick={() => navigate('/dashboard/browse')}>
+
+          <div className="text-center mt-12">
+            <Button variant="outline" size="xl" className="rounded-full px-8 hover:bg-primary hover:text-primary-foreground transition-colors h-14 text-lg" onClick={() => navigate('/dashboard/browse')}>
               View All Categories
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
         </div>
       </section>
 
       {/* How It Works */}
-      <section className="py-20 px-4 bg-muted/30">
-        <div className="container mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">How It Works</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
+      <section className="py-24 px-4 relative overflow-hidden bg-background">
+        <style dangerouslySetInnerHTML={{__html: `
+          .three-d-wrapper {
+            perspective: 1000px;
+          }
+          .three-d-wrapper .obj {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            transform-style: preserve-3d;
+            transition: 0.5s all;
+            transform: rotateX(-25deg) rotateY(20deg);
+          }
+          .three-d-wrapper .objchild {
+            animation: objRotate 4s infinite linear;
+            transform-style: preserve-3d;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+          }
+          .three-d-wrapper .objchild::after {
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            filter: blur(20px);
+            box-shadow: 0 0 100px 10px var(--glow-color);
+            transform: rotateX(90deg) scale(1.1) translateZ(-60px);
+          }
+          .three-d-wrapper .inn6 {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgb(21, 21, 21);
+            transform: rotateX(90deg) translateZ(60px);
+            animation: objUpdown 4s infinite ease-in-out;
+            border-radius: 12px;
+          }
+          @keyframes objRotate {
+            0% { transform: rotate3d(0,1,0,0deg); }
+            100% { transform: rotate3d(0,1,0,360deg); }
+          }
+          @keyframes objUpdown {
+            0% { transform: translateY(40px) rotateX(90deg) translateZ(40px); }
+            50% { transform: translateY(80px); }
+            100% { transform: translateY(40px) rotateX(450deg) translateZ(40px); }
+          }
+        `}} />
+        {/* Soft background glow for the glass bounding area to blur */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+          <div className="absolute top-[20%] left-[10%] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[100px]" />
+          <div className="absolute bottom-[10%] right-[10%] w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-[100px]" />
+          <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] bg-amber-500/5 rounded-full blur-[120px]" />
+        </div>
+
+        <div className="container mx-auto relative z-10">
+          <div className="text-center mb-16">
+            <Badge variant="outline" className="mb-4 border-primary/20 bg-primary/10 text-primary px-4 py-1.5 backdrop-blur-md">
+              <Sparkles className="h-4 w-4 mr-2 inline-block" />
+              Simple Process
+            </Badge>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">How It Works</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Get started in three simple steps
             </p>
           </div>
-          
+
           <div className="grid md:grid-cols-3 gap-8">
             {[
               {
                 step: '01',
                 title: 'Search & Discover',
-                description: 'Browse services in your neighborhood or search for specific skills you need.',
-                icon: Search,
-                color: 'bg-primary/10 text-primary',
+                description: 'Browse services in your neighborhood or search for specific skills you need for your home.',
+                glowColor: 'rgba(59,130,246,0.5)',
+                glow: 'group-hover:shadow-[0_10px_40px_-10px_rgba(59,130,246,0.3)]',
+                icon: Compass
               },
               {
                 step: '02',
                 title: 'Connect & Chat',
-                description: 'Message providers directly to discuss your needs and schedule a time.',
-                icon: MessageSquare,
-                color: 'bg-emerald-100 text-emerald-600',
+                description: 'Message friendly providers directly to discuss your needs and schedule a perfect time.',
+                glowColor: 'rgba(16,185,129,0.5)',
+                glow: 'group-hover:shadow-[0_10px_40px_-10px_rgba(16,185,129,0.3)]',
+                icon: HeartHandshake
               },
               {
                 step: '03',
-                title: 'Book & Review',
-                description: 'Confirm your booking, get the job done, and leave a review for your neighbor.',
-                icon: Star,
-                color: 'bg-accent/10 text-accent',
+                title: 'Book & Smile',
+                description: 'Confirm your booking, get the job done beautifully, and leave a review for your neighbor.',
+                glowColor: 'rgba(249,115,22,0.5)',
+                glow: 'group-hover:shadow-[0_10px_40px_-10px_rgba(249,115,22,0.3)]',
+                icon: PartyPopper
               },
             ].map((item, index) => {
               const Icon = item.icon;
@@ -335,16 +359,28 @@ const LandingPage = () => {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.15 }}
-                  className="relative bg-card rounded-3xl border p-8 hover:shadow-xl transition-shadow group"
+                  className={`bg-background/60 backdrop-blur-2xl rounded-3xl border border-white/20 dark:border-white/10 p-8 transition-all duration-500 group hover:-translate-y-2 relative overflow-hidden shadow-lg ${item.glow} flex flex-col`}
                 >
-                  <span className="absolute -top-4 left-6 bg-primary text-primary-foreground text-sm font-bold px-4 py-1.5 rounded-full shadow-lg">
-                    STEP {item.step}
-                  </span>
-                  <div className={`h-16 w-16 rounded-2xl ${item.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                    <Icon className="h-8 w-8" />
+                  {/* Subtle inner gradient shift on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+                  <div 
+                    className="three-d-wrapper flex items-center justify-center my-10 relative z-10 mx-auto"
+                    style={{ '--glow-color': item.glowColor } as React.CSSProperties}
+                  >
+                    <div className="obj">
+                      <div className="objchild">
+                        <span className="inn6 shadow-2xl flex items-center justify-center">
+                          <Icon className="w-12 h-12 text-white/90" />
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <h3 className="text-2xl font-bold mb-3">{item.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed">{item.description}</p>
+                  
+                  <div className="mt-auto relative z-10 text-center">
+                    <h3 className="text-2xl font-bold mb-3">{item.title}</h3>
+                    <p className="text-muted-foreground leading-relaxed text-lg">{item.description}</p>
+                  </div>
                 </motion.div>
               );
             })}
@@ -353,38 +389,52 @@ const LandingPage = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4">
+      <section className="py-24 px-4">
         <div className="container mx-auto">
-          <div className="bg-gradient-hero rounded-3xl p-12 text-center text-primary-foreground">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-            >
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Ready to Join Your Local Community?
-              </h2>
-              <p className="text-primary-foreground/80 max-w-2xl mx-auto mb-8">
-                Whether you're looking for help or want to offer your skills, 
-                NearO connects you with trusted neighbors.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button 
-                  size="xl" 
-                  variant="glass"
-                  onClick={() => navigate('/signup')}
-                >
-                  Find Services
-                </Button>
-                <Button 
-                  size="xl" 
-                  className="bg-white text-primary hover:bg-white/90"
-                  onClick={() => navigate('/signup')}
-                >
-                  Become a Provider
-                </Button>
-              </div>
-            </motion.div>
+          <div className="relative w-full rounded-[3rem] overflow-hidden border border-border/50 shadow-2xl bg-card">
+            
+            {/* Colorful soft lights strictly contained inside the box */}
+            <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-emerald-400/30 dark:bg-emerald-500/20 rounded-full blur-[80px] -translate-y-1/2 pointer-events-none" />
+            <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-teal-400/30 dark:bg-teal-500/20 rounded-full blur-[80px] translate-y-1/2 pointer-events-none" />
+
+            {/* Frosty Glass Layer */}
+            <div className="relative z-10 bg-background/60 backdrop-blur-2xl p-12 md:p-24 text-center">
+              {/* Subtle inner top-edge glare */}
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 dark:via-white/10 to-transparent" />
+              
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="max-w-3xl mx-auto relative z-10"
+              >
+                <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight text-foreground">
+                  Ready to Join Your Local Community?
+                </h2>
+                <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+                  Whether you're looking for help or want to offer your skills,
+                  NearO connects you with trusted neighbors.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-2">
+                  <Button
+                    variant="hero"
+                    size="xl"
+                    className="w-full sm:w-auto font-bold text-lg hover:-translate-y-1 transition-transform"
+                    onClick={() => navigate('/signup')}
+                  >
+                    Find Services
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="xl"
+                    className="w-full sm:w-auto font-bold text-lg hover:-translate-y-1 transition-transform bg-background/50 backdrop-blur"
+                    onClick={() => navigate('/signup')}
+                  >
+                    Become a Provider
+                  </Button>
+                </div>
+              </motion.div>
+            </div>
           </div>
         </div>
       </section>
@@ -394,17 +444,23 @@ const LandingPage = () => {
         <div className="container mx-auto">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="h-10 w-10 rounded-xl overflow-hidden bg-white shadow-sm flex items-center justify-center p-1.5">
-                  <img src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" alt="NearO" className="h-full w-full object-contain" />
+              <div className="flex items-center gap-1 mb-4 group cursor-default">
+                <div className="h-10 w-10 flex items-center justify-center -ml-2">
+                  <img 
+                    src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" 
+                    alt="NearO" 
+                    className="h-[120%] w-[120%] object-contain mix-blend-multiply dark:invert dark:-hue-rotate-180 dark:mix-blend-screen transform-gpu drop-shadow-sm relative z-10" 
+                  />
                 </div>
-                <span style={{fontFamily: 'Poppins, sans-serif'}} className="font-bold text-xl tracking-tight">NearO</span>
+                <div className="overflow-hidden transition-all duration-500 ease-in-out w-0 opacity-0 group-hover:w-[80px] group-hover:opacity-100 flex items-center whitespace-nowrap transform-gpu relative -ml-1">
+                  <span style={{ fontFamily: 'Poppins, sans-serif' }} className="font-bold text-xl tracking-tight transform -translate-x-8 group-hover:translate-x-0 transition-all duration-500 ease-out pl-2 py-1">NearO</span>
+                </div>
               </div>
               <p className="text-muted-foreground">
                 Building stronger communities through local connections.
               </p>
             </div>
-            
+
             <div>
               <h4 className="font-semibold mb-4">For Seekers</h4>
               <ul className="space-y-2 text-muted-foreground">
@@ -413,7 +469,7 @@ const LandingPage = () => {
                 <li><Link to="/safety" className="hover:text-foreground transition-colors">Safety Center</Link></li>
               </ul>
             </div>
-            
+
             <div>
               <h4 className="font-semibold mb-4">For Providers</h4>
               <ul className="space-y-2 text-muted-foreground">
@@ -422,7 +478,7 @@ const LandingPage = () => {
                 <li><Link to="/success-stories" className="hover:text-foreground transition-colors">Success Stories</Link></li>
               </ul>
             </div>
-            
+
             <div>
               <h4 className="font-semibold mb-4">Company</h4>
               <ul className="space-y-2 text-muted-foreground">
@@ -433,7 +489,7 @@ const LandingPage = () => {
               </ul>
             </div>
           </div>
-          
+
           <div className="border-t mt-8 pt-8 text-center text-muted-foreground">
             <p>&copy; {new Date().getFullYear()} NearO. All rights reserved.</p>
           </div>

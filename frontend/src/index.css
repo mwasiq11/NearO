@@ -55,7 +55,7 @@
     --provider: 258 65% 55%;
     --provider-foreground: 0 0% 100%;
     --provider-light: 258 60% 95%;
-    
+
     --seeker: 199 89% 48%;
     --seeker-foreground: 0 0% 100%;
     --seeker-light: 199 85% 95%;
@@ -72,6 +72,12 @@
     --warning-foreground: 0 0% 100%;
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
+
+    /* WhatsApp-inspired Styles */
+    --whatsapp-outgoing: 105 55% 92%;
+    --whatsapp-incoming: 0 0% 100%;
+    --whatsapp-wallpaper: 45 20% 95%;
+    --whatsapp-tick-read: 199 89% 48%;
 
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(158 64% 42%), hsl(158 64% 52%));
@@ -146,7 +152,7 @@
 
     /* Dark mode variants for gradients and shadows */
     --gradient-surface: linear-gradient(180deg, hsl(160 20% 12%), hsl(160 20% 8%));
-    
+
     --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.5);
     --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.8), 0 2px 4px -2px hsl(0 0% 0% / 0.5);
     --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.9), 0 4px 6px -4px hsl(0 0% 0% / 0.5);
@@ -185,6 +191,7 @@
 }
 
 @layer components {
+
   /* Glass morphism effect */
   .glass {
     @apply bg-card/80 backdrop-blur-lg border border-border/50;
@@ -246,8 +253,15 @@
   }
 
   @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
+
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+
+    50% {
+      transform: translateY(-10px);
+    }
   }
 
   /* Pulse glow */
@@ -256,8 +270,15 @@
   }
 
   @keyframes pulseGlow {
-    0%, 100% { box-shadow: 0 0 5px hsl(158 64% 42% / 0.3); }
-    50% { box-shadow: 0 0 20px hsl(158 64% 42% / 0.6); }
+
+    0%,
+    100% {
+      box-shadow: 0 0 5px hsl(158 64% 42% / 0.3);
+    }
+
+    50% {
+      box-shadow: 0 0 20px hsl(158 64% 42% / 0.6);
+    }
   }
 
   /* Slide up animation */
@@ -270,6 +291,7 @@
       opacity: 0;
       transform: translateY(20px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -282,8 +304,13 @@
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
   }
 
   /* Scale in animation */
@@ -296,6 +323,7 @@
       opacity: 0;
       transform: scale(0.95);
     }
+
     to {
       opacity: 1;
       transform: scale(1);
@@ -304,6 +332,7 @@
 }
 
 @layer utilities {
+
   /* Gradient backgrounds */
   .bg-gradient-primary {
     background: var(--gradient-primary);
@@ -336,6 +365,49 @@
 
   .shadow-card {
     box-shadow: var(--shadow-card);
+  }
+
+  /* WhatsApp Utility Styles */
+  .chat-wallpaper {
+    background-color: hsl(var(--whatsapp-wallpaper));
+    background-image: url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
+    background-blend-mode: overlay;
+    background-size: contain;
+    opacity: 0.9;
+  }
+
+  .bubble-tail-own {
+    position: relative;
+    border-top-right-radius: 0 !important;
+  }
+  .bubble-tail-own::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -8px;
+    width: 0;
+    height: 0;
+    border-left: 10px solid hsl(var(--whatsapp-outgoing));
+    border-right: 0px solid transparent;
+    border-top: 0 solid hsl(var(--whatsapp-outgoing));
+    border-bottom: 10px solid transparent;
+  }
+
+  .bubble-tail-other {
+    position: relative;
+    border-top-left-radius: 0 !important;
+  }
+  .bubble-tail-other::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -8px;
+    width: 0;
+    height: 0;
+    border-right: 10px solid hsl(var(--whatsapp-incoming));
+    border-left: 0px solid transparent;
+    border-top: 0 solid hsl(var(--whatsapp-incoming));
+    border-bottom: 10px solid transparent;
   }
 
   /* Safe area padding for mobile */

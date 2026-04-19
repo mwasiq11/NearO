@@ -1,6 +1,6 @@
 import { Server } from 'socket.io';
 import { verifyAccessToken } from '../utils/jwt.js';
-import { pool } from '../db/database.js';
+import prisma from '../db/prisma.js';
 import { v4 as uuidv4 } from 'uuid';
 import { getRedisClient } from '../queue/redisClient.js';
 
@@ -22,61 +22,99 @@ function getTokenFromHandshake(socket) {
 }
 
 async function upsertPresence(userId, status, socketId = null) {
-  await pool.execute(
-    `INSERT INTO user_presence (user_id, status, socket_id, last_seen)
-     VALUES (?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE status = VALUES(status), socket_id = VALUES(socket_id), last_seen = VALUES(last_seen)`,
-    [userId, status, socketId, new Date()]
-  );
+  try {
+    await prisma.user_presence.upsert({
+      where: { user_id: userId },
+      update: {
+        status,
+        socket_id: socketId,
+        last_seen: new Date()
+      },
+      create: {
+        user_id: userId,
+        status,
+        socket_id: socketId,
+        last_seen: new Date()
+      }
+    });
+  } catch (error) {
+    console.error(`Failed to upsert presence for user ${userId}:`, error.message);
+  }
 }
 
 async function createConversation(seekerId, providerId, serviceId = null) {
-  const [existing] = await pool.execute(
-    `SELECT id FROM conversations WHERE seeker_id = ? AND provider_id = ? AND service_id <=> ?`,
-    [seekerId, providerId, serviceId]
-  );
-  if (existing.length > 0) {
-    return existing[0].id;
+  const existing = await prisma.conversations.findFirst({
+    where: {
+      seeker_id: seekerId,
+      provider_id: providerId,
+      service_id: serviceId
+    }
+  });
+
+  if (existing) {
+    return existing.id;
   }
+
   const conversationId = uuidv4();
-  await pool.execute(
-    `INSERT INTO conversations (id, seeker_id, provider_id, service_id, last_message_at)
-     VALUES (?, ?, ?, ?, ?)`,
-    [conversationId, seekerId, providerId, serviceId, new Date()]
-  );
+  await prisma.conversations.create({
+    data: {
+      id: conversationId,
+      seeker_id: seekerId,
+      provider_id: providerId,
+      service_id: serviceId,
+      last_message_at: new Date()
+    }
+  });
   return conversationId;
 }
 
 async function insertMessage(conversationId, senderId, receiverId, content) {
   const messageId = uuidv4();
-  await pool.execute(
-    `INSERT INTO messages (id, conversation_id, sender_id, receiver_id, content, status)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [messageId, conversationId, senderId, receiverId, content, 'sent']
-  );
-  await pool.execute(
-    `UPDATE conversations SET last_message_at = ? WHERE id = ?`,
-    [new Date(), conversationId]
-  );
-  const [messages] = await pool.execute(
-    `SELECT * FROM messages WHERE id = ?`,
-    [messageId]
-  );
-  return messages[0];
+  
+  // Use a transaction to ensure message and conversation update are atomic
+  const [message] = await prisma.$transaction([
+    prisma.messages.create({
+      data: {
+        id: messageId,
+        conversation_id: conversationId,
+        sender_id: senderId,
+        receiver_id: receiverId,
+        content,
+        status: 'sent'
+      }
+    }),
+    prisma.conversations.update({
+      where: { id: conversationId },
+      data: { last_message_at: new Date() }
+    })
+  ]);
+
+  return message;
 }
 
 async function userHasConversationAccess(userId, conversationId) {
-  const [rows] = await pool.execute(
-    `SELECT id FROM conversations WHERE id = ? AND (seeker_id = ? OR provider_id = ?)`,
-    [conversationId, userId, userId]
-  );
-  return rows.length > 0;
+  const count = await prisma.conversations.count({
+    where: {
+      id: conversationId,
+      OR: [
+        { seeker_id: userId },
+        { provider_id: userId }
+      ]
+    }
+  });
+  return count > 0;
 }
 
 function initSocket(server) {
   const io = new Server(server, {
     cors: {
-      origin: process.env.FRONTEND_URL || '*',
+      origin: [
+        'http://localhost:8080',
+        'http://localhost:8081',
+        'http://localhost:8082',
+        'http://localhost:8083',
+        process.env.FRONTEND_URL
+      ].filter(Boolean),
       credentials: true
     }
   });
@@ -105,6 +143,11 @@ function initSocket(server) {
     onlineUsers.set(userId, socket.id);
     await upsertPresence(userId, 'online', socket.id);
 
+    // Join role-based rooms for targeted broadcasts
+    if (socket.user.role === 'admin' || socket.user.role === 'moderator') {
+      socket.join('moderation');
+    }
+
     // Broadcast online status to all users
     io.emit('user:status', { userId, status: 'online' });
 
@@ -118,10 +161,10 @@ function initSocket(server) {
           for (const raw of queued) {
             const message = JSON.parse(raw);
             socket.emit('message:received', { message, queued: true });
-            await pool.execute(
-              `UPDATE messages SET status = 'delivered' WHERE id = ?`,
-              [message.id]
-            );
+            await prisma.messages.update({
+              where: { id: message.id },
+              data: { status: 'delivered' }
+            });
           }
           await redis.del(key);
         }
@@ -166,23 +209,30 @@ function initSocket(server) {
         const message = await insertMessage(convoId, userId, receiverId, content);
 
         socket.join(convoId);
+        // Emit to sender only
         socket.emit('message:sent', { message });
+        // Emit to all others in the room (covers receiver if they have the conversation open)
         socket.to(convoId).emit('message:received', { message });
 
         // Get sender name for notification
-        const [senderInfo] = await pool.execute(
-          `SELECT name FROM users WHERE id = ?`,
-          [userId]
-        );
-        const senderName = senderInfo.length > 0 ? senderInfo[0].name : null;
+        const sender = await prisma.users.findUnique({
+          where: { id: userId },
+          select: { name: true }
+        });
+        const senderName = sender?.name;
 
+        // If receiver is online but NOT in the conversation room, deliver directly
         const receiverSocketId = onlineUsers.get(receiverId);
         if (receiverSocketId) {
-          io.to(receiverSocketId).emit('message:received', { message });
-          await pool.execute(
-            `UPDATE messages SET status = 'delivered' WHERE id = ?`,
-            [message.id]
-          );
+          const receiverSocket = io.sockets.sockets.get(receiverSocketId);
+          const isInRoom = receiverSocket?.rooms?.has(convoId);
+          if (!isInRoom) {
+            io.to(receiverSocketId).emit('message:received', { message });
+          }
+          await prisma.messages.update({
+            where: { id: message.id },
+            data: { status: 'delivered' }
+          });
         } else {
           const redis = await getRedisClient();
           if (redis) {
@@ -204,11 +254,51 @@ function initSocket(server) {
       }
     });
 
+    // ─── Call Signaling ───────────────────────────────────────
+    socket.on('call:initiate', ({ receiverId, callType, roomName }) => {
+      const receiverSocketId = onlineUsers.get(receiverId);
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit('call:incoming', {
+          callerId: userId,
+          callerName: socket.user.email, // will be enriched by frontend
+          callType, // 'audio' or 'video'
+          roomName,
+        });
+      } else {
+        socket.emit('call:unavailable', { receiverId });
+      }
+    });
+
+    socket.on('call:accept', ({ callerId, roomName }) => {
+      const callerSocketId = onlineUsers.get(callerId);
+      if (callerSocketId) {
+        io.to(callerSocketId).emit('call:accepted', { acceptedBy: userId, roomName });
+      }
+    });
+
+    socket.on('call:decline', ({ callerId }) => {
+      const callerSocketId = onlineUsers.get(callerId);
+      if (callerSocketId) {
+        io.to(callerSocketId).emit('call:declined', { declinedBy: userId });
+      }
+    });
+
+    socket.on('call:end', ({ otherUserId }) => {
+      const otherSocketId = onlineUsers.get(otherUserId);
+      if (otherSocketId) {
+        io.to(otherSocketId).emit('call:ended', { endedBy: userId });
+      }
+    });
+
     socket.on('disconnect', async () => {
-      onlineUsers.delete(userId);
-      await upsertPresence(userId, 'offline', null);
-      // Broadcast offline status to all users
-      io.emit('user:status', { userId, status: 'offline' });
+      try {
+        onlineUsers.delete(userId);
+        await upsertPresence(userId, 'offline', null);
+        // Broadcast offline status to all users
+        io.emit('user:status', { userId, status: 'offline' });
+      } catch (error) {
+        console.error('Socket disconnect error:', error);
+      }
     });
   });
 

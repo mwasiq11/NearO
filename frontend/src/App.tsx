@@ -7,6 +7,9 @@ import { store } from '@/store/store';
 import { useAppSelector } from '@/store/hooks';
 import { useTheme } from '@/hooks/useTheme';
 
+import { CallOverlay } from '@/components/common/CallOverlay';
+import { useCall } from '@/hooks/useCall';
+
 // React Router v7 future flags - suppress warnings and opt-in to v7 behavior
 const routerFutureConfig = {
   v7_startTransition: true,
@@ -75,9 +78,19 @@ const RoleRoute = ({
 const AppRoutes = () => {
   // Initialize theme at the root level inside Redux Provider
   useTheme();
+  
+  // Make calling functionality global
+  const { callState, acceptCall, declineCall, endCall } = useCall();
 
   return (
-    <Routes>
+    <>
+      <CallOverlay 
+        callState={callState}
+        onAccept={acceptCall}
+        onDecline={declineCall}
+        onEnd={endCall}
+      />
+      <Routes>
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/about" element={<AboutPage />} />
@@ -177,7 +190,8 @@ const AppRoutes = () => {
       } />
 
       <Route path="*" element={<NotFound />} />
-    </Routes>
+      </Routes>
+    </>
   );
 };
 

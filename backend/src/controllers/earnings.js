@@ -1,4 +1,4 @@
-import { pool, readPool } from '../db/database.js';
+import prisma from '../db/prisma.js';
 
 /**
  * Get provider earnings statistics
@@ -11,121 +11,115 @@ const getProviderEarnings = async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized: User not authenticated' });
     }
 
-    // Get total earnings from approved bookings
-    const [earningsData] = await pool.execute(
-      `SELECT 
-        COUNT(DISTINCT b.id) as total_bookings,
-        COUNT(DISTINCT CASE WHEN b.status = 'approved' THEN b.id END) as completed_bookings,
-        COUNT(DISTINCT CASE WHEN b.status = 'pending' THEN b.id END) as pending_bookings,
-        COUNT(DISTINCT b.seeker_id) as total_clients,
-        COALESCE(SUM(CASE WHEN b.status = 'approved' THEN s.price ELSE 0 END), 0) as total_earnings,
-        COALESCE(SUM(CASE WHEN b.status = 'pending' THEN s.price ELSE 0 END), 0) as pending_earnings
-       FROM bookings b
-       JOIN services s ON b.service_id = s.id
-       WHERE s.provider_id = ?`,
-      [userId]
-    );
+    // Get stats from bookings
+    const bookings = await prisma.bookings.findMany({
+      where: {
+        services: { provider_id: userId }
+      },
+      include: {
+        services: { select: { price: true, category: true, title: true, id: true } }
+      }
+    });
 
-    // Get earnings by service
-    const [earningsByService] = await pool.execute(
-      `SELECT 
-        s.id,
-        s.title,
-        s.category,
-        s.price,
-        COUNT(b.id) as booking_count,
-        COUNT(CASE WHEN b.status = 'approved' THEN 1 END) as completed_count,
-        COALESCE(SUM(CASE WHEN b.status = 'approved' THEN s.price ELSE 0 END), 0) as total_earned
-       FROM services s
-       LEFT JOIN bookings b ON s.id = b.service_id
-       WHERE s.provider_id = ?
-       GROUP BY s.id, s.title, s.category, s.price
-       ORDER BY total_earned DESC`,
-      [userId]
-    );
+    const totalBookings = bookings.length;
+    const completedBookings = bookings.filter(b => b.status === 'approved').length;
+    const pendingBookings = bookings.filter(b => b.status === 'pending').length;
+    const totalClients = new Set(bookings.map(b => b.seeker_id)).size;
+    
+    const totalEarnings = bookings
+      .filter(b => b.status === 'approved')
+      .reduce((acc, b) => acc + (b.services.price || 0), 0);
+    
+    const pendingEarnings = bookings
+      .filter(b => b.status === 'pending')
+      .reduce((acc, b) => acc + (b.services.price || 0), 0);
 
-    // Get monthly earnings trend (last 6 months)
-    const [monthlyTrend] = await pool.execute(
-      `SELECT 
-        DATE_FORMAT(b.created_at, '%Y-%m') as month,
-        DATE_FORMAT(b.created_at, '%b %Y') as month_label,
-        COUNT(b.id) as bookings,
-        COALESCE(SUM(s.price), 0) as earnings
-       FROM bookings b
-       JOIN services s ON b.service_id = s.id
-       WHERE s.provider_id = ? 
-         AND b.status = 'approved'
-         AND b.created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-       GROUP BY DATE_FORMAT(b.created_at, '%Y-%m'), DATE_FORMAT(b.created_at, '%b %Y')
-       ORDER BY month ASC`,
-      [userId]
-    );
+    // Earnings by service
+    const serviceMap = new Map();
+    bookings.forEach(b => {
+      const s = b.services;
+      if (!serviceMap.has(s.id)) {
+        serviceMap.set(s.id, {
+          id: s.id,
+          title: s.title,
+          category: s.category,
+          price: s.price,
+          bookingCount: 0,
+          completedCount: 0,
+          totalEarned: 0
+        });
+      }
+      const entry = serviceMap.get(s.id);
+      entry.bookingCount++;
+      if (b.status === 'approved') {
+        entry.completedCount++;
+        entry.totalEarned += s.price || 0;
+      }
+    });
 
-    // Get recent completed bookings
-    const [recentBookings] = await pool.execute(
-      `SELECT 
-        b.id,
-        b.service_id,
-        b.seeker_id,
-        b.requested_time,
-        b.status,
-        b.created_at,
-        s.title as service_title,
-        s.price,
-        u.name as seeker_name
-       FROM bookings b
-       JOIN services s ON b.service_id = s.id
-       JOIN users u ON b.seeker_id = u.id
-       WHERE s.provider_id = ? AND b.status = 'approved'
-       ORDER BY b.created_at DESC
-       LIMIT 10`,
-      [userId]
-    );
+    const earningsByService = Array.from(serviceMap.values())
+      .sort((a, b) => b.totalEarned - a.totalEarned);
 
-    const stats = earningsData[0] || {
-      total_bookings: 0,
-      completed_bookings: 0,
-      pending_bookings: 0,
-      total_clients: 0,
-      total_earnings: 0,
-      pending_earnings: 0
-    };
+    // Monthly trend (last 6 months)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    
+    const trendBookings = bookings.filter(b => b.status === 'approved' && b.created_at >= sixMonthsAgo);
+    const monthTrendMap = new Map();
+    
+    trendBookings.forEach(b => {
+      const date = new Date(b.created_at);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const label = date.toLocaleString('default', { month: 'short', year: 'numeric' });
+      
+      if (!monthTrendMap.has(monthKey)) {
+        monthTrendMap.set(monthKey, { month: monthKey, monthLabel: label, bookings: 0, earnings: 0 });
+      }
+      const entry = monthTrendMap.get(monthKey);
+      entry.bookings++;
+      entry.earnings += b.services.price || 0;
+    });
+
+    const monthlyTrend = Array.from(monthTrendMap.values()).sort((a, b) => a.month.localeCompare(b.month));
+
+    // Recent completed bookings
+    const recent = await prisma.bookings.findMany({
+      where: {
+        services: { provider_id: userId },
+        status: 'approved'
+      },
+      include: {
+        services: { select: { title: true, price: true } },
+        users: { select: { name: true } }
+      },
+      orderBy: { created_at: 'desc' },
+      take: 10
+    });
+
+    const recentBookings = recent.map(b => ({
+      id: b.id,
+      serviceId: b.service_id,
+      serviceTitle: b.services.title,
+      price: b.services.price,
+      seekerId: b.seeker_id,
+      seekerName: b.users?.name,
+      requestedTime: b.requested_time,
+      status: b.status,
+      createdAt: b.created_at
+    }));
 
     res.json({
       stats: {
-        totalEarnings: parseFloat(stats.total_earnings),
-        pendingEarnings: parseFloat(stats.pending_earnings),
-        totalBookings: stats.total_bookings,
-        completedBookings: stats.completed_bookings,
-        pendingBookings: stats.pending_bookings,
-        totalClients: stats.total_clients,
+        totalEarnings,
+        pendingEarnings,
+        totalBookings,
+        completedBookings,
+        pendingBookings,
+        totalClients
       },
-      earningsByService: earningsByService.map(service => ({
-        id: service.id,
-        title: service.title,
-        category: service.category,
-        price: parseFloat(service.price),
-        bookingCount: service.booking_count,
-        completedCount: service.completed_count,
-        totalEarned: parseFloat(service.total_earned),
-      })),
-      monthlyTrend: monthlyTrend.map(month => ({
-        month: month.month,
-        monthLabel: month.month_label,
-        bookings: month.bookings,
-        earnings: parseFloat(month.earnings),
-      })),
-      recentBookings: recentBookings.map(booking => ({
-        id: booking.id,
-        serviceId: booking.service_id,
-        serviceTitle: booking.service_title,
-        price: parseFloat(booking.price),
-        seekerId: booking.seeker_id,
-        seekerName: booking.seeker_name,
-        requestedTime: booking.requested_time,
-        status: booking.status,
-        createdAt: booking.created_at,
-      })),
+      earningsByService,
+      monthlyTrend,
+      recentBookings
     });
   } catch (error) {
     console.error('Error fetching provider earnings:', error);
@@ -144,115 +138,115 @@ const getSeekerSpending = async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized: User not authenticated' });
     }
 
-    // Get total spending from approved bookings
-    const [spendingData] = await pool.execute(
-      `SELECT 
-        COUNT(DISTINCT b.id) as total_bookings,
-        COUNT(DISTINCT CASE WHEN b.status = 'approved' THEN b.id END) as completed_bookings,
-        COUNT(DISTINCT CASE WHEN b.status = 'pending' THEN b.id END) as pending_bookings,
-        COUNT(DISTINCT s.provider_id) as total_providers,
-        COALESCE(SUM(CASE WHEN b.status = 'approved' THEN s.price ELSE 0 END), 0) as total_spent,
-        COALESCE(SUM(CASE WHEN b.status = 'pending' THEN s.price ELSE 0 END), 0) as pending_amount
-       FROM bookings b
-       JOIN services s ON b.service_id = s.id
-       WHERE b.seeker_id = ?`,
-      [userId]
-    );
+    const bookings = await prisma.bookings.findMany({
+      where: { seeker_id: userId },
+      include: {
+        services: { select: { price: true, category: true, title: true, provider_id: true } }
+      }
+    });
 
-    // Get spending by category
-    const [spendingByCategory] = await pool.execute(
-      `SELECT 
-        s.category,
-        COUNT(b.id) as booking_count,
-        COUNT(CASE WHEN b.status = 'approved' THEN 1 END) as completed_count,
-        COALESCE(SUM(CASE WHEN b.status = 'approved' THEN s.price ELSE 0 END), 0) as total_spent
-       FROM bookings b
-       JOIN services s ON b.service_id = s.id
-       WHERE b.seeker_id = ?
-       GROUP BY s.category
-       ORDER BY total_spent DESC`,
-      [userId]
-    );
+    const totalBookings = bookings.length;
+    const completedBookings = bookings.filter(b => b.status === 'approved').length;
+    const pendingBookings = bookings.filter(b => b.status === 'pending').length;
+    const totalProviders = new Set(bookings.map(b => b.services.provider_id)).size;
+    
+    const totalSpent = bookings
+      .filter(b => b.status === 'approved')
+      .reduce((acc, b) => acc + (b.services.price || 0), 0);
+    
+    const pendingAmount = bookings
+      .filter(b => b.status === 'pending')
+      .reduce((acc, b) => acc + (b.services.price || 0), 0);
 
-    // Get monthly spending trend (last 6 months)
-    const [monthlyTrend] = await pool.execute(
-      `SELECT 
-        DATE_FORMAT(b.created_at, '%Y-%m') as month,
-        DATE_FORMAT(b.created_at, '%b %Y') as month_label,
-        COUNT(b.id) as bookings,
-        COALESCE(SUM(s.price), 0) as spending
-       FROM bookings b
-       JOIN services s ON b.service_id = s.id
-       WHERE b.seeker_id = ? 
-         AND b.status = 'approved'
-         AND b.created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-       GROUP BY DATE_FORMAT(b.created_at, '%Y-%m'), DATE_FORMAT(b.created_at, '%b %Y')
-       ORDER BY month ASC`,
-      [userId]
-    );
+    // Spending by category
+    const categoryMap = new Map();
+    bookings.forEach(b => {
+      const cat = b.services.category;
+      if (!categoryMap.has(cat)) {
+        categoryMap.set(cat, {
+          category: cat,
+          bookingCount: 0,
+          completedCount: 0,
+          totalSpent: 0
+        });
+      }
+      const entry = categoryMap.get(cat);
+      entry.bookingCount++;
+      if (b.status === 'approved') {
+        entry.completedCount++;
+        entry.totalSpent += b.services.price || 0;
+      }
+    });
 
-    // Get recent completed bookings
-    const [recentBookings] = await pool.execute(
-      `SELECT 
-        b.id,
-        b.service_id,
-        b.requested_time,
-        b.status,
-        b.created_at,
-        s.title as service_title,
-        s.price,
-        s.category,
-        u.name as provider_name
-       FROM bookings b
-       JOIN services s ON b.service_id = s.id
-       JOIN users u ON s.provider_id = u.id
-       WHERE b.seeker_id = ? AND b.status = 'approved'
-       ORDER BY b.created_at DESC
-       LIMIT 10`,
-      [userId]
-    );
+    const spendingByCategory = Array.from(categoryMap.values())
+      .sort((a, b) => b.totalSpent - a.totalSpent);
 
-    const stats = spendingData[0] || {
-      total_bookings: 0,
-      completed_bookings: 0,
-      pending_bookings: 0,
-      total_providers: 0,
-      total_spent: 0,
-      pending_amount: 0
-    };
+    // Monthly spending trend
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    
+    const trendBookings = bookings.filter(b => b.status === 'approved' && b.created_at >= sixMonthsAgo);
+    const monthTrendMap = new Map();
+    
+    trendBookings.forEach(b => {
+      const date = new Date(b.created_at);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const label = date.toLocaleString('default', { month: 'short', year: 'numeric' });
+      
+      if (!monthTrendMap.has(monthKey)) {
+        monthTrendMap.set(monthKey, { month: monthKey, monthLabel: label, bookings: 0, spending: 0 });
+      }
+      const entry = monthTrendMap.get(monthKey);
+      entry.bookings++;
+      entry.spending += b.services.price || 0;
+    });
+
+    const monthlyTrend = Array.from(monthTrendMap.values()).sort((a, b) => a.month.localeCompare(b.month));
+
+    // Recent spending
+    const recent = await prisma.bookings.findMany({
+      where: {
+        seeker_id: userId,
+        status: 'approved'
+      },
+      include: {
+        services: { 
+          select: { 
+            title: true, 
+            price: true, 
+            category: true,
+            users_services_provider_idTousers: { select: { name: true } }
+          } 
+        }
+      },
+      orderBy: { created_at: 'desc' },
+      take: 10
+    });
+
+    const recentBookings = recent.map(b => ({
+      id: b.id,
+      serviceId: b.service_id,
+      serviceTitle: b.services.title,
+      category: b.services.category,
+      price: b.services.price,
+      providerName: b.services.users_services_provider_idTousers.name,
+      requestedTime: b.requested_time,
+      status: b.status,
+      createdAt: b.created_at
+    }));
 
     res.json({
       stats: {
-        totalSpent: parseFloat(stats.total_spent),
-        pendingAmount: parseFloat(stats.pending_amount),
-        totalBookings: stats.total_bookings,
-        completedBookings: stats.completed_bookings,
-        pendingBookings: stats.pending_bookings,
-        totalProviders: stats.total_providers,
+        totalSpent,
+        pendingAmount,
+        totalBookings,
+        completedBookings,
+        pendingBookings,
+        totalProviders
       },
-      spendingByCategory: spendingByCategory.map(cat => ({
-        category: cat.category,
-        bookingCount: cat.booking_count,
-        completedCount: cat.completed_count,
-        totalSpent: parseFloat(cat.total_spent),
-      })),
-      monthlyTrend: monthlyTrend.map(month => ({
-        month: month.month,
-        monthLabel: month.month_label,
-        bookings: month.bookings,
-        spending: parseFloat(month.spending),
-      })),
-      recentBookings: recentBookings.map(booking => ({
-        id: booking.id,
-        serviceId: booking.service_id,
-        serviceTitle: booking.service_title,
-        category: booking.category,
-        price: parseFloat(booking.price),
-        providerName: booking.provider_name,
-        requestedTime: booking.requested_time,
-        status: booking.status,
-        createdAt: booking.created_at,
-      })),
+      spendingByCategory,
+      monthlyTrend,
+      recentBookings
     });
   } catch (error) {
     console.error('Error fetching seeker spending:', error);

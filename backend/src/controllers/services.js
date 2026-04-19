@@ -1,9 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
-import { pool, readPool } from '../db/database.js';
-import { normalizeLocation } from '../utils/location.js';
+import prisma from '../db/prisma.js';
+import { normalizeLocation, calculateDistance, isValidLatLng } from '../utils/location.js';
 import { invalidateCache } from '../cache/cache.js';
 import { logAudit, buildRequestContext } from '../audit/logger.js';
 import { getFileUrl } from '../middleware/upload.js';
+import { getIO } from '../realtime/socket.js';
 
 const createService = async (req, res) => {
   try {
@@ -31,34 +32,35 @@ const createService = async (req, res) => {
     }
 
     // Check if provider exists
-    const [providers] = await pool.execute(
-      'SELECT id FROM users WHERE id = ?',
-      [provider_id]
-    );
+    const provider = await prisma.users.findUnique({
+      where: { id: provider_id },
+      select: { id: true }
+    });
 
-    if (providers.length === 0) {
+    if (!provider) {
       return res.status(400).json({ error: 'Provider does not exist' });
     }
 
     // Auto-add custom category if it doesn't exist
     try {
-      const [existingCategory] = await pool.execute(
-        'SELECT id FROM service_categories WHERE name = ?',
-        [category]
-      );
+      const existingCategory = await prisma.service_categories.findUnique({
+        where: { name: category }
+      });
 
-      if (existingCategory.length === 0) {
+      if (!existingCategory) {
         // Add the new custom category
-        const categoryId = uuidv4();
-        await pool.execute(
-          'INSERT INTO service_categories (id, name, description, is_active) VALUES (?, ?, ?, TRUE)',
-          [categoryId, category, `Custom category: ${category}`]
-        );
+        await prisma.service_categories.create({
+          data: {
+            id: uuidv4(),
+            name: category,
+            description: `Custom category: ${category}`,
+            is_active: true
+          }
+        });
         console.log(`✨ New custom category added: ${category}`);
       }
     } catch (categoryError) {
       console.error('Error checking/adding category:', categoryError);
-      // Continue even if category addition fails
     }
 
     const id = uuidv4();
@@ -79,43 +81,46 @@ const createService = async (req, res) => {
     }
 
     // Insert service with location data
+    const serviceData = {
+      id,
+      provider_id,
+      title,
+      description,
+      category,
+      price: parseFloat(price),
+      availability,
+      image_url: image_url || null
+    };
+
     if (locationData) {
-      console.log('💾 Saving service with location:', { 
-        neighborhood: locationData.neighborhood, 
-        city: locationData.city,
-        hasCoordinates: !!(locationData.latitude && locationData.longitude)
+      Object.assign(serviceData, {
+        latitude: locationData.latitude,
+        longitude: locationData.longitude,
+        s2_cell_id: locationData.s2_cell_id ? BigInt(locationData.s2_cell_id.toString()) : null,
+        neighborhood: locationData.neighborhood,
+        city: locationData.city
       });
-      
-      await pool.execute(
-        `INSERT INTO services 
-         (id, provider_id, title, description, category, price, availability, 
-          latitude, longitude, s2_cell_id, neighborhood, city, image_url) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          id, provider_id, title, description, category, price, availability,
-          locationData.latitude, locationData.longitude, 
-          locationData.s2_cell_id ? locationData.s2_cell_id.toString() : null,
-          locationData.neighborhood, locationData.city, image_url || null
-        ]
-      );
-    } else {
-      console.log('💾 Saving service WITHOUT location data');
-      await pool.execute(
-        'INSERT INTO services (id, provider_id, title, description, category, price, availability, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [id, provider_id, title, description, category, price, availability, image_url || null]
-      );
     }
 
-    const [newService] = await pool.execute('SELECT * FROM services WHERE id = ?', [id]);
-    
-    console.log('✅ Service created:', {
-      id: newService[0].id,
-      title: newService[0].title,
-      neighborhood: newService[0].neighborhood,
-      city: newService[0].city
+    const newService = await prisma.services.create({
+      data: serviceData
     });
 
-    res.status(201).json(newService[0]);
+    console.log('✅ Service created:', {
+      id: newService.id,
+      title: newService.title,
+      neighborhood: newService.neighborhood,
+      city: newService.city
+    });
+
+    res.status(201).json(newService);
+
+    // Notify moderators/admins
+    getIO()?.to('moderation').emit('service:new', {
+      serviceId: id,
+      title: newService.title,
+      providerId: newService.provider_id
+    });
 
     const ctx = buildRequestContext(req);
     await logAudit({
@@ -146,19 +151,53 @@ const createService = async (req, res) => {
 
 const getServices = async (req, res) => {
   try {
-    const { category } = req.query;
-    let query = 'SELECT * FROM services WHERE is_active = TRUE ORDER BY created_at DESC';
-    let params = [];
+    const { category, latitude, longitude } = req.query;
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+    const radiusKm = 25; // Mandatory 25km radius
 
-    if (category) {
-      query = 'SELECT * FROM services WHERE category = ? AND is_active = TRUE ORDER BY created_at DESC';
-      params = [category];
+    let services = await prisma.services.findMany({
+      where: {
+        is_active: true,
+        ...(category ? { category } : {})
+      },
+      orderBy: { created_at: 'desc' }
+    });
+
+    // If user provides location, filter by 25km radius
+    if (isValidLatLng(lat, lng)) {
+      services = services.filter(service => {
+        if (!service.latitude || !service.longitude) return false;
+        
+        const distance = calculateDistance(
+          lat,
+          lng,
+          parseFloat(service.latitude),
+          parseFloat(service.longitude)
+        );
+        service.distance = distance;
+        return distance <= radiusKm;
+      });
+      // Sort by distance if location provided
+      services.sort((a, b) => a.distance - b.distance);
     }
 
-    const [services] = await readPool.execute(query, params);
     res.json(services);
   } catch (error) {
     console.error('Error getting services:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getMyServices = async (req, res) => {
+  try {
+    const services = await prisma.services.findMany({
+      where: { provider_id: req.user.id },
+      orderBy: { created_at: 'desc' }
+    });
+    res.json(services);
+  } catch (error) {
+    console.error('Error getting my services:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -167,16 +206,15 @@ const getServiceById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [services] = await readPool.execute(
-      'SELECT * FROM services WHERE id = ?',
-      [id]
-    );
+    const service = await prisma.services.findUnique({
+      where: { id }
+    });
 
-    if (services.length === 0) {
+    if (!service) {
       return res.status(404).json({ error: 'Service not found' });
     }
 
-    res.json(services[0]);
+    res.json(service);
   } catch (error) {
     console.error('Error getting service:', error);
     res.status(500).json({ error: error.message });
@@ -199,43 +237,43 @@ const updateServiceOwn = async (req, res) => {
       image_url
     } = req.body;
 
-    const [services] = await pool.execute('SELECT id FROM services WHERE id = ?', [id]);
-    if (services.length === 0) {
+    const service = await prisma.services.findUnique({
+      where: { id }
+    });
+    if (!service) {
       return res.status(404).json({ error: 'Service not found' });
     }
 
     // Auto-add custom category if it doesn't exist and category is being updated
     if (category !== undefined) {
       try {
-        const [existingCategory] = await pool.execute(
-          'SELECT id FROM service_categories WHERE name = ?',
-          [category]
-        );
+        const existingCategory = await prisma.service_categories.findUnique({
+          where: { name: category }
+        });
 
-        if (existingCategory.length === 0) {
-          // Add the new custom category
-          const categoryId = uuidv4();
-          await pool.execute(
-            'INSERT INTO service_categories (id, name, description, is_active) VALUES (?, ?, ?, TRUE)',
-            [categoryId, category, `Custom category: ${category}`]
-          );
+        if (!existingCategory) {
+          await prisma.service_categories.create({
+            data: {
+              id: uuidv4(),
+              name: category,
+              description: `Custom category: ${category}`,
+              is_active: true
+            }
+          });
           console.log(`✨ New custom category added: ${category}`);
         }
       } catch (categoryError) {
         console.error('Error checking/adding category:', categoryError);
-        // Continue even if category addition fails
       }
     }
 
-    const updates = [];
-    const params = [];
-
-    if (title !== undefined) { updates.push('title = ?'); params.push(title); }
-    if (description !== undefined) { updates.push('description = ?'); params.push(description); }
-    if (category !== undefined) { updates.push('category = ?'); params.push(category); }
-    if (price !== undefined) { updates.push('price = ?'); params.push(price); }
-    if (availability !== undefined) { updates.push('availability = ?'); params.push(availability); }
-    if (image_url !== undefined) { updates.push('image_url = ?'); params.push(image_url); }
+    const updateData = {};
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (category !== undefined) updateData.category = category;
+    if (price !== undefined) updateData.price = parseFloat(price);
+    if (availability !== undefined) updateData.availability = availability;
+    if (image_url !== undefined) updateData.image_url = image_url;
 
     if (latitude !== undefined || longitude !== undefined) {
       if (latitude === undefined || longitude === undefined) {
@@ -245,28 +283,27 @@ const updateServiceOwn = async (req, res) => {
       if (!locationData) {
         return res.status(400).json({ error: 'Invalid location data' });
       }
-      updates.push('latitude = ?', 'longitude = ?', 's2_cell_id = ?', 'neighborhood = ?', 'city = ?');
-      params.push(
-        locationData.latitude,
-        locationData.longitude,
-        locationData.s2_cell_id ? locationData.s2_cell_id.toString() : null,
-        locationData.neighborhood,
-        locationData.city
-      );
+      Object.assign(updateData, {
+        latitude: locationData.latitude,
+        longitude: locationData.longitude,
+        s2_cell_id: locationData.s2_cell_id ? BigInt(locationData.s2_cell_id.toString()) : null,
+        neighborhood: locationData.neighborhood,
+        city: locationData.city
+      });
     } else {
-      if (neighborhood !== undefined) { updates.push('neighborhood = ?'); params.push(neighborhood); }
-      if (city !== undefined) { updates.push('city = ?'); params.push(city); }
+      if (neighborhood !== undefined) updateData.neighborhood = neighborhood;
+      if (city !== undefined) updateData.city = city;
     }
 
-    if (updates.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
 
-    params.push(id);
-    await pool.execute(`UPDATE services SET ${updates.join(', ')} WHERE id = ?`, params);
-
-    const [updated] = await pool.execute('SELECT * FROM services WHERE id = ?', [id]);
-    res.json(updated[0]);
+    const updated = await prisma.services.update({
+      where: { id },
+      data: updateData
+    });
+    res.json(updated);
 
     const ctx = buildRequestContext(req);
     await logAudit({
@@ -299,13 +336,17 @@ const deleteServiceOwn = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [existing] = await pool.execute('SELECT city FROM services WHERE id = ?', [id]);
-    const [services] = await pool.execute('SELECT id FROM services WHERE id = ?', [id]);
-    if (services.length === 0) {
+    const existing = await prisma.services.findUnique({
+      where: { id },
+      select: { city: true }
+    });
+    if (!existing) {
       return res.status(404).json({ error: 'Service not found' });
     }
 
-    await pool.execute('DELETE FROM services WHERE id = ?', [id]);
+    await prisma.services.delete({
+      where: { id }
+    });
     res.json({ message: 'Service deleted successfully' });
 
     const ctx = buildRequestContext(req);
@@ -346,20 +387,31 @@ const reportService = async (req, res) => {
     }
 
     // Check if service exists
-    const [services] = await pool.execute('SELECT provider_id FROM services WHERE id = ?', [id]);
-    if (services.length === 0) {
+    const service = await prisma.services.findUnique({
+      where: { id },
+      select: { provider_id: true }
+    });
+    if (!service) {
       return res.status(404).json({ error: 'Service not found' });
     }
 
-    const service = services[0];
-    const reportId = uuidv4();
-
-    await pool.execute(
-      'INSERT INTO user_reports (id, reported_user_id, reported_by, service_id, reason) VALUES (?, ?, ?, ?, ?)',
-      [reportId, service.provider_id, req.user.id, id, reason]
-    );
+    await prisma.user_reports.create({
+      data: {
+        id: uuidv4(),
+        reported_user_id: service.provider_id,
+        reported_by: req.user.id,
+        service_id: id,
+        reason
+      }
+    });
 
     res.status(201).json({ message: 'Service reported successfully' });
+
+    // Notify moderators/admins
+    getIO()?.to('moderation').emit('report:new', {
+      serviceId: id,
+      reason
+    });
   } catch (error) {
     console.error('Error reporting service:', error);
     res.status(500).json({ error: error.message });
@@ -388,5 +440,6 @@ export {
   updateServiceOwn,
   deleteServiceOwn,
   reportService,
-  uploadServiceImage
+  uploadServiceImage,
+  getMyServices
 };

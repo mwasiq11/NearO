@@ -1,0 +1,471 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model admin_action_logs {
+  id          String    @id @db.VarChar(36)
+  action      String    @db.VarChar(100)
+  actor_id    String    @db.VarChar(36)
+  target_type String?   @db.VarChar(50)
+  target_id   String?   @db.VarChar(36)
+  metadata    Json?
+  created_at  DateTime? @default(now()) @db.Timestamp(0)
+  users       users     @relation(fields: [actor_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "admin_action_logs_ibfk_1")
+
+  @@index([action], map: "idx_action")
+  @@index([actor_id], map: "idx_actor_id")
+  @@index([created_at], map: "idx_created_at")
+  @@index([target_type], map: "idx_target_type")
+}
+
+model audit_logs {
+  id          String    @id @db.VarChar(36)
+  actor_id    String?   @db.VarChar(36)
+  action_type String    @db.VarChar(100)
+  entity_type String    @db.VarChar(50)
+  entity_id   String?   @db.VarChar(36)
+  old_value   Json?
+  new_value   Json?
+  metadata    Json?
+  ip_address  String?   @db.VarChar(45)
+  user_agent  String?   @db.Text
+  created_at  DateTime? @default(now()) @db.Timestamp(0)
+  users       users?    @relation(fields: [actor_id], references: [id], onUpdate: NoAction, map: "audit_logs_ibfk_1")
+
+  @@index([action_type], map: "idx_action_type")
+  @@index([actor_id], map: "idx_actor_id")
+  @@index([created_at], map: "idx_created_at")
+  @@index([entity_type, entity_id], map: "idx_entity")
+}
+
+model bookings {
+  id             String           @id @db.VarChar(36)
+  service_id     String           @db.VarChar(36)
+  seeker_id      String           @db.VarChar(36)
+  requested_time String           @db.VarChar(255)
+  status         bookings_status? @default(pending)
+  created_at     DateTime?        @default(now()) @db.Timestamp(0)
+  updated_at     DateTime?        @default(now()) @db.Timestamp(0)
+  services       services         @relation(fields: [service_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "bookings_ibfk_1")
+  users          users            @relation(fields: [seeker_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "bookings_ibfk_2")
+  reviews        reviews?
+
+  @@index([seeker_id], map: "idx_seeker")
+  @@index([service_id], map: "idx_service")
+  @@index([status], map: "idx_status")
+}
+
+model conversations {
+  id                                     String                           @id @db.VarChar(36)
+  seeker_id                              String                           @db.VarChar(36)
+  provider_id                            String                           @db.VarChar(36)
+  service_id                             String?                          @db.VarChar(36)
+  seeker_unread_count                    Int?                             @default(0)
+  provider_unread_count                  Int?                             @default(0)
+  last_message_at                        DateTime?                        @db.Timestamp(0)
+  last_message_preview                   String?                          @db.Text
+  last_message_type                      conversations_last_message_type?
+  created_at                             DateTime?                        @default(now()) @db.Timestamp(0)
+  updated_at                             DateTime?                        @default(now()) @db.Timestamp(0)
+  users_conversations_seeker_idTousers   users                            @relation("conversations_seeker_idTousers", fields: [seeker_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "conversations_ibfk_1")
+  users_conversations_provider_idTousers users                            @relation("conversations_provider_idTousers", fields: [provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "conversations_ibfk_2")
+  services                               services?                        @relation(fields: [service_id], references: [id], onUpdate: NoAction, map: "conversations_ibfk_3")
+  messages                               messages[]
+
+  @@unique([seeker_id, provider_id, service_id], map: "uniq_conversation")
+  @@index([last_message_at], map: "idx_last_message")
+  @@index([provider_id], map: "idx_provider")
+  @@index([seeker_id], map: "idx_seeker")
+  @@index([service_id], map: "idx_service")
+}
+
+model email_verifications {
+  id          String    @id @db.VarChar(36)
+  user_id     String    @db.VarChar(36)
+  token       String    @db.VarChar(255)
+  expires_at  DateTime  @db.Timestamp(0)
+  verified_at DateTime? @db.Timestamp(0)
+  created_at  DateTime? @default(now()) @db.Timestamp(0)
+  users       users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "email_verifications_ibfk_1")
+
+  @@index([expires_at], map: "idx_expires_at")
+  @@index([token], map: "idx_token")
+  @@index([user_id], map: "idx_user_id")
+}
+
+model file_uploads {
+  id             String                      @id @db.VarChar(36)
+  user_id        String                      @db.VarChar(36)
+  file_name      String                      @db.VarChar(255)
+  original_name  String                      @db.VarChar(255)
+  file_path      String                      @db.VarChar(500)
+  file_type      String                      @db.VarChar(100)
+  file_size      Int
+  upload_context file_uploads_upload_context
+  created_at     DateTime?                   @default(now()) @db.Timestamp(0)
+  users          users                       @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "file_uploads_ibfk_1")
+
+  @@index([created_at], map: "idx_created_at")
+  @@index([upload_context], map: "idx_upload_context")
+  @@index([user_id], map: "idx_user_id")
+}
+
+model messages {
+  id                                String                 @id @db.VarChar(36)
+  conversation_id                   String                 @db.VarChar(36)
+  sender_id                         String                 @db.VarChar(36)
+  receiver_id                       String                 @db.VarChar(36)
+  message_type                      messages_message_type? @default(text)
+  content                           String?                @db.Text
+  file_url                          String?                @db.VarChar(500)
+  file_name                         String?                @db.VarChar(255)
+  file_size                         Int?
+  file_type                         String?                @db.VarChar(100)
+  duration                          Int?
+  thumbnail_url                     String?                @db.VarChar(500)
+  status                            messages_status?       @default(sent)
+  created_at                        DateTime?              @default(now()) @db.Timestamp(0)
+  conversations                     conversations          @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "messages_ibfk_1")
+  users_messages_sender_idTousers   users                  @relation("messages_sender_idTousers", fields: [sender_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "messages_ibfk_2")
+  users_messages_receiver_idTousers users                  @relation("messages_receiver_idTousers", fields: [receiver_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "messages_ibfk_3")
+
+  @@index([conversation_id], map: "idx_conversation")
+  @@index([created_at], map: "idx_created_at")
+  @@index([receiver_id], map: "idx_receiver")
+  @@index([sender_id], map: "idx_sender")
+  @@index([status], map: "idx_status")
+}
+
+model notification_preferences {
+  user_id             String    @id @db.VarChar(36)
+  messages_enabled    Boolean?  @default(true)
+  bookings_enabled    Boolean?  @default(true)
+  reviews_enabled     Boolean?  @default(true)
+  promotions_enabled  Boolean?  @default(false)
+  email_notifications Boolean?  @default(true)
+  push_notifications  Boolean?  @default(true)
+  updated_at          DateTime? @default(now()) @db.Timestamp(0)
+  users               users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "notification_preferences_ibfk_1")
+}
+
+model notifications {
+  id         String    @id @db.VarChar(36)
+  user_id    String    @db.VarChar(36)
+  type       String    @db.VarChar(100)
+  payload    Json?
+  is_read    Boolean?  @default(false)
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "notifications_ibfk_1")
+
+  @@index([created_at], map: "idx_created_at")
+  @@index([is_read], map: "idx_is_read")
+  @@index([user_id], map: "idx_user_id")
+}
+
+model password_resets {
+  id         String    @id @db.VarChar(36)
+  user_id    String    @db.VarChar(36)
+  token      String    @db.VarChar(255)
+  expires_at DateTime  @db.Timestamp(0)
+  used_at    DateTime? @db.Timestamp(0)
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "password_resets_ibfk_1")
+
+  @@index([expires_at], map: "idx_expires_at")
+  @@index([token], map: "idx_token")
+  @@index([user_id], map: "idx_user_id")
+}
+
+model reviews {
+  id                               String    @id @db.VarChar(36)
+  provider_id                      String    @db.VarChar(36)
+  reviewer_id                      String    @db.VarChar(36)
+  service_id                       String    @db.VarChar(36)
+  booking_id                       String    @unique(map: "uniq_review") @db.VarChar(36)
+  rating                           Int       @db.TinyInt
+  comment                          String?   @db.Text
+  created_at                       DateTime? @default(now()) @db.Timestamp(0)
+  users_reviews_provider_idTousers users     @relation("reviews_provider_idTousers", fields: [provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "reviews_ibfk_1")
+  users_reviews_reviewer_idTousers users     @relation("reviews_reviewer_idTousers", fields: [reviewer_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "reviews_ibfk_2")
+  services                         services  @relation(fields: [service_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "reviews_ibfk_3")
+  bookings                         bookings  @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "reviews_ibfk_4")
+
+  @@index([created_at], map: "idx_created_at")
+  @@index([provider_id], map: "idx_provider")
+  @@index([rating], map: "idx_rating")
+  @@index([reviewer_id], map: "idx_reviewer")
+  @@index([service_id], map: "idx_service")
+}
+
+model service_categories {
+  id          String    @id @db.VarChar(36)
+  name        String    @unique(map: "name") @db.VarChar(100)
+  description String?   @db.Text
+  is_active   Boolean?  @default(true)
+  created_at  DateTime? @default(now()) @db.Timestamp(0)
+
+  @@index([is_active], map: "idx_is_active")
+}
+
+model services {
+  id                                 String          @id @db.VarChar(36)
+  provider_id                        String          @db.VarChar(36)
+  title                              String          @db.VarChar(255)
+  description                        String          @db.Text
+  category                           String          @db.VarChar(100)
+  price                              Decimal         @db.Decimal(10, 2)
+  availability                       String          @db.Text
+  latitude                           Decimal?        @db.Decimal(10, 8)
+  longitude                          Decimal?        @db.Decimal(11, 8)
+  s2_cell_id                         BigInt?         @db.UnsignedBigInt
+  neighborhood                       String?         @db.VarChar(255)
+  city                               String?         @db.VarChar(255)
+  image_url                          String?         @db.Text
+  is_active                          Boolean?        @default(true)
+  moderated_at                       DateTime?       @db.Timestamp(0)
+  moderated_by                       String?         @db.VarChar(36)
+  created_at                         DateTime?       @default(now()) @db.Timestamp(0)
+  bookings                           bookings[]
+  conversations                      conversations[]
+  reviews                            reviews[]
+  users_services_provider_idTousers  users           @relation("services_provider_idTousers", fields: [provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "services_ibfk_1")
+  users_services_moderated_byTousers users?          @relation("services_moderated_byTousers", fields: [moderated_by], references: [id], onUpdate: NoAction, map: "services_ibfk_2")
+  user_reports                       user_reports[]
+
+  @@index([category], map: "idx_category")
+  @@index([city], map: "idx_city")
+  @@index([is_active], map: "idx_is_active")
+  @@index([latitude, longitude], map: "idx_location")
+  @@index([neighborhood], map: "idx_neighborhood")
+  @@index([provider_id], map: "idx_provider")
+  @@index([s2_cell_id], map: "idx_s2_cell")
+  @@index([moderated_by], map: "moderated_by")
+}
+
+model system_settings {
+  id            String    @id @db.VarChar(36)
+  setting_key   String    @unique(map: "setting_key") @db.VarChar(100)
+  setting_value String?   @db.Text
+  updated_by    String?   @db.VarChar(36)
+  updated_at    DateTime? @default(now()) @db.Timestamp(0)
+  users         users?    @relation(fields: [updated_by], references: [id], onUpdate: NoAction, map: "system_settings_ibfk_1")
+
+  @@index([setting_key], map: "idx_setting_key")
+  @@index([updated_by], map: "updated_by")
+}
+
+model user_otps {
+  id          String    @id @db.VarChar(36)
+  user_id     String    @db.VarChar(36)
+  otp_code    String    @db.VarChar(6)
+  expires_at  DateTime  @db.Timestamp(0)
+  verified_at DateTime? @db.Timestamp(0)
+  attempts    Int?      @default(0)
+  created_at  DateTime? @default(now()) @db.Timestamp(0)
+  users       users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_otps_ibfk_1")
+
+  @@index([expires_at], map: "idx_expires_at")
+  @@index([otp_code], map: "idx_otp_code")
+  @@index([user_id, otp_code, verified_at], map: "idx_otp_verification")
+  @@index([user_id], map: "idx_user_id")
+}
+
+model user_presence {
+  user_id    String                @id @db.VarChar(36)
+  status     user_presence_status? @default(offline)
+  socket_id  String?               @db.VarChar(255)
+  last_seen  DateTime?             @db.Timestamp(0)
+  updated_at DateTime?             @default(now()) @db.Timestamp(0)
+  users      users                 @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_presence_ibfk_1")
+
+  @@index([last_seen], map: "idx_last_seen")
+  @@index([status], map: "idx_status")
+}
+
+model user_push_subscriptions {
+  id         String    @id @db.VarChar(36)
+  user_id    String    @db.VarChar(36)
+  endpoint   String    @db.Text
+  p256dh_key String    @db.Text
+  auth_key   String    @db.Text
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_push_subscriptions_ibfk_1")
+
+  @@index([user_id], map: "idx_user_id")
+}
+
+model user_reports {
+  id                                         String               @id @db.VarChar(36)
+  reported_user_id                           String               @db.VarChar(36)
+  reported_by                                String               @db.VarChar(36)
+  service_id                                 String?              @db.VarChar(36)
+  reason                                     String               @db.Text
+  status                                     user_reports_status? @default(pending)
+  reviewed_by                                String?              @db.VarChar(36)
+  reviewed_at                                DateTime?            @db.Timestamp(0)
+  created_at                                 DateTime?            @default(now()) @db.Timestamp(0)
+  users_user_reports_reported_user_idTousers users                @relation("user_reports_reported_user_idTousers", fields: [reported_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_reports_ibfk_1")
+  users_user_reports_reported_byTousers      users                @relation("user_reports_reported_byTousers", fields: [reported_by], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_reports_ibfk_2")
+  services                                   services?            @relation(fields: [service_id], references: [id], onUpdate: NoAction, map: "user_reports_ibfk_3")
+  users_user_reports_reviewed_byTousers      users?               @relation("user_reports_reviewed_byTousers", fields: [reviewed_by], references: [id], onUpdate: NoAction, map: "user_reports_ibfk_4")
+
+  @@index([created_at], map: "idx_created_at")
+  @@index([reported_user_id], map: "idx_reported_user")
+  @@index([status], map: "idx_status")
+  @@index([reported_by], map: "reported_by")
+  @@index([reviewed_by], map: "reviewed_by")
+  @@index([service_id], map: "service_id")
+}
+
+model user_search_history {
+  id           String    @id @db.VarChar(36)
+  user_id      String?   @db.VarChar(36)
+  search_query String?   @db.VarChar(255)
+  category     String?   @db.VarChar(100)
+  city         String?   @db.VarChar(100)
+  neighborhood String?   @db.VarChar(100)
+  filters      Json?
+  created_at   DateTime? @default(now()) @db.Timestamp(0)
+  users        users?    @relation(fields: [user_id], references: [id], onUpdate: NoAction, map: "user_search_history_ibfk_1")
+
+  @@index([category], map: "idx_category")
+  @@index([city], map: "idx_city")
+  @@index([created_at], map: "idx_created_at")
+  @@index([user_id], map: "idx_user_id")
+}
+
+model user_sessions {
+  id         String    @id @db.VarChar(36)
+  user_id    String    @db.VarChar(36)
+  token_hash String    @db.VarChar(255)
+  expires_at DateTime  @db.Timestamp(0)
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_sessions_ibfk_1")
+
+  @@index([expires_at], map: "idx_expires_at")
+  @@index([user_id], map: "idx_user_id")
+}
+
+model user_warnings {
+  id                                   String    @id @db.VarChar(36)
+  user_id                              String    @db.VarChar(36)
+  warned_by                            String?   @db.VarChar(36)
+  reason                               String    @db.Text
+  created_at                           DateTime? @default(now()) @db.Timestamp(0)
+  users_user_warnings_user_idTousers   users     @relation("user_warnings_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_warnings_ibfk_1")
+  users_user_warnings_warned_byTousers users?    @relation("user_warnings_warned_byTousers", fields: [warned_by], references: [id], onUpdate: NoAction, map: "user_warnings_ibfk_2")
+
+  @@index([created_at], map: "idx_created_at")
+  @@index([user_id], map: "idx_user_id")
+  @@index([warned_by], map: "idx_warned_by")
+}
+
+model users {
+  id                                                String                    @id @db.VarChar(36)
+  name                                              String                    @db.VarChar(255)
+  email                                             String                    @unique(map: "email") @db.VarChar(255)
+  phone                                             String?                   @db.VarChar(20)
+  password                                          String                    @db.VarChar(255)
+  role                                              users_role?               @default(user)
+  neighborhood                                      String?                   @db.VarChar(100)
+  city                                              String?                   @db.VarChar(100)
+  latitude                                          Decimal?                  @db.Decimal(10, 8)
+  longitude                                         Decimal?                  @db.Decimal(11, 8)
+  profile_picture                                   String?                   @db.VarChar(500)
+  is_active                                         Boolean?                  @default(true)
+  is_verified                                       Boolean?                  @default(false)
+  email_verified_at                                 DateTime?                 @db.Timestamp(0)
+  last_login_at                                     DateTime?                 @db.Timestamp(0)
+  suspended_until                                   DateTime?                 @db.Timestamp(0)
+  suspension_reason                                 String?                   @db.Text
+  created_at                                        DateTime?                 @default(now()) @db.Timestamp(0)
+  admin_action_logs                                 admin_action_logs[]
+  audit_logs                                        audit_logs[]
+  bookings                                          bookings[]
+  conversations_conversations_seeker_idTousers      conversations[]           @relation("conversations_seeker_idTousers")
+  conversations_conversations_provider_idTousers    conversations[]           @relation("conversations_provider_idTousers")
+  email_verifications                               email_verifications[]
+  file_uploads                                      file_uploads[]
+  messages_messages_sender_idTousers                messages[]                @relation("messages_sender_idTousers")
+  messages_messages_receiver_idTousers              messages[]                @relation("messages_receiver_idTousers")
+  notification_preferences                          notification_preferences?
+  notifications                                     notifications[]
+  password_resets                                   password_resets[]
+  reviews_reviews_provider_idTousers                reviews[]                 @relation("reviews_provider_idTousers")
+  reviews_reviews_reviewer_idTousers                reviews[]                 @relation("reviews_reviewer_idTousers")
+  services_services_provider_idTousers              services[]                @relation("services_provider_idTousers")
+  services_services_moderated_byTousers             services[]                @relation("services_moderated_byTousers")
+  system_settings                                   system_settings[]
+  user_otps                                         user_otps[]
+  user_presence                                     user_presence?
+  user_push_subscriptions                           user_push_subscriptions[]
+  user_reports_user_reports_reported_user_idTousers user_reports[]            @relation("user_reports_reported_user_idTousers")
+  user_reports_user_reports_reported_byTousers      user_reports[]            @relation("user_reports_reported_byTousers")
+  user_reports_user_reports_reviewed_byTousers      user_reports[]            @relation("user_reports_reviewed_byTousers")
+  user_search_history                               user_search_history[]
+  user_sessions                                     user_sessions[]
+  user_warnings_user_warnings_user_idTousers        user_warnings[]           @relation("user_warnings_user_idTousers")
+  user_warnings_user_warnings_warned_byTousers      user_warnings[]           @relation("user_warnings_warned_byTousers")
+
+  @@index([email], map: "idx_email")
+  @@index([is_active], map: "idx_is_active")
+  @@index([latitude, longitude], map: "idx_location_user")
+  @@index([role], map: "idx_role")
+}
+
+enum user_presence_status {
+  online
+  offline
+}
+
+enum bookings_status {
+  pending
+  approved
+  rejected
+}
+
+enum messages_message_type {
+  text
+  image
+  voice
+  file
+}
+
+enum user_reports_status {
+  pending
+  reviewed
+  resolved
+  dismissed
+}
+
+enum users_role {
+  user
+  moderator
+  admin
+}
+
+enum file_uploads_upload_context {
+  message_image
+  message_voice
+  profile_picture
+  service_image
+}
+
+enum conversations_last_message_type {
+  text
+  image
+  voice
+  file
+}
+
+enum messages_status {
+  sent
+  delivered
+  read
+}

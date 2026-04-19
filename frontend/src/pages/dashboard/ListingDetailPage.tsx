@@ -52,7 +52,7 @@ const ListingDetailPage = () => {
           category: service.category,
           price: Number(service.price),
           priceType: 'fixed',
-          images: service.images || [],
+          images: service.image_url ? [service.image_url] : (service.images || []),
           availability: [],
           location: {
             neighborhood: service.neighborhood || '',
