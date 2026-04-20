@@ -116,10 +116,7 @@ const login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Prevent moderator/admin login via user endpoint
-    if (user.role !== 'user') {
-      return res.status(403).json({ error: 'Use the appropriate login portal for your role' });
-    }
+    // Allow all roles to log in via this consolidated endpoint
 
     // Check if account is active
     if (!user.is_active) {

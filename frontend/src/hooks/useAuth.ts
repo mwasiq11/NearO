@@ -8,6 +8,7 @@ import {
   signupSuccess,
   logout as logoutAction,
   clearError,
+  updateUser,
 } from '@/store/slices/authSlice';
 import { User, LoginForm, SignupForm, UserRole } from '@/models/types';
 import { toast } from 'sonner';
@@ -49,7 +50,7 @@ export const useAuth = () => {
     };
   }, []);
 
-  const login = useCallback(async (credentials: LoginForm | string, password?: string, role?: 'user' | 'moderator' | 'admin'): Promise<boolean> => {
+  const login = useCallback(async (credentials: LoginForm | string, password?: string): Promise<boolean> => {
     dispatch(loginStart());
     
     // Handle both object and separate parameters
@@ -57,13 +58,7 @@ export const useAuth = () => {
       ? { email: credentials, password: password! }
       : credentials;
     
-    // Determine endpoint based on role
     let endpoint = '/auth/login';
-    if (role === 'moderator') {
-      endpoint = '/auth/moderator-login';
-    } else if (role === 'admin') {
-      endpoint = '/auth/admin-login';
-    }
     
     try {
       const data = await api.post<{
@@ -150,6 +145,21 @@ export const useAuth = () => {
     dispatch(clearError());
   }, [dispatch]);
 
+  const refreshUser = useCallback(async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      const data = await api.get<any>('/users/me', { auth: true });
+      const normalized = normalizeUser(data);
+      authStorage.setUser(normalized);
+      dispatch(updateUser(normalized));
+    } catch (err) {
+      console.error('Failed to refresh user:', err);
+      // If we get a 401/403, we might want to logout, but api.ts handles 401 refresh.
+      // If it still fails, it might be better to just let the user stay logged out if token is invalid.
+    }
+  }, [isAuthenticated, normalizeUser, dispatch]);
+
   return {
     user,
     isAuthenticated,
@@ -159,6 +169,7 @@ export const useAuth = () => {
     completeOtpLogin,
     signup,
     logout,
+    refreshUser,
     clearAuthError,
     isAdmin: user?.role === 'admin',
     isModerator: user?.role === 'moderator',

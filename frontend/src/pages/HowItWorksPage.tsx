@@ -89,12 +89,6 @@ const HowItWorksPage = () => {
 
           <div className="flex items-center gap-3">
             <Button variant="ghost" onClick={() => navigate("/login")}>Log In</Button>
-            <Button variant="outline" size="sm" onClick={() => navigate("/auth/moderator-login")}>
-              Moderator
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate("/auth/admin-login")}>
-              Admin
-            </Button>
             <Button variant="hero" onClick={() => navigate("/signup")}>
               Get Started
             </Button>

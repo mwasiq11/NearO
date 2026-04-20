@@ -14,7 +14,8 @@ import {
   Package,
   TrendingUp,
   Moon,
-  Sun
+  Sun,
+  Shield
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -32,7 +33,7 @@ const DashboardLayout = () => {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin, isModerator } = useAuth();
   const { totalUnread } = useChat();
   const { unreadCount } = useNotifications();
   const { theme, resolvedTheme, setTheme } = useTheme();
@@ -50,7 +51,7 @@ const DashboardLayout = () => {
     return 'Dashboard';
   };
 
-  const navItems = [
+  const baseNavItems = [
     { path: '/dashboard', icon: Home, label: 'Home' },
     { path: '/dashboard/browse', icon: Search, label: 'Browse' },
     { path: '/dashboard/my-services', icon: Package, label: 'My Services' },
@@ -59,6 +60,16 @@ const DashboardLayout = () => {
     { path: '/dashboard/earnings', icon: TrendingUp, label: 'Earnings' },
     { path: '/dashboard/profile', icon: User, label: 'Profile' },
   ];
+
+  const adminNavItems = isAdmin 
+    ? [{ path: '/admin', icon: Shield, label: 'Admin Panel' }] 
+    : [];
+    
+  const moderatorNavItems = isModerator || isAdmin
+    ? [{ path: '/moderator', icon: Shield, label: 'Moderator Desk' }] 
+    : [];
+
+  const navItems = [...baseNavItems, ...moderatorNavItems, ...adminNavItems];
 
   const isActive = (path: string) => {
     if (path === '/dashboard') {
@@ -92,8 +103,8 @@ const DashboardLayout = () => {
             />
             <div className="flex-1 min-w-0">
               <p className="font-medium truncate">{user?.name}</p>
-              <Badge variant="secondary" className="text-2xs">
-                Member
+              <Badge variant="secondary" className="text-2xs capitalize">
+                {user?.role || 'Member'}
               </Badge>
             </div>
           </div>

@@ -27,7 +27,7 @@ interface NavItem {
   roles: Array<'admin' | 'moderator'>;
 }
 
-const AdminModeratorLayout = ({ children }: { children: React.ReactNode }) => {
+const AdminModeratorLayout = ({ children, dropTitle }: { children: React.ReactNode; dropTitle?: string }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -63,7 +63,7 @@ const AdminModeratorLayout = ({ children }: { children: React.ReactNode }) => {
           {sidebarOpen && (
             <div>
               <p className="text-xs text-muted-foreground">{isAdmin ? 'Administrator' : 'Moderator'}</p>
-              <h1 className="text-xl font-bold">Control Center</h1>
+              <h1 className="text-xl font-bold">{dropTitle || 'Control Center'}</h1>
             </div>
           )}
           <Button

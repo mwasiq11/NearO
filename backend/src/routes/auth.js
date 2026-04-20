@@ -2,8 +2,6 @@ import express from 'express';
 import {
   register,
   login,
-  moderatorLogin,
-  adminLogin,
   refresh,
   logout,
   verifyOTP,
@@ -32,14 +30,8 @@ router.post('/verify-otp', emailVerificationLimiter, verifyOTP);
 // POST /auth/resend-otp - Resend OTP for email verification
 router.post('/resend-otp', emailVerificationLimiter, resendOTP);
 
-// POST /auth/login - Login user (provider/seeker)
+// POST /auth/login - Login user (provider/seeker/moderator/admin)
 router.post('/login', validate(loginSchema), login);
-
-// POST /auth/moderator-login - Login moderator
-router.post('/moderator-login', validate(loginSchema), moderatorLogin);
-
-// POST /auth/admin-login - Login admin
-router.post('/admin-login', validate(loginSchema), adminLogin);
 
 // POST /auth/refresh - Refresh access token
 router.post('/refresh', refresh);

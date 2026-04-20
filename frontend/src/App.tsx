@@ -1,11 +1,13 @@
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Provider } from 'react-redux';
 import { store } from '@/store/store';
 import { useAppSelector } from '@/store/hooks';
 import { useTheme } from '@/hooks/useTheme';
+import { useAuth } from '@/hooks/useAuth';
 
 import { CallOverlay } from '@/components/common/CallOverlay';
 import { useCall } from '@/hooks/useCall';
@@ -22,8 +24,6 @@ import AboutPage from "./pages/AboutPage";
 import HowItWorksPage from "./pages/HowItWorksPage";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
-import ModeratorLoginPage from "./pages/auth/ModeratorLoginPage";
-import AdminLoginPage from "./pages/auth/AdminLoginPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
@@ -71,13 +71,21 @@ const RoleRoute = ({
   const { isAuthenticated, user } = useAppSelector(state => state.auth);
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   const role = (user?.role || 'user') as 'admin' | 'moderator' | 'user';
-  if (!allowed.includes(role as 'admin' | 'moderator')) return <Navigate to="/dashboard" replace />;
+  if (!allowed.includes(role as 'admin' | 'moderator')) return <Navigate to="/login" replace />;
   return <>{children}</>;
 };
 
 const AppRoutes = () => {
   // Initialize theme at the root level inside Redux Provider
   useTheme();
+
+  const { refreshUser, isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshUser();
+    }
+  }, [isAuthenticated, refreshUser]);
   
   // Make calling functionality global
   const { callState, acceptCall, declineCall, endCall } = useCall();
@@ -97,8 +105,6 @@ const AppRoutes = () => {
       <Route path="/how-it-works" element={<HowItWorksPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
-      <Route path="/auth/moderator-login" element={<ModeratorLoginPage />} />
-      <Route path="/auth/admin-login" element={<AdminLoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
@@ -125,8 +131,8 @@ const AppRoutes = () => {
 
       {/* Admin & Moderator routes for testing UI */}
       <Route path="/admin" element={
-        <RoleRoute allowed={['admin', 'moderator']}>
-          <AdminModeratorLayout>
+        <RoleRoute allowed={['admin']}>
+          <AdminModeratorLayout dropTitle="Admin Desk">
             <AdminDashboard />
           </AdminModeratorLayout>
         </RoleRoute>
