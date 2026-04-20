@@ -1163,6 +1163,69 @@ const getSystemLogs = async (req, res) => {
   }
 };
 
+/**
+ * Audit Logs Retrieval
+ */
+const getAuditLogs = async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 50, 
+      actionType, 
+      actorId, 
+      entityType, 
+      startDate, 
+      endDate 
+    } = req.query;
+    
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
+
+    const where = {};
+    if (actionType) where.action_type = actionType;
+    if (actorId) where.actor_id = actorId;
+    if (entityType) where.entity_type = entityType;
+    if (startDate || endDate) {
+      where.created_at = {};
+      if (startDate) where.created_at.gte = new Date(startDate);
+      if (endDate) where.created_at.lte = new Date(endDate);
+    }
+
+    const [logs, total] = await Promise.all([
+      prisma.audit_logs.findMany({
+        where,
+        include: {
+          users: {
+            select: { name: true, email: true }
+          }
+        },
+        orderBy: { created_at: 'desc' },
+        skip: offset,
+        take: limitNum
+      }),
+      prisma.audit_logs.count({ where })
+    ]);
+
+    res.json({
+      logs: logs.map(log => ({
+        ...log,
+        actor_name: log.users?.name,
+        actor_email: log.users?.email
+      })),
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error) {
+    console.error('Error getting audit logs:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export {
   getAllUsers,
   getUserById,
@@ -1193,7 +1256,7 @@ export {
   getAnalyticsExport,
   getSystemConfig,
   updateSystemConfig,
-  getSystemLogs,
+  getAuditLogs,
   setMaintenanceMode
 };
 

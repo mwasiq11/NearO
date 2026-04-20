@@ -27,6 +27,7 @@ import SignupPage from "./pages/auth/SignupPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
+import ChangePasswordPage from './pages/auth/ChangePasswordPage';
 import OTPVerificationPage from "./pages/auth/OTPVerificationPage";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import DashboardHome from "./pages/dashboard/DashboardHome";
@@ -50,14 +51,21 @@ import AdminAnalyticsPage from "./pages/admin/AdminAnalyticsPage";
 import AdminCategoriesPage from "./pages/admin/AdminCategoriesPage";
 import AdminModeratorsPage from "./pages/admin/AdminModeratorsPage";
 import AdminSystemSettingsPage from "./pages/admin/AdminSystemSettingsPage";
+import AuditLogsPage from "./pages/admin/AuditLogsPage";
 import SettingsPage from "./pages/dashboard/SettingsPage";
 
 const queryClient = new QueryClient();
 
 // Protected Route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAppSelector(state => state.auth);
+  const { isAuthenticated, user } = useAppSelector(state => state.auth);
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  
+  // Force password change if required
+  if (user?.mustChangePassword) {
+    return <Navigate to="/change-password" replace />;
+  }
+  
   return <>{children}</>;
 };
 
@@ -70,8 +78,22 @@ const RoleRoute = ({
 }) => {
   const { isAuthenticated, user } = useAppSelector(state => state.auth);
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  
+  // Force password change if required
+  if (user?.mustChangePassword) {
+    return <Navigate to="/change-password" replace />;
+  }
+
   const role = (user?.role || 'user') as 'admin' | 'moderator' | 'user';
   if (!allowed.includes(role as 'admin' | 'moderator')) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+};
+
+// Specifically for the forced password change flow
+const ForcePasswordChangeRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, user } = useAppSelector(state => state.auth);
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!user?.mustChangePassword) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 };
 
@@ -79,13 +101,13 @@ const AppRoutes = () => {
   // Initialize theme at the root level inside Redux Provider
   useTheme();
 
-  const { refreshUser, isAuthenticated } = useAuth();
+  const { refreshUser, isAuthenticated, user } = useAuth();
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !user?.mustChangePassword) {
       refreshUser();
     }
-  }, [isAuthenticated, refreshUser]);
+  }, [isAuthenticated, user?.mustChangePassword, refreshUser]);
   
   // Make calling functionality global
   const { callState, acceptCall, declineCall, endCall } = useCall();
@@ -109,6 +131,11 @@ const AppRoutes = () => {
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/verify-otp" element={<OTPVerificationPage />} />
+      <Route path="/change-password" element={
+        <ForcePasswordChangeRoute>
+          <ChangePasswordPage />
+        </ForcePasswordChangeRoute>
+      } />
 
       {/* Protected Dashboard Routes */}
       <Route path="/dashboard" element={

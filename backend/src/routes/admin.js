@@ -44,8 +44,8 @@ import {
   getAnalyticsExport,
   getSystemConfig,
   updateSystemConfig,
-  getSystemLogs,
-  setMaintenanceMode
+  setMaintenanceMode,
+  getAuditLogs
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -96,7 +96,8 @@ router.get('/analytics/export', requirePermission('analytics.export'), getAnalyt
 // System
 router.get('/system/config', requirePermission('system.config'), getSystemConfig);
 router.put('/system/config', requirePermission('system.config'), validate(systemSettingSchema), updateSystemConfig);
-router.get('/system/logs', requirePermission('system.logs'), getSystemLogs);
+router.get('/system/logs', requirePermission('system.logs'), getAuditLogs); // Using getAuditLogs for system logs
+router.get('/audit-logs', requirePermission('audit.view'), getAuditLogs);
 router.put('/system/maintenance', requirePermission('system.maintenance'), validate(maintenanceModeSchema), setMaintenanceMode);
 
 export default router;

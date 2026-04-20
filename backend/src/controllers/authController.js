@@ -135,6 +135,33 @@ const login = async (req, res) => {
       data: { last_login_at: new Date() }
     });
 
+    // Check if password change is required
+    if (user.must_change_password) {
+      const limitedTokens = {
+        accessToken: generateAccessToken({
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          scope: 'PASSWORD_CHANGE_ONLY'
+        }),
+        refreshToken: null, // No refresh token for limited sessions
+        expiresIn: '15m'
+      };
+
+      return res.status(200).json({
+        status: 'PASSWORD_CHANGE_REQUIRED',
+        message: 'You must change your password before accessing the application',
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          must_change_password: true
+        },
+        ...limitedTokens
+      });
+    }
+
     // Generate tokens
     const tokens = generateTokenPair({
       id: user.id,
@@ -736,14 +763,15 @@ const forgotPassword = async (req, res) => {
     // Don't reveal if email exists or not (security best practice)
     if (user) {
       const resetToken = crypto.randomBytes(32).toString('hex');
+      const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
       const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 1); // 1 hour expiry
+      expiresAt.setMinutes(expiresAt.getMinutes() + 30); // 30 minutes expiry
 
       await prisma.password_resets.create({
         data: {
           id: uuidv4(),
           user_id: user.id,
-          token: resetToken,
+          token: hashedToken,
           expires_at: expiresAt
         }
       });
@@ -773,10 +801,13 @@ const resetPassword = async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters long' });
     }
 
+    // Hash the incoming token for comparison
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
     // Find reset record
     const reset = await prisma.password_resets.findFirst({
       where: {
-        token,
+        token: hashedToken,
         expires_at: { gt: new Date() },
         used_at: null
       }
@@ -802,9 +833,71 @@ const resetPassword = async (req, res) => {
       data: { used_at: new Date() }
     });
 
-    res.json({ message: 'Password reset successfully' });
+    res.json({ message: 'Password reset successful. Please login with your new password.' });
   } catch (error) {
     console.error('Password reset error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Change password (for forced password change on first login)
+ */
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    // Validate inputs
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current and new passwords are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    }
+
+    // Get user
+    const user = await prisma.users.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Verify current password
+    const isMatched = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatched) {
+      return res.status(401).json({ error: 'Invalid current password' });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update user: set new password and clear must_change_password
+    await prisma.users.update({
+      where: { id: userId },
+      data: {
+        password: hashedPassword,
+        must_change_password: false
+      }
+    });
+
+    // Log the change
+    const ctx = buildRequestContext(req);
+    await logAudit({
+      actorId: userId,
+      actionType: 'password_change_forced',
+      entityType: 'user',
+      entityId: userId,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent
+    });
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -820,6 +913,6 @@ export {
   resendOTP,
   verifyEmail,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  changePassword
 };
-

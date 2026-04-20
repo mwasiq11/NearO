@@ -62,7 +62,8 @@ const ADMIN_PERMISSIONS = {
   // Advanced Analytics
   'analytics.export': true,
   'system.logs': true,
-
+  'audit.view': true,
+  
   // Emergency Controls
   'system.maintenance': true,
   'users.ban': true,

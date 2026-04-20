@@ -17,6 +17,7 @@ import {
   LogOut,
   Sun,
   Moon,
+  ClipboardList
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -43,6 +44,7 @@ const AdminModeratorLayout = ({ children, dropTitle }: { children: React.ReactNo
     { label: 'Services', path: '/admin/services', icon: <Package className="h-5 w-5" />, roles: ['admin', 'moderator'] },
     { label: 'Reports', path: '/admin/reports', icon: <Flag className="h-5 w-5" />, roles: ['admin', 'moderator'] },
     { label: 'Analytics', path: '/admin/analytics', icon: <BarChart3 className="h-5 w-5" />, roles: ['admin', 'moderator'] },
+    { label: 'Audit Logs', path: '/admin/audit', icon: <ClipboardList className="h-5 w-5" />, roles: ['admin'] },
     { label: 'Categories', path: '/admin/categories', icon: <Shield className="h-5 w-5" />, roles: ['admin'] },
     { label: 'Moderators', path: '/admin/moderators', icon: <Shield className="h-5 w-5" />, roles: ['admin'] },
     { label: 'Settings', path: '/admin/settings', icon: <Settings className="h-5 w-5" />, roles: ['admin'] },

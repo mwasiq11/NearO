@@ -24,8 +24,8 @@ async function main() {
 
     // 1. Create Users (admin & moderator get their own passwords)
     const usersData = [
-      { id: uuidv4(), name: 'Admin User', email: adminEmail, role: 'admin', city: 'Karachi', neighborhood: 'DHA', is_verified: true, password: hashedAdminPassword },
-      { id: uuidv4(), name: 'Moderator Ali', email: moderatorEmail, role: 'moderator', city: 'Karachi', neighborhood: 'Clifton', is_verified: true, password: hashedModeratorPassword },
+      { id: uuidv4(), name: 'Admin User', email: adminEmail, role: 'admin', city: 'Karachi', neighborhood: 'DHA', is_verified: true, password: hashedAdminPassword, must_change_password: true },
+      { id: uuidv4(), name: 'Moderator Ali', email: moderatorEmail, role: 'moderator', city: 'Karachi', neighborhood: 'Clifton', is_verified: true, password: hashedModeratorPassword, must_change_password: true },
     ];
 
     console.log('👥 Seeding users...');

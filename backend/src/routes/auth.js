@@ -8,7 +8,8 @@ import {
   resendOTP,
   verifyEmail,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  changePassword
 } from '../controllers/authController.js';
 import { passwordResetLimiter, emailVerificationLimiter } from '../middleware/rateLimit.js';
 import { validate } from '../middleware/validation.js';
@@ -16,7 +17,8 @@ import {
   registerSchema,
   loginSchema,
   forgotPasswordSchema,
-  resetPasswordSchema
+  resetPasswordSchema,
+  changePasswordSchema
 } from '../utils/validationSchemas.js';
 
 const router = express.Router();
@@ -47,6 +49,11 @@ router.post('/forgot-password', passwordResetLimiter, validate(forgotPasswordSch
 
 // POST /auth/reset-password - Reset password
 router.post('/reset-password', passwordResetLimiter, validate(resetPasswordSchema), resetPassword);
+
+// POST /auth/change-password - Change password (for forced change)
+// Protected by authenticate to ensure we have a valid (possibly restricted) session
+import { authenticate } from '../middleware/auth.js';
+router.post('/change-password', authenticate, validate(changePasswordSchema), changePassword);
 
 export default router;
 

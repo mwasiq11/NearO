@@ -23,9 +23,9 @@ interface PendingItem {
 
 interface ActivityLog {
   id: string;
-  action: string;
+  action_type: string;
   actor_id: string;
-  target_type: string;
+  entity_type: string;
   created_at: string;
 }
 
@@ -201,14 +201,14 @@ const AdminDashboard = () => {
                   <div key={log.id} className="flex flex-col gap-1 border-b pb-2 last:border-0 last:pb-0">
                     <div className="flex justify-between items-center">
                       <span className="font-medium text-foreground capitalize">
-                        {log.action.replace(/_/g, ' ')}
+                        {(log.action_type || 'Unknown').replace(/_/g, ' ')}
                       </span>
                       <span className="text-[10px] uppercase text-muted-foreground">
                         {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
                     <span className="text-[11px] text-muted-foreground truncate">
-                      Target: {log.target_type} • {log.id.slice(0, 8)}
+                      Target: {log.entity_type} • {log.id.slice(0, 8)}
                     </span>
                   </div>
                 ))}

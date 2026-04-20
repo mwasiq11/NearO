@@ -21,6 +21,7 @@ export interface User {
   bio?: string;
   skills?: string[];
   isVerified: boolean;
+  mustChangePassword?: boolean;
   createdAt: string;
   reputation: ReputationScore;
 }

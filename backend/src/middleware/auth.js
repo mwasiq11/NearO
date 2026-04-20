@@ -25,6 +25,17 @@ async function authenticate(req, res, next) {
       });
     }
 
+    // Check for restricted scope (Forced Password Change phase)
+    // Only allow /auth/change-password if token has PASSWORD_CHANGE_ONLY scope
+    const isChangePasswordRoute = req.originalUrl === '/auth/change-password' || req.originalUrl.startsWith('/auth/change-password?');
+    if (decoded.scope === 'PASSWORD_CHANGE_ONLY' && !isChangePasswordRoute) {
+      return res.status(403).json({
+        error: 'Password change required',
+        message: 'Your current session is restricted. Please change your password to continue.',
+        status: 'PASSWORD_CHANGE_REQUIRED'
+      });
+    }
+
     // Fetch user from database to ensure they still exist and are active
     const user = await prisma.users.findUnique({
       where: { id: decoded.id },

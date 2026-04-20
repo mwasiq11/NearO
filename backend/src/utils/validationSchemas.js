@@ -102,6 +102,12 @@ const resetPasswordSchema = Joi.object({
   newPassword: Joi.string().min(6).max(100).required()
 });
 
+// Change password schema (for forced change)
+const changePasswordSchema = Joi.object({
+  currentPassword: Joi.string().required(),
+  newPassword: Joi.string().min(6).max(100).required()
+});
+
 // User suspension schema
 const suspendUserSchema = Joi.object({
   duration_hours: Joi.number().integer().min(1).max(8760).required(), // Max 1 year
@@ -218,6 +224,7 @@ export {
   nearbySchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  changePasswordSchema,
   suspendUserSchema,
   warnUserSchema,
   banUserSchema,

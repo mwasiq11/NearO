@@ -45,6 +45,7 @@ export const useAuth = () => {
       bio: raw.bio || undefined,
       skills: raw.skills || undefined,
       isVerified: Boolean(raw.is_verified ?? raw.isVerified),
+      mustChangePassword: Boolean(raw.must_change_password ?? raw.mustChangePassword),
       createdAt: raw.created_at || raw.createdAt || new Date().toISOString(),
       reputation: raw.reputation || defaultReputation,
     };
@@ -62,12 +63,31 @@ export const useAuth = () => {
     
     try {
       const data = await api.post<{
-        user: User;
+        user: any;
         accessToken: string;
         refreshToken: string;
+        status?: string;
       }>(endpoint, loginData);
 
       const normalized = normalizeUser(data.user);
+      
+      // Handle Forced Password Change status
+      if (data.status === 'PASSWORD_CHANGE_REQUIRED') {
+        authStorage.setTokens(data.accessToken, ''); // No refresh token for limited sessions
+        authStorage.setUser(normalized);
+        dispatch(loginSuccess({ 
+          user: normalized, 
+          accessToken: data.accessToken, 
+          refreshToken: '' 
+        }));
+        
+        toast.info('Security Update Required', {
+          description: 'Please change your password to secure your account.'
+        });
+        navigate('/change-password');
+        return true;
+      }
+
       authStorage.setTokens(data.accessToken, data.refreshToken);
       authStorage.setUser(normalized);
       dispatch(loginSuccess({ user: normalized, accessToken: data.accessToken, refreshToken: data.refreshToken }));
@@ -88,6 +108,24 @@ export const useAuth = () => {
       return false;
     }
   }, [dispatch, navigate, normalizeUser]);
+
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string): Promise<boolean> => {
+    try {
+      await api.post('/auth/change-password', { currentPassword, newPassword }, { auth: true });
+      toast.success('Password updated successfully! Re-authenticating...');
+      
+      // Clear session and redirect to login for a fresh "clean" session
+      authStorage.clearTokens();
+      authStorage.clearUser();
+      dispatch(logoutAction());
+      navigate('/login', { state: { message: 'Password updated. Please login with your new password.' } });
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to change password';
+      toast.error(message);
+      return false;
+    }
+  }, [dispatch, navigate]);
 
   const completeOtpLogin = useCallback((data: { user: User; accessToken: string; refreshToken: string }) => {
     const normalized = normalizeUser(data.user);
@@ -166,6 +204,7 @@ export const useAuth = () => {
     isLoading,
     error,
     login,
+    changePassword,
     completeOtpLogin,
     signup,
     logout,
@@ -174,5 +213,6 @@ export const useAuth = () => {
     isAdmin: user?.role === 'admin',
     isModerator: user?.role === 'moderator',
     isUser: user?.role === 'user',
+    mustChangePassword: user?.mustChangePassword
   };
 };

@@ -12,19 +12,22 @@ async function logAudit({
   ipAddress = null,
   userAgent = null
 }) {
-  await prisma.audit_logs.create({
+  // Fire and forget audit logging to avoid blocking the main request
+  prisma.audit_logs.create({
     data: {
       id: uuidv4(),
       actor_id: actorId,
       action_type: actionType,
       entity_type: entityType,
       entity_id: entityId,
-      old_value: oldValue ? JSON.stringify(oldValue) : null,
-      new_value: newValue ? JSON.stringify(newValue) : null,
-      metadata: metadata ? JSON.stringify(metadata) : null,
+      old_value: oldValue ? (typeof oldValue === 'string' ? oldValue : JSON.stringify(oldValue)) : null,
+      new_value: newValue ? (typeof newValue === 'string' ? newValue : JSON.stringify(newValue)) : null,
+      metadata: metadata ? (typeof metadata === 'string' ? metadata : JSON.stringify(metadata)) : null,
       ip_address: ipAddress,
       user_agent: userAgent
     }
+  }).catch(err => {
+    console.error(`[Audit Log Failure] Action: ${actionType}, Actor: ${actorId}, Error:`, err.message);
   });
 }
 

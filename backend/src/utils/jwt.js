@@ -18,15 +18,21 @@ const JWT_REFRESH_EXPIRE = process.env.JWT_REFRESH_EXPIRE || '30d';
  * @returns {string} JWT token
  */
 function generateAccessToken(payload) {
+  const tokenPayload = {
+    id: payload.id,
+    email: payload.email,
+    role: payload.role
+  };
+  
+  if (payload.scope) {
+    tokenPayload.scope = payload.scope;
+  }
+
   return jwt.sign(
-    {
-      id: payload.id,
-      email: payload.email,
-      role: payload.role
-    },
+    tokenPayload,
     JWT_SECRET,
     {
-      expiresIn: JWT_EXPIRE
+      expiresIn: payload.scope === 'PASSWORD_CHANGE_ONLY' ? '15m' : JWT_EXPIRE
     }
   );
 }
