@@ -28,10 +28,10 @@ const SeekerDashboard = () => {
         className="space-y-8 flex flex-col items-center text-center max-w-2xl mx-auto"
       >
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl md:text-4xl font-bold tracking-tight">
+          <h1 className="text-2xl md:text-4xl font-semibold tracking-tight">
             Find <span className="text-primary italic">Expert</span> Services
           </h1>
-          <p className="text-muted-foreground text-sm md:text-lg font-medium">
+          <p className="text-muted-foreground text-sm md:text-lg font-normal">
             Reliable professionals in {user?.city || user?.neighborhood || 'your area'}
           </p>
         </div>
@@ -55,8 +55,8 @@ const SeekerDashboard = () => {
         className="space-y-4"
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold tracking-tight">Categories</h2>
-          <Button variant="link" size="sm" className="text-primary font-bold h-auto p-0" onClick={() => navigate('/dashboard/browse')}>
+          <h2 className="text-lg font-semibold tracking-tight">Categories</h2>
+          <Button variant="link" size="sm" className="text-primary font-semibold h-auto p-0" onClick={() => navigate('/dashboard/browse')}>
             Explore All <ArrowRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
@@ -72,7 +72,7 @@ const SeekerDashboard = () => {
                 <div className="mb-3 p-3 rounded-full bg-primary/5 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                   <Icon className="w-6 h-6 md:w-7 md:h-7" />
                 </div>
-                <span className="text-xs font-bold text-center line-clamp-1">{cat.name}</span>
+                <span className="text-xs font-semibold text-center line-clamp-1">{cat.name}</span>
               </button>
             );
           })}
@@ -88,8 +88,8 @@ const SeekerDashboard = () => {
           className="space-y-4"
         >
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold tracking-tight">Up Next</h2>
-            <Button variant="ghost" size="sm" className="font-bold" onClick={() => navigate('/dashboard/bookings')}>
+            <h2 className="text-lg font-semibold tracking-tight">Up Next</h2>
+            <Button variant="ghost" size="sm" className="font-semibold" onClick={() => navigate('/dashboard/bookings')}>
               Manage
             </Button>
           </div>
@@ -104,14 +104,14 @@ const SeekerDashboard = () => {
                     }
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm md:text-base truncate group-hover:text-primary transition-colors">
+                    <p className="font-semibold text-sm md:text-base truncate group-hover:text-primary transition-colors">
                       {booking.serviceTitle || 'Service Appointment'}
                     </p>
-                    <p className="text-xs md:text-sm text-muted-foreground font-medium">
+                    <p className="text-xs md:text-sm text-muted-foreground font-normal">
                       {formatDate(booking.scheduledDate)} at {booking.scheduledTime}
                     </p>
                   </div>
-                  <Badge variant={booking.status === 'confirmed' ? 'success' : 'warning'} className="capitalize font-bold shadow-none">
+                  <Badge variant={booking.status === 'confirmed' ? 'success' : 'warning'} className="capitalize font-semibold shadow-none">
                     {booking.status}
                   </Badge>
                 </div>
@@ -129,11 +129,11 @@ const SeekerDashboard = () => {
         className="space-y-5"
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold tracking-tight flex items-center gap-2">
+          <h2 className="text-lg font-semibold tracking-tight flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-accent" />
             Trending <span className="text-accent underline decoration-2 underline-offset-4 decoration-accent/20">Now</span>
           </h2>
-          {user?.neighborhood && <Badge variant="outline" className="font-bold border-accent/20 text-accent">Near {user.neighborhood}</Badge>}
+          {user?.neighborhood && <Badge variant="outline" className="font-semibold border-accent/20 text-accent">Near {user.neighborhood}</Badge>}
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -169,18 +169,18 @@ const SeekerDashboard = () => {
                 
                 <div className="p-4 flex-1 flex flex-col justify-between">
                   <div>
-                    <h3 className="font-bold text-base mb-1 line-clamp-1 group-hover:text-primary transition-colors">{listing.title}</h3>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1 font-medium">
+                    <h3 className="font-semibold text-base mb-1 line-clamp-1 group-hover:text-primary transition-colors">{listing.title}</h3>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 font-normal">
                       <MapPin className="h-3 w-3 text-primary/60" /> {listing.location.neighborhood}
                     </p>
                   </div>
                   
                   <div className="mt-4 pt-4 border-t border-border/40 flex items-center justify-between">
                     <div className="flex flex-col">
-                      <span className="text-[10px] uppercase font-black text-muted-foreground tracking-tighter">Starting at</span>
-                      <span className="font-black text-lg text-primary">{formatPrice(listing.price, listing.priceType, listing.currency)}</span>
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">Starting at</span>
+                      <span className="font-semibold text-lg text-primary">{formatPrice(listing.price, listing.priceType, listing.currency)}</span>
                     </div>
-                    <Button size="sm" variant="hero" className="rounded-xl font-bold h-9 px-4">Book</Button>
+                    <Button size="sm" variant="hero" className="rounded-xl font-semibold h-9 px-4">Book</Button>
                   </div>
                 </div>
               </Card>

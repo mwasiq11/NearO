@@ -72,7 +72,7 @@ const MyServicesPage = () => {
                     <div className="space-y-1">
                       <div className="flex items-start justify-between gap-2">
                         <h3 
-                          className="font-bold text-lg line-clamp-1 cursor-pointer hover:text-primary transition-colors duration-200"
+                          className="font-semibold text-lg line-clamp-1 cursor-pointer hover:text-primary transition-colors duration-200"
                           onClick={() => navigate(`/dashboard/listing/${listing.id}`)}
                         >
                           {listing.title}
@@ -87,7 +87,7 @@ const MyServicesPage = () => {
                     <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed flex-1">{listing.description}</p>
 
                     <div className="flex items-center justify-between pt-4 border-t border-border mt-auto">
-                      <div className="text-primary font-bold text-xl drop-shadow-sm">{formatPrice(listing.price, listing.priceType, listing.currency)}</div>
+                      <div className="text-primary font-semibold text-xl drop-shadow-sm">{formatPrice(listing.price, listing.priceType, listing.currency)}</div>
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" className="font-semibold shadow-sm hover:bg-secondary/20" onClick={() => navigate(`/dashboard/listing/${listing.id}`)}>
                           View
@@ -140,7 +140,7 @@ const MyServicesPage = () => {
                    </div>
                    <div className="p-5 space-y-4 flex flex-col flex-1">
                      <h3 
-                       className="font-bold text-lg line-clamp-1 cursor-pointer hover:text-primary transition-colors duration-200"
+                       className="font-semibold text-lg line-clamp-1 cursor-pointer hover:text-primary transition-colors duration-200"
                        onClick={() => navigate(`/dashboard/bookings/${booking.id}`)}
                      >
                        {booking.serviceTitle}
@@ -158,7 +158,7 @@ const MyServicesPage = () => {
                      </div>
                      
                      <div className="flex items-center justify-between pt-4 border-t border-border mt-auto">
-                        <div className="text-primary font-bold text-xl drop-shadow-sm">{formatPrice(booking.totalPrice, 'fixed', booking.serviceCurrency)}</div>
+                        <div className="text-primary font-semibold text-xl drop-shadow-sm">{formatPrice(booking.totalPrice, 'fixed', booking.serviceCurrency)}</div>
                        <Button size="sm" variant="hero" className="font-semibold shadow-sm" onClick={() => navigate(`/dashboard/bookings/${booking.id}`)}>
                          Manage
                        </Button>

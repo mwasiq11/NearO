@@ -14,7 +14,7 @@ const DashboardHome = () => {
             <button
               key={mode}
               onClick={() => setView(mode as 'seeker' | 'provider')}
-              className={`relative z-10 px-6 sm:px-8 py-2.5 text-xs md:text-sm font-bold rounded-xl transition-all duration-300 ${
+              className={`relative z-10 px-6 sm:px-8 py-2.5 text-xs md:text-sm font-semibold rounded-xl transition-all duration-300 ${
                 view === mode 
                   ? 'text-primary-foreground' 
                   : 'text-muted-foreground hover:text-foreground'

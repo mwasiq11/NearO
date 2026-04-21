@@ -184,17 +184,17 @@ const AdminServicesPage = () => {
               <div key={s.id} className="p-4 space-y-4 active:bg-muted/30 transition-colors">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
-                    <h4 className="font-black text-base leading-tight">{s.title}</h4>
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">by {s.provider}</p>
+                    <h4 className="font-semibold text-base leading-tight">{s.title}</h4>
+                    <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-tight">by {s.provider}</p>
                     <div className="flex items-center gap-2 mt-2">
-                       <Badge variant="outline" className="font-black text-[9px] uppercase">{s.category}</Badge>
-                       <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-tight ${statusTone[s.status]}`}>
+                       <Badge variant="outline" className="font-semibold text-[9px] uppercase">{s.category}</Badge>
+                       <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-tight ${statusTone[s.status]}`}>
                         {s.status}
                       </span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-black text-primary tracking-tighter">{s.price}</p>
+                    <p className="text-lg font-semibold text-primary tracking-tighter">{s.price}</p>
                   </div>
                 </div>
                 
@@ -202,7 +202,7 @@ const AdminServicesPage = () => {
                     <Button 
                       size="sm" 
                       variant="hero" 
-                      className="flex-1 h-11 rounded-2xl font-black text-xs shadow-lg shadow-primary/10"
+                      className="flex-1 h-11 rounded-2xl font-semibold text-xs shadow-lg shadow-primary/10"
                       onClick={() => approveService(s.id)}
                     >
                       <Check className="h-4 w-4 mr-1.5" /> Approve
