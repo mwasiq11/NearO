@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/common/Avatar';
 import NotificationDropdown from '@/components/common/NotificationDropdown';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/useAuth';
 import { useChat } from '@/hooks/useChat';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -31,6 +32,7 @@ import { cn } from '@/lib/utils';
 const DashboardLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const { user, logout, isAdmin, isModerator } = useAuth();
@@ -164,25 +166,28 @@ const DashboardLayout = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
-        <header className="h-16 border-b bg-card flex items-center justify-between px-4 lg:px-6">
+        <header className="h-16 border-b bg-card flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
           <div className="flex items-center gap-4">
-            {/* Mobile Menu Button */}
+            {/* Mobile Menu Button - Larger hit target */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground"
+              className="lg:hidden p-2.5 -ml-2 text-muted-foreground hover:text-foreground active:bg-muted rounded-full transition-colors"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-6 w-6" />
             </button>
             
-            {/* Page Title - Dynamic (Removed per user request) */}
-            <div className="hidden sm:block">
-            </div>
+            {/* Logo on Mobile */}
+            <Link to="/dashboard" className="lg:hidden flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg overflow-hidden flex items-center justify-center p-1 bg-background border">
+                <img src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" alt="NearO" className="h-full w-full object-contain" />
+              </div>
+            </Link>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-              className="p-2 mr-1 rounded-full text-muted-foreground hover:bg-muted focus:outline-none transition-colors"
+              className="p-2.5 rounded-full text-muted-foreground hover:bg-muted focus:outline-none transition-colors active:scale-95"
               aria-label="Toggle theme"
             >
               {resolvedTheme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
@@ -190,7 +195,8 @@ const DashboardLayout = () => {
 
             <NotificationDropdown />
             
-            <div className="hidden sm:block lg:hidden">
+            {/* Removed extra avatar on small mobile, kept for tablet if needed but unified with menu */}
+            <div className="hidden sm:flex lg:hidden items-center ml-2">
               <Avatar
                 src={user?.avatar}
                 alt={user?.name}
@@ -202,33 +208,52 @@ const DashboardLayout = () => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto flex flex-col">
+        <main className={cn(
+          "flex-1 min-h-0 overflow-x-hidden overflow-y-auto flex flex-col",
+          "pb-20 lg:pb-0" // Add padding for bottom nav on mobile
+        )}>
           <Outlet />
         </main>
 
-        {/* Mobile Bottom Navigation */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t safe-bottom">
-          <div className="flex items-center justify-around h-16">
-            {navItems.slice(0, 5).map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  "flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors relative",
-                  isActive(item.path)
-                    ? "text-primary"
-                    : "text-muted-foreground"
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                <span className="text-2xs">{item.label}</span>
-                {item.badge ? (
-                  <span className="absolute top-1 right-1 h-4 w-4 bg-destructive text-destructive-foreground text-2xs rounded-full flex items-center justify-center">
-                    {item.badge > 9 ? '9+' : item.badge}
+        {/* Mobile Bottom Navigation - Enhanced for touch UX */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-lg border-t z-40 safe-bottom">
+          <div className="flex items-center justify-around h-16 px-2">
+            {navItems.slice(0, 5).map((item) => {
+              const active = isActive(item.path);
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={cn(
+                    "flex flex-col items-center justify-center flex-1 min-w-[50px] min-h-[50px] gap-0.5 rounded-xl transition-all relative active:scale-95",
+                    active
+                      ? "text-primary"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  <div className={cn(
+                    "p-1.5 rounded-xl transition-colors",
+                    active && "bg-primary/10"
+                  )}>
+                    <item.icon className={cn("h-6 w-6", active && "stroke-[2.5px]")} />
+                  </div>
+                  <span className={cn("text-[10px] font-medium transition-transform", active && "scale-105")}>
+                    {item.label}
                   </span>
-                ) : null}
-              </Link>
-            ))}
+                  {item.badge ? (
+                    <span className="absolute top-2 right-[calc(50%-18px)] h-4 w-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-card">
+                      {item.badge > 9 ? '9+' : item.badge}
+                    </span>
+                  ) : null}
+                  {active && (
+                    <motion.div
+                      layoutId="bottom-nav-indicator"
+                      className="absolute -top-[1px] w-8 h-1 bg-primary rounded-full"
+                    />
+                  )}
+                </Link>
+              );
+            })}
           </div>
         </nav>
       </div>

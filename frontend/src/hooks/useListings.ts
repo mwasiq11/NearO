@@ -40,6 +40,7 @@ export const useListings = () => {
       description: service.description,
       category: service.category,
       price: Number(service.price),
+      currency: service.currency || 'PKR',
       priceType: 'fixed',
       images: service.image_url ? [service.image_url] : (service.images || []),
       availability: [],
@@ -210,6 +211,7 @@ export const useListings = () => {
         latitude: form.latitude,
         longitude: form.longitude,
         image_url: form.image_url,
+        currency: form.currency || 'PKR',
       };
 
       const created = await api.post<any>('/services', payload, { auth: true });
@@ -264,6 +266,7 @@ export const useListings = () => {
         latitude: updates.location?.coordinates?.lat,
         longitude: updates.location?.coordinates?.lng,
         image_url: updates.images?.[0],
+        currency: (updates as any).currency,
       };
 
       const updated = await api.put<any>(`/services/${id}`, payload, { auth: true });

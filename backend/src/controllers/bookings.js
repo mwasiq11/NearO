@@ -152,7 +152,8 @@ const getBookings = async (req, res) => {
             title: true,
             category: true,
             image_url: true,
-            provider_id: true
+            provider_id: true,
+            currency: true
           }
         },
         users: {
@@ -168,6 +169,7 @@ const getBookings = async (req, res) => {
       category: b.services.category,
       service_image_url: b.services.image_url,
       provider_id: b.services.provider_id,
+      currency: b.services.currency,
       seeker_name: b.users?.name
     }));
 

@@ -29,7 +29,8 @@ const createServiceSchema = Joi.object({
   longitude: Joi.number().optional().allow(null),
   neighborhood: Joi.string().max(255).optional().allow('').trim(),
   city: Joi.string().max(255).optional().allow('').trim(),
-  image_url: Joi.string().max(500).optional().allow('', null).trim()
+  image_url: Joi.string().max(500).optional().allow('', null).trim(),
+  currency: Joi.string().max(10).optional().default('PKR')
 })
 
 // Update profile schema
@@ -50,7 +51,8 @@ const updateOwnServiceSchema = Joi.object({
   longitude: Joi.number().min(-180).max(180).optional(),
   neighborhood: Joi.string().max(255).optional().trim(),
   city: Joi.string().max(255).optional().trim(),
-  image_url: Joi.string().max(500).optional().allow('', null).trim()
+  image_url: Joi.string().max(500).optional().allow('', null).trim(),
+  currency: Joi.string().max(10).optional().trim()
 }).and('latitude', 'longitude');
 
 // Review creation schema
@@ -141,7 +143,8 @@ const updateServiceSchema = Joi.object({
   neighborhood: Joi.string().max(255).optional().trim(),
   city: Joi.string().max(255).optional().trim(),
   image_url: Joi.string().max(500).optional().allow('', null).trim(),
-  is_active: Joi.boolean().optional()
+  is_active: Joi.boolean().optional(),
+  currency: Joi.string().max(10).optional().trim()
 }).and('latitude', 'longitude');
 
 // Report service schema

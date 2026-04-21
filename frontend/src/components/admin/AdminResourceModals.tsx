@@ -210,7 +210,10 @@ export const ServiceDetailModal = ({ serviceId, isOpen, onClose }: ServiceDetail
                 <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1"><Tag className="h-3 w-3" /> {data.category}</span>
                   <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {data.city}, {data.neighborhood}</span>
-                  <span className="flex items-center gap-1 font-bold text-primary"><DollarSign className="h-3 w-3" /> {data.price}</span>
+                  <span className="flex items-center gap-1 font-bold text-primary">
+                    {data.currency === 'USD' ? <DollarSign className="h-3 w-3" /> : <span className="text-[10px] font-black">{data.currency || 'PKR'}</span>} 
+                    {Number(data.price || 0).toFixed(2)}
+                  </span>
                 </div>
               </div>
 

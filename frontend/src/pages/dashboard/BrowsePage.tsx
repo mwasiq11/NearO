@@ -195,7 +195,7 @@ const BrowsePage = () => {
                   <Badge variant="outline">{listing.category}</Badge>
                 </div>
                 <div className="font-semibold text-primary">
-                  {formatPrice(listing.price, listing.priceType)}
+                  {formatPrice(listing.price, listing.priceType, listing.currency)}
                 </div>
               </div>
             </Card>

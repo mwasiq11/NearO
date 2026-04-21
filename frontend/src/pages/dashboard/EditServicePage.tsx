@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { CategoryCombobox } from '@/components/common/CategoryCombobox';
+import { CurrencySelector } from '@/components/common/CurrencySelector';
 import { useListings } from '@/hooks/useListings';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
@@ -23,6 +24,7 @@ const EditServicePage = () => {
     description: '',
     category: '',
     price: '',
+    currency: 'PKR',
     priceType: 'fixed' as 'fixed' | 'hourly' | 'negotiable',
     tags: '',
     neighborhood: '',
@@ -53,6 +55,7 @@ const EditServicePage = () => {
             description: service.description,
             category: service.category,
             price: String(service.price),
+            currency: service.currency || 'PKR',
             priceType: (service.price_type || 'fixed') as any,
             tags: service.tags?.join(', ') || service.availability || '',
             neighborhood: service.neighborhood || '',
@@ -68,6 +71,7 @@ const EditServicePage = () => {
             description: listing.description,
             category: listing.category,
             price: String(listing.price),
+            currency: listing.currency || 'PKR',
             priceType: listing.priceType as any,
             tags: listing.tags?.join(', ') || '',
             neighborhood: listing.location.neighborhood || '',
@@ -160,6 +164,7 @@ const EditServicePage = () => {
         description: formData.description,
         category: formData.category,
         price: Number(formData.price),
+        currency: formData.currency,
         priceType: formData.priceType,
         images: formData.image_url ? [formData.image_url] : [],
         tags,
@@ -299,17 +304,25 @@ const EditServicePage = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="price">Price *</Label>
-              <Input 
-                id="price" 
-                name="price" 
-                type="number" 
-                value={formData.price} 
-                onChange={handleChange}
-                disabled={isSubmitting}
-                required
-                min="0"
-                step="0.01"
-              />
+              <div className="flex gap-2">
+                <CurrencySelector
+                  value={formData.currency}
+                  onChange={(val) => setFormData(p => ({ ...p, currency: val }))}
+                  disabled={isSubmitting}
+                />
+                <Input 
+                  id="price" 
+                  name="price" 
+                  type="number" 
+                  value={formData.price} 
+                  onChange={handleChange}
+                  disabled={isSubmitting}
+                  required
+                  min="0"
+                  step="0.01"
+                  className="flex-1"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="priceType">Price type</Label>

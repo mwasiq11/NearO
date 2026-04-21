@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { CategoryCombobox } from '@/components/common/CategoryCombobox';
+import { CurrencySelector } from '@/components/common/CurrencySelector';
 import { useListings } from '@/hooks/useListings';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
@@ -517,6 +518,7 @@ const CreateServicePage = () => {
     description: '',
     category: '',
     price: '',
+    currency: 'PKR',
     priceType: 'fixed' as 'fixed' | 'hourly' | 'negotiable',
     tags: '',
     neighborhood: '',
@@ -597,6 +599,7 @@ const CreateServicePage = () => {
         description: formData.description,
         category: formData.category,
         price: Number(formData.price),
+        currency: formData.currency,
         priceType: formData.priceType,
         images: [],
         tags,
@@ -671,9 +674,28 @@ const CreateServicePage = () => {
               <Label htmlFor="category">Category *</Label>
               <CategoryCombobox value={formData.category} onChange={(v) => setFormData((p) => ({ ...p, category: v }))} categories={categories} placeholder="Select or type custom category" disabled={isSubmitting} />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-1">
               <Label htmlFor="price">Price *</Label>
-              <Input id="price" name="price" type="number" value={formData.price} onChange={handleChange} disabled={isSubmitting} required min="0" step="0.01" />
+              <div className="flex gap-2">
+                <CurrencySelector
+                  value={formData.currency}
+                  onChange={(val) => setFormData(p => ({ ...p, currency: val }))}
+                  disabled={isSubmitting}
+                />
+                <Input 
+                  id="price" 
+                  name="price" 
+                  type="number" 
+                  placeholder="e.g. 500"
+                  value={formData.price} 
+                  onChange={handleChange}
+                  disabled={isSubmitting}
+                  required
+                  min="0"
+                  step="0.01"
+                  className="flex-1"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="priceType">Price type</Label>

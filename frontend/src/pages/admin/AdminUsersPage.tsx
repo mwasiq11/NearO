@@ -139,68 +139,124 @@ const AdminUsersPage = () => {
             </select>
           </div>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((u) => (
-                <TableRow key={u.id}>
-                  <TableCell className="font-medium">{u.name}</TableCell>
-                  <TableCell>{u.email}</TableCell>
-                  <TableCell className="capitalize flex items-center gap-2">
-                    {u.role}
-                    {u.role !== 'user' && <Badge variant="outline">{u.role}</Badge>}
-                  </TableCell>
-                  <TableCell>
-                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${statusTone[u.status]}`}>
-                      {u.status}
-                    </span>
-                  </TableCell>
-                  <TableCell>{u.createdAt}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => {
-                        setSelectedUserId(u.id);
-                        setIsModalOpen(true);
-                      }}
-                    >
-                      View
-                    </Button>
-                    {u.status !== 'suspended' ? (
-                      <Button size="sm" variant="destructive" className="gap-1" onClick={() => suspendUser(u.id)}>
-                        <Ban className="h-4 w-4" /> Suspend
-                      </Button>
-                    ) : (
-                      <Button size="sm" variant="secondary" className="gap-1" onClick={() => reinstateUser(u.id)}>
-                        <CheckCircle className="h-4 w-4" /> Reinstate
-                      </Button>
-                    )}
-                    {u.role === 'user' && (
-                      <Button size="sm" variant="outline" className="gap-1" onClick={() => promoteToModerator(u.id)}>
-                        <Shield className="h-4 w-4" /> Promote
-                      </Button>
-                    )}
-                  </TableCell>
+        <CardContent className="p-0 sm:p-6">
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((u) => (
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium">{u.name}</TableCell>
+                    <TableCell>{u.email}</TableCell>
+                    <TableCell className="capitalize flex items-center gap-2">
+                       <Badge variant="outline" className="font-bold border-muted-foreground/30">{u.role}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${statusTone[u.status]}`}>
+                        {u.status}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground font-medium">{u.createdAt}</TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="font-bold"
+                        onClick={() => {
+                          setSelectedUserId(u.id);
+                          setIsModalOpen(true);
+                        }}
+                      >
+                        View
+                      </Button>
+                      {u.status !== 'suspended' ? (
+                        <Button size="sm" variant="destructive" className="gap-1 font-bold" onClick={() => suspendUser(u.id)}>
+                          <Ban className="h-4 w-4" /> Suspend
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="secondary" className="gap-1 font-bold" onClick={() => reinstateUser(u.id)}>
+                          <CheckCircle className="h-4 w-4" /> Reinstate
+                        </Button>
+                      )}
+                      {u.role === 'user' && (
+                        <Button size="sm" variant="outline" className="gap-1 font-bold" onClick={() => promoteToModerator(u.id)}>
+                          <Shield className="h-4 w-4" /> Promote
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y">
+            {filtered.map((u) => (
+              <div key={u.id} className="p-4 space-y-4 active:bg-muted/30 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="font-black text-base">{u.name}</h4>
+                    <p className="text-sm text-muted-foreground">{u.email}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant="outline" className="font-black text-[10px] uppercase tracking-tight">{u.role}</Badge>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-tight ${statusTone[u.status]}`}>
+                        {u.status}
+                      </span>
+                    </div>
+                  </div>
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    onClick={() => {
+                      setSelectedUserId(u.id);
+                      setIsModalOpen(true);
+                    }}
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                <div className="flex items-center gap-2 pt-2">
+                  {u.status !== 'suspended' ? (
+                    <Button size="sm" variant="destructive" className="flex-1 gap-1 text-xs font-bold rounded-xl h-10" onClick={() => suspendUser(u.id)}>
+                      <Ban className="h-3.5 w-3.5" /> Suspend
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="secondary" className="flex-1 gap-1 text-xs font-bold rounded-xl h-10" onClick={() => reinstateUser(u.id)}>
+                      <CheckCircle className="h-3.5 w-3.5" /> Reinstate
+                    </Button>
+                  )}
+                  {u.role === 'user' && (
+                    <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs font-bold rounded-xl h-10" onClick={() => promoteToModerator(u.id)}>
+                      <Shield className="h-3.5 w-3.5" /> Promote
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
           {isLoading && (
-            <div className="py-8 text-center text-sm text-muted-foreground">Loading users...</div>
+            <div className="py-12 text-center">
+              <div className="h-6 w-6 border-2 border-primary border-t-transparent animate-spin rounded-full mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground font-medium">Updating directory...</p>
+            </div>
           )}
           {!isLoading && filtered.length === 0 && (
-            <div className="py-8 text-center text-sm text-muted-foreground">No users match your filters.</div>
+            <div className="py-12 text-center space-y-2">
+              <div className="text-4xl">👥</div>
+              <p className="text-sm text-muted-foreground font-medium">No users found match your search.</p>
+            </div>
           )}
         </CardContent>
       </Card>

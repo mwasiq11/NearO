@@ -98,20 +98,20 @@ const AuditLogsPage = () => {
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 md:space-y-8 pb-24 md:pb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Audit Logs</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight">Audit Logs</h1>
+          <p className="text-muted-foreground mt-1 text-sm md:text-base font-medium">
             Track all sensitive system actions and administrative changes
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => fetchLogs(pagination.page)} disabled={loading}>
+        <div className="grid grid-cols-2 md:flex items-center gap-2 md:gap-3">
+          <Button variant="outline" className="font-bold rounded-xl h-11" onClick={() => fetchLogs(pagination.page)} disabled={loading}>
             <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
             Refresh
           </Button>
-          <Button variant="hero" onClick={() => toast.info('Export started...')}>
+          <Button variant="hero" className="font-bold rounded-xl h-11" onClick={() => toast.info('Export started...')}>
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </Button>
@@ -119,65 +119,65 @@ const AuditLogsPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-card border rounded-xl p-6 shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Action Type</label>
+      <div className="bg-card border rounded-2xl p-4 md:p-6 shadow-sm space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Action Type</label>
             <div className="relative">
               <Activity className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
                 name="actionType"
                 placeholder="e.g. user_ban" 
-                className="pl-9" 
+                className="pl-9 h-11 rounded-xl bg-muted/20 border-none focus-visible:ring-1 focus-visible:ring-primary/20" 
                 value={filters.actionType}
                 onChange={handleFilterChange}
               />
             </div>
           </div>
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Entity Type</label>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Entity Type</label>
             <div className="relative">
               <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
                 name="entityType"
                 placeholder="e.g. user" 
-                className="pl-9" 
+                className="pl-9 h-11 rounded-xl bg-muted/20 border-none focus-visible:ring-1 focus-visible:ring-primary/20" 
                 value={filters.entityType}
                 onChange={handleFilterChange}
               />
             </div>
           </div>
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Start Date</label>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Start Date</label>
             <div className="relative">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
                 name="startDate"
                 type="date" 
-                className="pl-9" 
+                className="pl-9 h-11 rounded-xl bg-muted/20 border-none focus-visible:ring-1 focus-visible:ring-primary/20" 
                 value={filters.startDate}
                 onChange={handleFilterChange}
               />
             </div>
           </div>
-          <div className="space-y-2 lg:col-span-2 flex items-end gap-2">
-            <Button className="flex-1" onClick={applyFilters}>
+          <div className="sm:col-span-2 lg:col-span-2 flex items-end gap-2">
+            <Button className="flex-1 h-11 rounded-xl font-bold shadow-lg shadow-primary/10" onClick={applyFilters}>
               <Filter className="h-4 w-4 mr-2" />
-              Apply Filters
+              Filter
             </Button>
-            <Button variant="outline" onClick={resetFilters}>
+            <Button variant="outline" className="h-11 rounded-xl font-bold" onClick={resetFilters}>
               Reset
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Logs Table */}
-      <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+      {/* Logs View */}
+      <div className="bg-card border rounded-2xl overflow-hidden shadow-sm">
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-muted/50 text-sm font-medium border-b">
+              <tr className="bg-muted/30 text-xs font-black uppercase tracking-widest border-b">
                 <th className="p-4">Timestamp</th>
                 <th className="p-4">Actor</th>
                 <th className="p-4">Action</th>
@@ -186,60 +186,60 @@ const AuditLogsPage = () => {
                 <th className="p-4">IP Address</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-border/40">
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td colSpan={6} className="p-8 text-center text-muted-foreground">Loading logs...</td>
+                    <td colSpan={6} className="p-8 text-center text-muted-foreground font-medium italic">Updating logs...</td>
                   </tr>
                 ))
               ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center text-muted-foreground italic">
-                    No audit logs found matching the criteria
+                  <td colSpan={6} className="p-16 text-center text-muted-foreground italic font-medium">
+                    No matching audit records found.
                   </td>
                 </tr>
               ) : (
                 logs.map((log) => (
-                  <tr key={log.id} className="text-sm hover:bg-muted/30 transition-colors">
-                    <td className="p-4 whitespace-nowrap text-muted-foreground">
+                  <tr key={log.id} className="text-sm hover:bg-muted/20 transition-colors group">
+                    <td className="p-4 whitespace-nowrap text-muted-foreground font-medium">
                       {format(new Date(log.created_at), 'MMM d, HH:mm:ss')}
                     </td>
                     <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
-                          <UserIcon className="h-4 w-4 text-slate-600" />
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-full bg-primary/5 border border-primary/10 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+                          <UserIcon className="h-4 w-4 text-primary" />
                         </div>
                         <div>
-                          <div className="font-medium">{log.actor_name || 'System'}</div>
-                          <div className="text-xs text-muted-foreground">{log.actor_email}</div>
+                          <div className="font-bold text-foreground">{log.actor_name || 'System'}</div>
+                          <div className="text-[10px] text-muted-foreground font-bold tracking-tight">{log.actor_email}</div>
                         </div>
                       </div>
                     </td>
                     <td className="p-4">
                       <span className={cn(
-                        "px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                        "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
                         log.action_type.includes('ban') || log.action_type.includes('delete') 
-                          ? "bg-red-50 text-red-600 border border-red-100"
+                          ? "bg-red-50 text-red-600 border-red-100"
                           : log.action_type.includes('update') || log.action_type.includes('change')
-                          ? "bg-blue-50 text-blue-600 border border-blue-100"
-                          : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                          ? "bg-blue-50 text-blue-600 border-blue-100"
+                          : "bg-emerald-50 text-emerald-600 border-emerald-100"
                       )}>
                         {log.action_type.replace(/_/g, ' ')}
                       </span>
                     </td>
                     <td className="p-4">
-                      <div className="font-medium text-xs uppercase">{log.entity_type}</div>
-                      <div className="text-[10px] text-muted-foreground font-mono">{log.entity_id}</div>
+                      <div className="font-black text-[10px] uppercase tracking-tighter text-muted-foreground opacity-80">{log.entity_type}</div>
+                      <div className="text-[9px] text-muted-foreground font-mono opacity-50">{log.entity_id}</div>
                     </td>
-                    <td className="p-4 max-w-xs overflow-hidden">
-                      <div className="truncate text-xs text-muted-foreground">
+                    <td className="p-4 max-w-xs">
+                      <div className="truncate text-xs font-semibold text-muted-foreground bg-muted/30 px-2.5 py-1.5 rounded-lg border border-border/50">
                         {log.new_value ? (
                           typeof log.new_value === 'string' ? log.new_value : JSON.stringify(log.new_value)
                         ) : 'N/A'}
                       </div>
                     </td>
-                    <td className="p-4 text-xs font-mono text-muted-foreground">
+                    <td className="p-4 text-[11px] font-mono font-bold text-muted-foreground">
                       {log.ip_address || '—'}
                     </td>
                   </tr>
@@ -248,33 +248,88 @@ const AuditLogsPage = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile View - Cards */}
+        <div className="md:hidden divide-y divide-border/40">
+          {loading ? (
+             <div className="p-12 text-center text-muted-foreground font-medium italic animate-pulse">Syncing logs...</div>
+          ) : logs.length === 0 ? (
+            <div className="p-16 text-center text-muted-foreground italic font-medium">No logs found</div>
+          ) : (
+            logs.map((log) => (
+              <div key={log.id} className="p-5 space-y-4 active:bg-muted/30 transition-colors">
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-3">
+                    <div className="h-11 w-11 rounded-full bg-primary/5 border border-primary/10 flex items-center justify-center shadow-inner">
+                      <UserIcon className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm text-foreground">{log.actor_name || 'System'}</h4>
+                      <p className="text-[10px] text-muted-foreground font-black uppercase tracking-tight">{format(new Date(log.created_at), 'MMM d, yyyy · HH:mm')}</p>
+                    </div>
+                  </div>
+                  <span className={cn(
+                    "px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tight border",
+                    log.action_type.includes('ban') || log.action_type.includes('delete') 
+                      ? "bg-red-50 text-red-600 border-red-100"
+                      : "bg-blue-50 text-blue-600 border-blue-100"
+                  )}>
+                    {log.action_type.replace(/_/g, ' ')}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 bg-muted/30 p-4 rounded-2xl border border-border/40">
+                  <div>
+                    <p className="text-[9px] font-black uppercase text-muted-foreground tracking-[0.2em] mb-1">Entity</p>
+                    <p className="text-xs font-bold truncate text-foreground">{log.entity_type}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black uppercase text-muted-foreground tracking-[0.2em] mb-1">IP Address</p>
+                    <p className="text-xs font-mono font-black text-foreground">{log.ip_address || 'Unknown'}</p>
+                  </div>
+                </div>
+
+                <div className="bg-card border border-border/60 rounded-xl p-4 shadow-inner">
+                  <p className="text-[9px] font-black uppercase text-muted-foreground tracking-[0.25em] mb-2.5">Audit Context</p>
+                  <div className="text-[11px] font-bold text-muted-foreground/80 line-clamp-3 leading-relaxed">
+                    {log.new_value ? (
+                      typeof log.new_value === 'string' ? log.new_value : JSON.stringify(log.new_value)
+                    ) : 'No extra data available'}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
         
         {/* Pagination */}
-        <div className="p-4 border-t flex items-center justify-between bg-muted/20">
-          <div className="text-sm text-muted-foreground">
-            Showing <span className="font-medium">{logs.length}</span> of <span className="font-medium">{pagination.total}</span> logs
+        <div className="p-4 md:p-5 border-t flex flex-col sm:flex-row items-center justify-between bg-muted/10 gap-4">
+          <div className="text-xs md:text-sm font-bold text-muted-foreground uppercase tracking-widest">
+            Showing <span className="text-foreground">{logs.length}</span> / <span className="text-foreground">{pagination.total}</span> records
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Button 
               variant="outline" 
               size="sm" 
+              className="font-black rounded-xl h-9 md:h-10 px-4 transition-transform active:scale-95"
               onClick={() => setPagination(p => ({ ...p, page: Math.max(1, p.page - 1) }))}
               disabled={pagination.page === 1 || loading}
             >
-              <ArrowLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-1.5" />
               Prev
             </Button>
-            <div className="text-sm font-medium px-4">
+            <div className="text-xs font-black px-4 py-2 bg-muted rounded-full">
               {pagination.page} / {pagination.totalPages || 1}
             </div>
             <Button 
               variant="outline" 
               size="sm"
+              className="font-black rounded-xl h-9 md:h-10 px-4 transition-transform active:scale-95"
               onClick={() => setPagination(p => ({ ...p, page: Math.min(p.totalPages, p.page + 1) }))}
               disabled={pagination.page === pagination.totalPages || loading}
             >
               Next
-              <ArrowRight className="h-4 w-4 ml-1" />
+              <ArrowRight className="h-4 w-4 ml-1.5" />
             </Button>
           </div>
         </div>

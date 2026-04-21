@@ -87,7 +87,7 @@ const MyServicesPage = () => {
                     <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed flex-1">{listing.description}</p>
 
                     <div className="flex items-center justify-between pt-4 border-t border-border mt-auto">
-                      <div className="text-primary font-bold text-xl drop-shadow-sm">{formatPrice(listing.price, listing.priceType)}</div>
+                      <div className="text-primary font-bold text-xl drop-shadow-sm">{formatPrice(listing.price, listing.priceType, listing.currency)}</div>
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" className="font-semibold shadow-sm hover:bg-secondary/20" onClick={() => navigate(`/dashboard/listing/${listing.id}`)}>
                           View
@@ -158,7 +158,7 @@ const MyServicesPage = () => {
                      </div>
                      
                      <div className="flex items-center justify-between pt-4 border-t border-border mt-auto">
-                       <div className="text-primary font-bold text-xl drop-shadow-sm">${booking.totalPrice?.toFixed(2) || '0.00'}</div>
+                        <div className="text-primary font-bold text-xl drop-shadow-sm">{formatPrice(booking.totalPrice, 'fixed', booking.serviceCurrency)}</div>
                        <Button size="sm" variant="hero" className="font-semibold shadow-sm" onClick={() => navigate(`/dashboard/bookings/${booking.id}`)}>
                          Manage
                        </Button>

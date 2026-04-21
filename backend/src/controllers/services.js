@@ -19,7 +19,8 @@ const createService = async (req, res) => {
       longitude,
       neighborhood,
       city,
-      image_url
+      image_url,
+      currency
     } = req.body;
 
     // Validation
@@ -88,6 +89,7 @@ const createService = async (req, res) => {
       description,
       category,
       price: parseFloat(price),
+      currency: currency || 'PKR',
       availability,
       image_url: image_url || null
     };
@@ -234,7 +236,8 @@ const updateServiceOwn = async (req, res) => {
       longitude,
       neighborhood,
       city,
-      image_url
+      image_url,
+      currency
     } = req.body;
 
     const service = await prisma.services.findUnique({
@@ -272,6 +275,7 @@ const updateServiceOwn = async (req, res) => {
     if (description !== undefined) updateData.description = description;
     if (category !== undefined) updateData.category = category;
     if (price !== undefined) updateData.price = parseFloat(price);
+    if (currency !== undefined) updateData.currency = currency;
     if (availability !== undefined) updateData.availability = availability;
     if (image_url !== undefined) updateData.image_url = image_url;
 

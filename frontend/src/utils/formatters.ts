@@ -88,21 +88,41 @@ export const formatDuration = (minutes: number): string => {
 /**
  * Format price for display
  */
-export const formatPrice = (price: number, type: 'hourly' | 'fixed' | 'negotiable'): string => {
-  const formatted = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(price);
-  
-  switch (type) {
-    case 'hourly':
-      return `${formatted}/hr`;
-    case 'negotiable':
-      return `~${formatted}`;
-    default:
-      return formatted;
+export const formatPrice = (price: number, type: 'hourly' | 'fixed' | 'negotiable', currency: string = 'PKR'): string => {
+  try {
+    const formatted = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency || 'PKR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(price);
+    
+    switch (type) {
+      case 'hourly':
+        return `${formatted}/hr`;
+      case 'negotiable':
+        return `~${formatted}`;
+      default:
+        return formatted;
+    }
+  } catch (error) {
+    // Fallback if currency code is invalid
+    const formatted = new Intl.NumberFormat('en-US', {
+      style: 'decimal',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(price);
+    
+    const displayValue = `${currency} ${formatted}`;
+    
+    switch (type) {
+      case 'hourly':
+        return `${displayValue}/hr`;
+      case 'negotiable':
+        return `~${displayValue}`;
+      default:
+        return displayValue;
+    }
   }
 };
 

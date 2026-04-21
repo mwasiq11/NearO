@@ -220,6 +220,7 @@ model services {
   description                        String          @db.Text
   category                           String          @db.VarChar(100)
   price                              Decimal         @db.Decimal(10, 2)
+  currency                           String?         @default("PKR") @db.VarChar(10)
   availability                       String          @db.Text
   latitude                           Decimal?        @db.Decimal(10, 8)
   longitude                          Decimal?        @db.Decimal(11, 8)

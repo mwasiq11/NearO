@@ -47,7 +47,7 @@ const AdminServicesPage = () => {
           provider: service.provider_name || service.provider_email || service.provider_id,
           category: service.category,
           status: 'pending' as const,
-          price: `$${Number(service.price || 0).toFixed(2)}`,
+          price: `${service.currency || 'PKR'} ${Number(service.price || 0).toFixed(2)}`,
         }));
         setServices(mapped);
       } catch (err) {
@@ -126,58 +126,121 @@ const AdminServicesPage = () => {
             </select>
           </div>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Provider</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell className="font-medium">{s.title}</TableCell>
-                  <TableCell>{s.provider}</TableCell>
-                  <TableCell>{s.category}</TableCell>
-                  <TableCell>
-                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${statusTone[s.status]}`}>
-                      {s.status}
-                    </span>
-                  </TableCell>
-                  <TableCell>{s.price}</TableCell>
-                  <TableCell className="text-right space-x-2">
+        <CardContent className="p-0 sm:p-6">
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Provider</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((s) => (
+                  <TableRow key={s.id} className="hover:bg-muted/30">
+                    <TableCell className="font-bold">{s.title}</TableCell>
+                    <TableCell className="text-muted-foreground font-medium">{s.provider}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="font-bold border-muted-foreground/20">{s.category}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tight ${statusTone[s.status]}`}>
+                        {s.status}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-black text-primary">{s.price}</TableCell>
+                    <TableCell className="text-right space-x-1">
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="gap-1 h-9 rounded-xl font-bold"
+                        onClick={() => {
+                          setSelectedServiceId(s.id);
+                          setIsModalOpen(true);
+                        }}
+                      >
+                        <Eye className="h-4 w-4" /> View
+                      </Button>
+                      <Button size="sm" variant="outline" className="gap-1 h-9 rounded-xl font-bold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-100" onClick={() => approveService(s.id)}>
+                        <Check className="h-4 w-4" /> Approve
+                      </Button>
+                      <Button size="sm" variant="ghost" className="gap-1 h-9 rounded-xl font-bold text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => rejectService(s.id)}>
+                        <XCircle className="h-4 w-4" /> Reject
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y divide-border/40">
+            {filtered.map((s) => (
+              <div key={s.id} className="p-4 space-y-4 active:bg-muted/30 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <h4 className="font-black text-base leading-tight">{s.title}</h4>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">by {s.provider}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                       <Badge variant="outline" className="font-black text-[9px] uppercase">{s.category}</Badge>
+                       <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-tight ${statusTone[s.status]}`}>
+                        {s.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-black text-primary tracking-tighter">{s.price}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2 pt-1">
                     <Button 
                       size="sm" 
-                      variant="ghost" 
-                      className="gap-1"
+                      variant="hero" 
+                      className="flex-1 h-11 rounded-2xl font-black text-xs shadow-lg shadow-primary/10"
+                      onClick={() => approveService(s.id)}
+                    >
+                      <Check className="h-4 w-4 mr-1.5" /> Approve
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex-1 h-11 rounded-2xl font-black text-xs"
+                      onClick={() => rejectService(s.id)}
+                    >
+                      <XCircle className="h-4 w-4 mr-1.5" /> Reject
+                    </Button>
+                    <Button 
+                      size="icon" 
+                      variant="secondary" 
+                      className="h-11 w-11 rounded-2xl"
                       onClick={() => {
                         setSelectedServiceId(s.id);
                         setIsModalOpen(true);
                       }}
                     >
-                      <Eye className="h-4 w-4" /> View
+                      <Eye className="h-5 w-5" />
                     </Button>
-                    <Button size="sm" variant="outline" className="gap-1" onClick={() => approveService(s.id)}>
-                      <Check className="h-4 w-4" /> Approve
-                    </Button>
-                    <Button size="sm" variant="destructive" className="gap-1" onClick={() => rejectService(s.id)}>
-                      <XCircle className="h-4 w-4" /> Reject
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                </div>
+              </div>
+            ))}
+          </div>
+
           {isLoading && (
-            <div className="py-8 text-center text-sm text-muted-foreground">Loading services...</div>
+            <div className="py-12 text-center">
+              <div className="h-6 w-6 border-2 border-primary border-t-transparent animate-spin rounded-full mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground font-medium">Scanning directory...</p>
+            </div>
           )}
           {!isLoading && filtered.length === 0 && (
-            <div className="py-8 text-center text-sm text-muted-foreground">No services match your filters.</div>
+            <div className="py-12 text-center text-muted-foreground font-medium italic">
+              No services require moderation at this time.
+            </div>
           )}
         </CardContent>
       </Card>

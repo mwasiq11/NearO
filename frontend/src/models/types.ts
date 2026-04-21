@@ -53,6 +53,7 @@ export interface ServiceListing {
   category: string;
   subcategory?: string;
   price: number;
+  currency?: string;
   priceType: 'hourly' | 'fixed' | 'negotiable';
   images: string[];
   availability: AvailabilitySlot[];
@@ -106,6 +107,7 @@ export interface Booking {
   seekerName?: string;
   seekerReview?: Review;
   providerReview?: Review;
+  serviceCurrency?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -226,6 +228,7 @@ export interface ListingForm {
   description: string;
   category: string;
   price: number;
+  currency?: string;
   priceType: 'hourly' | 'fixed' | 'negotiable';
   images: File[];
   image_url?: string;

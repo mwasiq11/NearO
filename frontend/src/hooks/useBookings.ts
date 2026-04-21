@@ -49,6 +49,7 @@ export const useBookings = () => {
       serviceCategory: booking.category || undefined,
       serviceImageUrl: booking.service_image_url || undefined,
       seekerName: booking.seeker_name || undefined,
+      serviceCurrency: booking.currency || booking.service_currency || 'PKR',
     };
   }, []);
 
