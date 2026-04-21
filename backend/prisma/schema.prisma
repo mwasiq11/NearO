@@ -414,6 +414,7 @@ model users {
   user_sessions                                     user_sessions[]
   user_warnings_user_warnings_user_idTousers        user_warnings[]           @relation("user_warnings_user_idTousers")
   user_warnings_user_warnings_warned_byTousers      user_warnings[]           @relation("user_warnings_warned_byTousers")
+  preferences                                       Json?
 
   @@index([email], map: "idx_email")
   @@index([is_active], map: "idx_is_active")

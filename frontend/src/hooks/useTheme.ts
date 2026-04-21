@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setTheme, Theme } from '@/store/slices/uiSlice';
 
@@ -7,9 +7,9 @@ export function useTheme() {
   const theme = useAppSelector((state) => state.ui.theme);
   
   // Resolve system theme to either 'light' or 'dark'
-  const resolvedTheme = theme === 'system' 
+  const resolvedTheme = useMemo(() => theme === 'system' 
     ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-    : theme;
+    : theme, [theme]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -40,9 +40,11 @@ export function useTheme() {
     }
   }, [theme]);
 
+  const updateTheme = (newTheme: Theme) => dispatch(setTheme(newTheme));
+
   return {
     theme,
     resolvedTheme,
-    setTheme: (newTheme: Theme) => dispatch(setTheme(newTheme)),
+    setTheme: updateTheme,
   };
 }
