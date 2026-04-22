@@ -21,8 +21,8 @@ export const fetchNotifications = createAsyncThunk(
   'notifications/fetchNotifications',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get<Notification[]>('/notifications', { auth: true });
-      return response;
+      const response = await api.get<{ notifications: Notification[]; pagination: any }>('/notifications', { auth: true });
+      return response.notifications;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch notifications');
     }
@@ -33,8 +33,8 @@ export const fetchUnreadCount = createAsyncThunk(
   'notifications/fetchUnreadCount',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get<{ count: number }>('/notifications/unread-count', { auth: true });
-      return response.count;
+      const response = await api.get<{ unread_count: number }>('/notifications/unread-count', { auth: true });
+      return response.unread_count;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch unread count');
     }
@@ -70,6 +70,10 @@ const notificationsSlice = createSlice({
   initialState,
   reducers: {
     addNotification: (state, action: PayloadAction<Notification>) => {
+      // Check if notification already exists
+      const exists = state.notifications.some(n => n.id === action.payload.id);
+      if (exists) return;
+
       state.notifications.unshift(action.payload);
       if (!action.payload.is_read) {
         state.unreadCount += 1;

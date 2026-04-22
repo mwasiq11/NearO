@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import prisma from '../db/prisma.js';
 import { getFileUrl, getFileCategory } from '../middleware/upload.js';
 import { isUserOnline } from '../realtime/socket.js';
+import { publishNotification } from '../services/eventService.js';
 
 const listConversations = async (req, res) => {
   try {
@@ -152,14 +153,14 @@ const sendMessage = async (req, res) => {
 
     // Handle file upload
     if (file) {
-      const uploadContext = req.body.upload_context || 'messages';
-      fileUrl = getFileUrl(file.filename, 'messages');
+      // With CloudinaryStorage, req.file.path is the full public URL
+      fileUrl = file.path;
       fileName = file.originalname;
       fileSize = file.size;
       fileType = file.mimetype;
       finalMessageType = getFileCategory(file.mimetype);
 
-      console.log('File uploaded:', { fileUrl, fileName, fileSize, fileType, finalMessageType });
+      console.log('☁️ File uploaded to Cloudinary:', { fileUrl, fileName, fileSize, fileType, finalMessageType });
 
       // Store file upload record
       await prisma.file_uploads.create({
@@ -198,11 +199,11 @@ const sendMessage = async (req, res) => {
     const previewContent = content 
       ? content.substring(0, 100) 
       : finalMessageType === 'image' 
-        ? '📷 Image'
+        ? 'Image attachment'
         : finalMessageType === 'voice'
-          ? '🎤 Voice message'
+          ? 'Voice message'
           : finalMessageType === 'document'
-            ? `📄 ${fileName || 'File'}`
+            ? `File: ${fileName || 'unnamed'}`
             : 'Attachment';
     
     const isReceiverSeeker = conversation.seeker_id === receiverId;
@@ -224,15 +225,22 @@ const sendMessage = async (req, res) => {
     });
 
     // Create notification for receiver
-    const notificationId = uuidv4();
-    await prisma.notifications.create({
-      data: {
-        id: notificationId,
-        user_id: receiverId,
-        type: 'new_message',
-        payload: { title: 'New Message', message: previewContent, entity_type: 'message', entity_id: messageId }
-      }
-    });
+    try {
+      const sender = await prisma.users.findUnique({
+        where: { id: userId },
+        select: { name: true }
+      });
+      
+      await publishNotification(receiverId, 'message', {
+        conversationId,
+        messageId,
+        senderName: sender?.name,
+        preview: previewContent
+      });
+      console.log(`✅ Notification published for receiver about new message`);
+    } catch (notifError) {
+      console.error('Warning: Failed to publish notification:', notifError);
+    }
 
     const newMessageWithSender = await prisma.messages.findUnique({
       where: { id: messageId },

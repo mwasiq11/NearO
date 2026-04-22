@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import prisma from '../db/prisma.js';
 import { logAudit, buildRequestContext } from '../audit/logger.js';
+import { publishNotification } from '../services/eventService.js';
 
 const createReview = async (req, res) => {
   try {
@@ -42,20 +43,14 @@ const createReview = async (req, res) => {
 
     // Create notification for provider about new review
     try {
-      await prisma.notifications.create({
-        data: {
-          id: uuidv4(),
-          user_id: booking.services.provider_id,
-          type: 'review_posted',
-          title: 'New Review',
-          message: 'You received a new review from a customer',
-          entity_type: 'review',
-          entity_id: reviewId
-        }
+      await publishNotification(booking.services.provider_id, 'review', {
+        reviewId: reviewId,
+        bookingId: booking.id,
+        serviceId: booking.service_id
       });
-      console.log(`✅ Notification created for provider about review`);
+      console.log(`✅ Notification published for provider about review`);
     } catch (notifError) {
-      console.error('Warning: Failed to create notification:', notifError);
+      console.error('Warning: Failed to publish notification:', notifError);
     }
 
     res.status(201).json(review);

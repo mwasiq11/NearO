@@ -27,6 +27,8 @@ const SettingsPage = () => {
     bookingNotifications: true,
     reviewNotifications: true,
     marketingEmails: false,
+    soundEnabled: true,
+    toastEnabled: true,
 
     // Privacy Settings
     profileVisibility: 'public', // public, friends, private
@@ -72,6 +74,8 @@ const SettingsPage = () => {
             profileVisibility: userPrefs.profile_visibility || 'public',
             showOnlineStatus: userPrefs.show_online_status !== false,
             showLastSeen: userPrefs.show_last_seen !== false,
+            soundEnabled: userPrefs.sound_enabled !== false,
+            toastEnabled: userPrefs.toast_enabled !== false,
           }));
           if (userPrefs.theme) {
             setTheme(userPrefs.theme as Theme);
@@ -120,6 +124,8 @@ const SettingsPage = () => {
         profile_visibility: settings.profileVisibility,
         show_online_status: settings.showOnlineStatus,
         show_last_seen: settings.showLastSeen,
+        sound_enabled: settings.soundEnabled,
+        toast_enabled: settings.toastEnabled,
       };
 
       await Promise.all([
@@ -268,6 +274,8 @@ const SettingsPage = () => {
                   { id: 'bookingNotifications', label: 'Booking Updates', desc: 'Track your appointment status' },
                   { id: 'reviewNotifications', label: 'Service Reviews', desc: 'Notify when you receive feedback' },
                   { id: 'marketingEmails', label: 'Marketing Content', desc: 'News, offers and community updates' },
+                  { id: 'soundEnabled', label: 'Notification Sound', desc: 'Play a sound when a new notification arrives' },
+                  { id: 'toastEnabled', label: 'Popup Toasts', desc: 'Show a visual alert in the corner of the screen' },
                 ].map((item, idx, arr) => (
                   <div key={item.id}>
                     <div className="flex items-center justify-between group min-h-[48px]">

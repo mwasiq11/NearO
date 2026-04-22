@@ -3,7 +3,7 @@ import prisma from '../db/prisma.js';
 import { normalizeLocation, calculateDistance, isValidLatLng } from '../utils/location.js';
 import { invalidateCache } from '../cache/cache.js';
 import { logAudit, buildRequestContext } from '../audit/logger.js';
-import { getFileUrl } from '../middleware/upload.js';
+
 import { getIO } from '../realtime/socket.js';
 
 const createService = async (req, res) => {
@@ -428,7 +428,8 @@ const uploadServiceImage = async (req, res) => {
       return res.status(400).json({ error: 'No image file uploaded' });
     }
 
-    const imageUrl = getFileUrl(req.file.filename, 'service_image');
+    // With CloudinaryStorage, req.file.path is the full public URL
+    const imageUrl = req.file.path;
 
     res.status(200).json({ imageUrl });
   } catch (error) {

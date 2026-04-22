@@ -220,7 +220,6 @@ model services {
   description                        String          @db.Text
   category                           String          @db.VarChar(100)
   price                              Decimal         @db.Decimal(10, 2)
-  currency                           String?         @default("PKR") @db.VarChar(10)
   availability                       String          @db.Text
   latitude                           Decimal?        @db.Decimal(10, 8)
   longitude                          Decimal?        @db.Decimal(11, 8)
@@ -232,6 +231,7 @@ model services {
   moderated_at                       DateTime?       @db.Timestamp(0)
   moderated_by                       String?         @db.VarChar(36)
   created_at                         DateTime?       @default(now()) @db.Timestamp(0)
+  currency                           String?         @default("PKR") @db.VarChar(10)
   bookings                           bookings[]
   conversations                      conversations[]
   reviews                            reviews[]
@@ -383,10 +383,11 @@ model users {
   is_verified                                       Boolean?                  @default(false)
   email_verified_at                                 DateTime?                 @db.Timestamp(0)
   last_login_at                                     DateTime?                 @db.Timestamp(0)
-  must_change_password                              Boolean?                  @default(false)
   suspended_until                                   DateTime?                 @db.Timestamp(0)
   suspension_reason                                 String?                   @db.Text
   created_at                                        DateTime?                 @default(now()) @db.Timestamp(0)
+  must_change_password                              Boolean?                  @default(false)
+  preferences                                       Json?
   admin_action_logs                                 admin_action_logs[]
   audit_logs                                        audit_logs[]
   bookings                                          bookings[]
@@ -414,7 +415,6 @@ model users {
   user_sessions                                     user_sessions[]
   user_warnings_user_warnings_user_idTousers        user_warnings[]           @relation("user_warnings_user_idTousers")
   user_warnings_user_warnings_warned_byTousers      user_warnings[]           @relation("user_warnings_warned_byTousers")
-  preferences                                       Json?
 
   @@index([email], map: "idx_email")
   @@index([is_active], map: "idx_is_active")

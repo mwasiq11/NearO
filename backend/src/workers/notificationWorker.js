@@ -2,6 +2,7 @@ import { getRedisClient } from '../queue/redisClient.js';
 import prisma from '../db/prisma.js';
 import { sendPushNotification, createNotificationPayload } from '../services/pushNotificationService.js';
 import { v4 as uuidv4 } from 'uuid';
+import { getIO, onlineUsers } from '../realtime/socket.js';
 
 let isRunning = false;
 let subscriber = null;
@@ -37,10 +38,8 @@ async function processNotification(message) {
 
     switch (type) {
       case 'message':
-        title = 'New Message';
-        body = otherData.senderName 
-          ? `${otherData.senderName} sent you a message`
-          : 'You have a new message';
+        title = otherData.senderName ? otherData.senderName : 'New message';
+        body = `Sent you a message: ${otherData.preview || '...'}`;
         notificationPayload = createNotificationPayload(
           'message',
           title,
@@ -48,56 +47,56 @@ async function processNotification(message) {
           {
             conversationId,
             messageId,
-            url: `/messages/${conversationId}`
+            url: `/dashboard/messages?conversationId=${conversationId}`
           }
         );
         break;
 
       case 'booking_request':
         title = 'New Booking Request';
-        body = `You have a new booking request for ${otherData.serviceName || 'a service'}`;
+        body = `Request received for: ${otherData.serviceName || 'your service'}`;
         notificationPayload = createNotificationPayload(
           'booking',
           title,
           body,
           {
             bookingId: otherData.bookingId,
-            url: `/bookings/${otherData.bookingId}`
+            url: `/dashboard/bookings/${otherData.bookingId}`
           }
         );
         break;
 
       case 'booking_approved':
-        title = 'Booking Approved';
-        body = `Your booking request has been approved`;
+        title = 'Booking Confirmed';
+        body = `Great news! Your booking for ${otherData.serviceName || 'the service'} has been approved.`;
         notificationPayload = createNotificationPayload(
           'booking',
           title,
           body,
           {
             bookingId: otherData.bookingId,
-            url: `/bookings/${otherData.bookingId}`
+            url: `/dashboard/bookings/${otherData.bookingId}`
           }
         );
         break;
 
       case 'review':
-        title = 'New Review';
-        body = `You received a new review`;
+        title = 'New Review Received';
+        body = `A customer has shared feedback on your service.`;
         notificationPayload = createNotificationPayload(
           'review',
           title,
           body,
           {
             reviewId: otherData.reviewId,
-            url: `/reviews/${otherData.reviewId}`
+            url: `/dashboard/reviews/${otherData.reviewId}`
           }
         );
         break;
 
       default:
-        title = 'New Notification';
-        body = otherData.message || 'You have a new notification';
+        title = otherData.title || 'Notification';
+        body = otherData.message || 'You have a new update';
         notificationPayload = createNotificationPayload(
           type,
           title,
@@ -106,12 +105,41 @@ async function processNotification(message) {
         );
     }
 
-    // Save notification to database
-    await createNotification(receiverId, type, {
+    // Save notification to database with title and message in payload for persistence
+    const notificationId = await createNotification(receiverId, type, {
       ...otherData,
+      title,
+      message: body,
       conversationId,
-      messageId
+      messageId,
+      entity_type: type.startsWith('booking') ? 'booking' : type === 'message' ? 'conversation' : type,
+      entity_id: conversationId || otherData.bookingId || otherData.reviewId
     });
+
+    // --- NEW: Real-time WebSocket Emission ---
+    const io = getIO();
+    if (io) {
+      const receiverSocketId = onlineUsers.get(receiverId);
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit('notification:received', {
+          id: notificationId,
+          user_id: receiverId,
+          type: type,
+          title: title,
+          message: body,
+          entity_type: type.startsWith('booking') ? 'booking' : type === 'message' ? 'conversation' : type,
+          entity_id: conversationId || otherData.bookingId || otherData.reviewId,
+          payload: {
+            ...otherData,
+            conversationId,
+            messageId
+          },
+          is_read: false,
+          created_at: new Date()
+        });
+      }
+    }
+    // -----------------------------------------
 
     // Send push notification
     await sendPushNotification(receiverId, notificationPayload);

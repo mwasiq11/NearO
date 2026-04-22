@@ -29,10 +29,18 @@ const getNotifications = async (req, res) => {
     ]);
 
     res.json({
-      notifications: notifications.map(n => ({
-        ...n,
-        payload: n.payload ? JSON.parse(n.payload) : null
-      })),
+      notifications: notifications.map(n => {
+        const payload = typeof n.payload === 'string' ? JSON.parse(n.payload) : n.payload;
+        return {
+          ...n,
+          payload,
+          // Surface persistent metadata from payload if available
+          title: payload?.title || n.title || 'Notification',
+          message: payload?.message || n.message || '',
+          entity_type: payload?.entity_type || n.entity_type,
+          entity_id: payload?.entity_id || n.entity_id
+        };
+      }),
       pagination: {
         page,
         limit,

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Bell, Check, CheckCheck, Clock, MessageSquare, Star, Calendar } from 'lucide-react';
+import { Bell, Check, CheckCheck, Clock, Mail, Star, Calendar, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   fetchNotifications,
@@ -12,53 +13,114 @@ import { Button } from '../ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
-import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
 import { getSocket } from '@/lib/socket';
+import { toast } from 'sonner';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
+import { addNotification } from '../../store/slices/notificationsSlice';
+import { api } from '@/lib/api';
 
 export default function NotificationDropdown() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { notifications, unreadCount, loading } = useAppSelector((state) => state.notifications);
+  const { playNotificationSound } = useNotificationSound();
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     dispatch(fetchUnreadCount());
-    const interval = setInterval(() => {
-      dispatch(fetchUnreadCount());
-    }, 30000); // Poll every 30 seconds
     
-    // Listen for real-time booking status changes
+    // Listen for real-time notifications
     const socket = getSocket();
+    
+    const handleNotificationReceived = async (notification: any) => {
+      // Update Redux state
+      dispatch(addNotification(notification));
+      
+      // Play sound
+      playNotificationSound();
+      
+      // Show Toast with navigation action
+      try {
+        const userPrefs = await api.get<any>('/users/me/preferences', { auth: true });
+        if (userPrefs?.toast_enabled !== false) {
+          toast(notification.title, {
+            description: notification.message,
+            icon: getNotificationIcon(notification.type),
+            action: {
+              label: 'View',
+              onClick: () => handleAction(notification)
+            }
+          });
+        }
+      } catch (err) {
+        toast(notification.title, { description: notification.message });
+      }
+    };
+
     const handleBookingStatusChanged = (data: any) => {
-      console.log('📢 Received booking status change event:', data);
-      // Refresh notifications to show the new one
-      dispatch(fetchNotifications(false));
+      dispatch(fetchNotifications());
       dispatch(fetchUnreadCount());
     };
     
+    socket.on('notification:received', handleNotificationReceived);
     socket.on('booking:status-changed', handleBookingStatusChanged);
     
     return () => {
-      clearInterval(interval);
+      socket.off('notification:received', handleNotificationReceived);
       socket.off('booking:status-changed', handleBookingStatusChanged);
     };
-  }, [dispatch]);
+  }, [dispatch, playNotificationSound]);
 
   useEffect(() => {
     if (isOpen) {
-      dispatch(fetchNotifications(false));
+      dispatch(fetchNotifications());
     }
   }, [isOpen, dispatch]);
 
-  const handleMarkAsRead = async (notificationId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    await dispatch(markAsRead(notificationId));
+  const handleAction = (notification: Notification) => {
+    // 1. Mark as read
+    if (!notification.is_read) {
+      dispatch(markAsRead(notification.id));
+    }
+
+    // 2. Close dropdown
+    setIsOpen(false);
+
+    // 3. Navigate based on type and entity
+    switch (notification.type) {
+      case 'new_message':
+      case 'message':
+        if (notification.entity_id || notification.payload?.conversationId) {
+          navigate(`/dashboard/messages?conversationId=${notification.entity_id || notification.payload.conversationId}`);
+        } else {
+          navigate('/dashboard/messages');
+        }
+        break;
+      
+      case 'booking_new':
+      case 'booking_request':
+      case 'booking_accepted':
+      case 'booking_approved':
+      case 'booking_rejected':
+        if (notification.entity_id || notification.payload?.bookingId) {
+          navigate(`/dashboard/bookings/${notification.entity_id || notification.payload.bookingId}`);
+        } else {
+          navigate('/dashboard/bookings');
+        }
+        break;
+
+      case 'review_posted':
+      case 'review':
+        navigate('/dashboard/my-services');
+        break;
+      
+      default:
+        navigate('/dashboard');
+    }
   };
 
   const handleMarkAllAsRead = async () => {
@@ -66,98 +128,119 @@ export default function NotificationDropdown() {
     dispatch(fetchUnreadCount());
   };
 
-  const getNotificationIcon = (type: Notification['type']) => {
+  const getNotificationIcon = (type: string) => {
+    const baseClass = "h-5 w-5 bg-slate-100 text-slate-400 p-1.5 rounded-full";
     switch (type) {
       case 'booking_new':
-        return <Calendar className="h-4 w-4 text-blue-500" />;
+      case 'booking_request':
+        return <Calendar className={baseClass} />;
       case 'booking_accepted':
-        return <Check className="h-4 w-4 text-green-500" />;
+      case 'booking_approved':
+        return <Check className={baseClass} />;
       case 'booking_rejected':
-        return <Clock className="h-4 w-4 text-red-500" />;
+        return <Clock className={baseClass} />;
       case 'new_message':
-        return <MessageSquare className="h-4 w-4 text-purple-500" />;
+      case 'message':
+        return <Mail className={baseClass} />;
       case 'review_posted':
-        return <Star className="h-4 w-4 text-yellow-500" />;
+      case 'review':
+        return <Star className={baseClass} />;
       default:
-        return <Bell className="h-4 w-4" />;
+        return <Bell className={baseClass} />;
     }
   };
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
+        <Button variant="ghost" size="icon" className="relative hover:bg-slate-50 transition-all duration-200">
+          <Bell className="h-5 w-5 text-slate-600" />
           {unreadCount > 0 && (
-            <Badge
-              variant="destructive"
-              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-            >
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </Badge>
+            <div className="absolute top-0 right-0 h-3 w-3 bg-slate-800 rounded-full flex items-center justify-center text-[8px] text-white font-bold border-2 border-white">
+              {unreadCount > 9 ? '!' : unreadCount}
+            </div>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel className="flex items-center justify-between">
-          <span>Notifications</span>
+      <DropdownMenuContent align="end" className="w-80 p-0 overflow-hidden rounded-lg border-slate-200 shadow-lg animate-in fade-in zoom-in-95 duration-150">
+        <div className="p-3 bg-white border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h3 className="font-bold text-slate-900 text-sm">
+              Notifications
+            </h3>
+            {unreadCount > 0 && (
+              <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                NEW
+              </span>
+            )}
+          </div>
           {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
               onClick={handleMarkAllAsRead}
-              className="h-6 text-xs"
+              className="text-[10px] font-bold text-slate-400 hover:text-slate-900 transition-colors uppercase tracking-wider"
             >
-              <CheckCheck className="h-3 w-3 mr-1" />
-              Mark all read
-            </Button>
+              Clear All
+            </button>
           )}
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <ScrollArea className="h-[400px]">
+        </div>
+
+        <ScrollArea className="h-[350px]">
           {loading && notifications.length === 0 ? (
-            <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-              Loading...
+            <div className="flex flex-col items-center justify-center py-10 text-[11px] text-slate-400 gap-2">
+              <div className="h-4 w-4 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
+              <p>Syncing...</p>
             </div>
           ) : notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-sm text-muted-foreground">
-              <Bell className="h-8 w-8 mb-2 opacity-50" />
-              <p>No notifications yet</p>
+            <div className="flex flex-col items-center justify-center py-16 text-[11px] text-slate-400 gap-2">
+              <Bell className="h-5 w-5 opacity-20" />
+              <p>Nothing here</p>
             </div>
           ) : (
-            notifications.map((notification) => (
-              <DropdownMenuItem
-                key={notification.id}
-                className={`flex items-start gap-3 p-3 cursor-pointer ${
-                  !notification.is_read ? 'bg-muted/50' : ''
-                }`}
-                onClick={(e) => {
-                  if (!notification.is_read) {
-                    handleMarkAsRead(notification.id, e);
-                  }
-                }}
-              >
-                <div className="mt-1">{getNotificationIcon(notification.type)}</div>
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    {notification.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {notification.message}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(notification.created_at), {
-                      addSuffix: true,
-                    })}
-                  </p>
+            <div className="grid divide-y divide-slate-50">
+              {notifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  className={`flex items-start gap-3 p-4 transition-colors cursor-pointer hover:bg-slate-50 relative ${
+                    !notification.is_read ? 'bg-slate-50/50' : ''
+                  }`}
+                  onClick={() => handleAction(notification)}
+                >
+                  <div className="mt-0.5 shrink-0">
+                    {getNotificationIcon(notification.type)}
+                  </div>
+                  <div className="flex-1 space-y-0.5 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <p className={`text-[12px] leading-tight truncate ${
+                        !notification.is_read ? 'font-bold text-slate-900' : 'text-slate-600'
+                      }`}>
+                        {notification.title}
+                      </p>
+                      {!notification.is_read && (
+                        <div className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                      {notification.message}
+                    </p>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight pt-1">
+                      {formatDistanceToNow(new Date(notification.created_at), {
+                        addSuffix: true,
+                      })}
+                    </p>
+                  </div>
                 </div>
-                {!notification.is_read && (
-                  <div className="h-2 w-2 rounded-full bg-blue-500 mt-2" />
-                )}
-              </DropdownMenuItem>
-            ))
+              ))}
+            </div>
           )}
         </ScrollArea>
+        
+        {notifications.length > 0 && (
+          <div className="p-2 bg-slate-50 border-t border-slate-100 flex justify-center">
+            <span className="text-[9px] text-slate-300 font-bold uppercase tracking-[0.2em]">
+              NearO Update System
+            </span>
+          </div>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

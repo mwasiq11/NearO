@@ -1,46 +1,56 @@
 import multer from 'multer';
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
-import fs from 'fs';
+import dotenv from 'dotenv';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+dotenv.config();
 
-// Create uploads directory if it doesn't exist
-const uploadsDir = path.join(process.cwd(), 'uploads');
-const messagesDir = path.join(uploadsDir, 'messages');
-const profilesDir = path.join(uploadsDir, 'profiles');
-const servicesDir = path.join(uploadsDir, 'services');
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
-[uploadsDir, messagesDir, profilesDir, servicesDir].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+// Helper to determine the folder based on context
+const getCloudinaryFolder = (req, file) => {
+  const context = req.body?.upload_context || req.query?.upload_context || 'messages';
+  
+  if (context === 'profile_picture') {
+    return 'nearo/profile-images';
+  } else if (context === 'service_image') {
+    return 'nearo/provider-images';
+  }
+  return 'nearo/message-content';
+};
+
+// Configure Cloudinary Storage
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    const folder = getCloudinaryFolder(req, file);
+    const format = path.extname(file.originalname).substring(1) || 'png';
+    const publicId = `${uuidv4()}`;
+
+    // Cloudinary supports different resource types (image, video, raw)
+    // Multer-storage-cloudinary usually defaults to 'image'
+    const resourceType = file.mimetype.startsWith('video/') ? 'video' : 
+                        file.mimetype.startsWith('audio/') ? 'video' : // Cloudinary treats audio as video resource type
+                        file.mimetype.startsWith('image/') ? 'image' : 'raw';
+
+    return {
+      folder: folder,
+      format: format,
+      public_id: publicId,
+      resource_type: resourceType,
+      access_mode: 'public'
+    };
   }
 });
 
-// Configure storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const context = req.body?.upload_context || req.query?.upload_context || 'messages';
-    let targetDir = messagesDir;
-
-    if (context === 'profile_picture') {
-      targetDir = profilesDir;
-    } else if (context === 'service_image') {
-      targetDir = servicesDir;
-    }
-
-    console.log('📁 Upload destination:', { context, targetDir });
-    cb(null, targetDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
-  }
-});
-
-// File filter
+// File filter (keeping existing restrictions)
 const fileFilter = (req, file, cb) => {
   const allowedTypes = {
     image: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
@@ -78,27 +88,14 @@ const upload = multer({
   }
 });
 
-/**
- * Middleware to handle single file upload (memory storage for S3)
- */
-const memoryStorage = multer.memoryStorage();
-export const uploadMemory = multer({
-  storage: memoryStorage,
-  fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 }
-});
-
-export const uploadSingleToMemory = uploadMemory.single('file');
-
-/**
- * Middleware to handle single file upload (disk storage)
- */
+// Export the same API for controllers
 export const uploadSingle = upload.single('file');
-
-/**
- * Middleware to handle multiple file uploads
- */
 export const uploadMultiple = upload.array('files', 5);
+
+// Memory storage version (if needed as fallback)
+const memoryStorage = multer.memoryStorage();
+export const uploadMemory = multer({ storage: memoryStorage, fileFilter });
+export const uploadSingleToMemory = uploadMemory.single('file');
 
 /**
  * Get file type category from mimetype
@@ -111,26 +108,35 @@ export const getFileCategory = (mimetype) => {
 
 /**
  * Get public URL for uploaded file
+ * In Cloudinary, the URL is stored in file.path by multer-storage-cloudinary
  */
-export const getFileUrl = (filename, context = 'messages') => {
+export const getFileUrl = (filename, context = 'messages', fileData = null) => {
+  // If we have the direct path from Cloudinary, use it
+  if (fileData && fileData.path) {
+    return fileData.path;
+  }
+  
+  // Minimal fallback for local files (handles existing records)
+  if (filename && filename.startsWith('http')) {
+    return filename;
+  }
+  
   const baseUrl = process.env.API_URL || 'http://localhost:3000';
   const folder = context === 'profile_picture' ? 'profiles' : context === 'service_image' ? 'services' : 'messages';
   return `${baseUrl}/uploads/${folder}/${filename}`;
 };
 
 /**
- * Delete file from filesystem
+ * Delete file from Cloudinary
  */
-export const deleteFile = (filePath) => {
+export const deleteFile = async (publicId, resourceType = 'image') => {
   try {
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-      return true;
-    }
+    const result = await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+    return result.result === 'ok';
   } catch (error) {
-    console.error('Error deleting file:', error);
+    console.error('Error deleting Cloudinary asset:', error);
+    return false;
   }
-  return false;
 };
 
 export default upload;

@@ -7,7 +7,18 @@ import { useListings } from '@/hooks/useListings';
 import { useBookings } from '@/hooks/useBookings';
 import { formatPrice } from '@/utils/formatters';
 import { getCategoryImage } from '@/utils/categoryImages';
-import { Plus, MapPin, Calendar, Clock } from 'lucide-react';
+import { Plus, MapPin, Calendar, Clock, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const MyServicesPage = () => {
   const navigate = useNavigate();
@@ -92,9 +103,32 @@ const MyServicesPage = () => {
                         <Button size="sm" variant="outline" className="font-semibold shadow-sm hover:bg-secondary/20" onClick={() => navigate(`/dashboard/listing/${listing.id}`)}>
                           View
                         </Button>
-                        <Button size="sm" variant="destructive" className="font-semibold shadow-sm" onClick={() => removeListing(listing.id)}>
-                          Delete
-                        </Button>
+                        
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="destructive" className="font-semibold shadow-sm gap-1.5 rounded-xl">
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="text-xl font-bold">Delete Service?</AlertDialogTitle>
+                              <AlertDialogDescription className="text-sm font-medium text-muted-foreground">
+                                Are you sure you want to delete <span className="font-bold text-foreground">"{listing.title}"</span>? This action cannot be undone and will remove all associated data.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter className="gap-2 sm:gap-0">
+                              <AlertDialogCancel className="rounded-xl font-semibold border-border/50 hover:bg-muted">Cancel</AlertDialogCancel>
+                              <AlertDialogAction 
+                                className="rounded-xl font-semibold bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-sm"
+                                onClick={() => removeListing(listing.id)}
+                              >
+                                Delete Service
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   </div>

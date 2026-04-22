@@ -66,10 +66,11 @@ const getMyProfile = async (req, res) => {
     
     // Convert relative profile picture path to full URL
     if (user.profile_picture) {
-      const baseUrl = process.env.API_URL || 'http://localhost:3000';
       if (user.profile_picture.startsWith('/uploads')) {
+        const baseUrl = process.env.API_URL || 'http://localhost:3000';
         user.profile_picture = `${baseUrl}${user.profile_picture}`;
       }
+      // If it starts with http (Cloudinary), use as is
     }
 
     res.json(user);
@@ -142,24 +143,15 @@ const uploadProfilePicture = async (req, res) => {
     const file = req.file;
     const userId = req.user.id;
 
-    console.log('📸 File details:', { 
-      filename: file.filename, 
-      path: file.path,
-      size: file.size,
-      mimetype: file.mimetype 
-    });
+    // With CloudinaryStorage, req.file.path is the full public URL
+    const fileUrl = file.path;
 
-    // Generate file URL with full path
-    const baseUrl = process.env.API_URL || 'http://localhost:3000';
-    const fileUrl = `${baseUrl}/uploads/profiles/${file.filename}`;
-    const dbPath = `/uploads/profiles/${file.filename}`; // Relative path for database
-
-    console.log('📸 Profile picture uploaded:', { userId, fileUrl, filename: file.filename });
+    console.log('📸 Profile picture uploaded to Cloudinary:', { userId, fileUrl });
 
     // Update user profile picture in database
     await prisma.users.update({
       where: { id: userId },
-      data: { profile_picture: dbPath }
+      data: { profile_picture: fileUrl }
     });
 
     // Store file upload record
@@ -170,7 +162,7 @@ const uploadProfilePicture = async (req, res) => {
         user_id: userId,
         file_name: file.filename,
         original_name: file.originalname,
-        file_path: file.path,
+        file_path: file.path, // Cloudinary URL
         file_type: file.mimetype,
         file_size: file.size,
         upload_context: 'profile_picture'

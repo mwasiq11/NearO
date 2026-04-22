@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import prisma from '../db/prisma.js';
 import { logAudit, buildRequestContext } from '../audit/logger.js';
 import { getIO } from '../realtime/socket.js';
+import { publishNotification } from '../services/eventService.js';
 
 const createBooking = async (req, res) => {
   try {
@@ -52,34 +53,14 @@ const createBooking = async (req, res) => {
 
     // Create notification for provider about new booking
     try {
-      const notificationId = uuidv4();
-      await prisma.notifications.create({
-        data: {
-          id: notificationId,
-          user_id: service.provider_id,
-          type: 'booking_new',
-          payload: {
-            title: 'New Booking Request',
-            message: 'You have a new service booking request',
-            entity_type: 'booking',
-            entity_id: id
-          }
-        }
+      await publishNotification(service.provider_id, 'booking_request', {
+        bookingId: id,
+        serviceName: service.title,
+        seekerId: seeker_id
       });
-      console.log(`✅ Notification created for provider about new booking`);
-
-      // Emit real-time notification to provider via Socket.io
-      const io = getIO();
-      if (io) {
-        io.emit('booking:new', {
-          bookingId: id,
-          service_id,
-          seeker_id,
-          requested_time
-        });
-      }
+      console.log(`✅ Notification published for provider about new booking`);
     } catch (notifError) {
-      console.error('Warning: Failed to create notification:', notifError);
+      console.error('Warning: Failed to publish notification:', notifError);
     }
 
     // Auto-create conversation for messaging
@@ -212,39 +193,14 @@ const acceptBooking = async (req, res) => {
     });
 
     // Create notification for seeker
-    const notificationId = uuidv4();
     try {
-      await prisma.notifications.create({
-        data: {
-          id: notificationId,
-          user_id: booking.seeker_id,
-          type: 'booking_accepted',
-          payload: {
-            title: 'Booking Accepted',
-            message: 'Your booking has been accepted by the provider',
-            entity_type: 'booking',
-            entity_id: id
-          }
-        }
+      await publishNotification(booking.seeker_id, 'booking_approved', {
+        bookingId: id,
+        providerId: userId
       });
-
-      // Emit real-time notification to seeker via Socket.io
-      const io = getIO();
-      if (io) {
-        io.emit('booking:status-changed', {
-          bookingId: id,
-          status: 'approved',
-          seekerId: booking.seeker_id,
-          notification: {
-            id: notificationId,
-            type: 'booking_accepted',
-            title: 'Booking Accepted',
-            message: 'Your booking has been accepted by the provider'
-          }
-        });
-      }
+      console.log(`✅ Notification published for seeker about booking approved`);
     } catch (notifError) {
-      console.error('Warning: Failed to create notification:', notifError);
+      console.error('Warning: Failed to publish notification:', notifError);
     }
 
     res.json({ success: true, message: 'Booking accepted' });
