@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api } from '@/lib/api';
+import { getSocket } from '@/lib/socket';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -76,6 +77,33 @@ const AuditLogsPage = () => {
     fetchLogs(pagination.page);
   }, [pagination.page]);
 
+  useEffect(() => {
+    const socket = getSocket();
+    
+    const handleNewLog = (newLog: AuditLog) => {
+      setLogs((prev) => {
+        if (pagination.page !== 1) return prev;
+        
+        if (filters.actionType && !newLog.action_type.includes(filters.actionType)) return prev;
+        if (filters.entityType && !newLog.entity_type.includes(filters.entityType)) return prev;
+
+        const updated = [newLog, ...prev];
+        if (updated.length > pagination.limit) {
+          updated.pop();
+        }
+        return updated;
+      });
+      // Optionally update total count
+      setPagination(p => ({ ...p, total: p.total + 1, totalPages: Math.ceil((p.total + 1) / p.limit) }));
+    };
+
+    socket.on('audit:new_log', handleNewLog);
+
+    return () => {
+      socket.off('audit:new_log', handleNewLog);
+    };
+  }, [pagination.page, pagination.limit, filters.actionType, filters.entityType]);
+
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
@@ -120,7 +148,7 @@ const AuditLogsPage = () => {
 
       {/* Filters */}
       <div className="bg-card border rounded-2xl p-4 md:p-6 shadow-sm space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
           <div className="space-y-1.5">
             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Action Type</label>
             <div className="relative">
@@ -147,18 +175,25 @@ const AuditLogsPage = () => {
               />
             </div>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 flex flex-col">
             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Start Date</label>
-            <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                name="startDate"
-                type="date" 
-                className="pl-9 h-11 rounded-xl bg-muted/20 border-none focus-visible:ring-1 focus-visible:ring-primary/20" 
-                value={filters.startDate}
-                onChange={handleFilterChange}
-              />
-            </div>
+            <Input 
+              name="startDate"
+              type="date" 
+              className="h-11 w-full rounded-xl bg-muted/20 border-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm font-medium px-3 flex-1 flex" 
+              value={filters.startDate}
+              onChange={handleFilterChange}
+            />
+          </div>
+          <div className="space-y-1.5 flex flex-col">
+            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">End Date</label>
+            <Input 
+              name="endDate"
+              type="date" 
+              className="h-11 w-full rounded-xl bg-muted/20 border-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm font-medium px-3 flex-1 flex" 
+              value={filters.endDate}
+              onChange={handleFilterChange}
+            />
           </div>
           <div className="sm:col-span-2 lg:col-span-2 flex items-end gap-2">
             <Button className="flex-1 h-11 rounded-xl font-bold shadow-lg shadow-primary/10" onClick={applyFilters}>

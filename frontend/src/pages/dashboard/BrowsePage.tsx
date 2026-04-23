@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { formatPrice } from '@/utils/formatters';
 import { getCategoryImage } from '@/utils/categoryImages';
 import { SearchAutocomplete } from '@/components/common/SearchAutocomplete';
 import { Autocomplete } from '@/components/common/Autocomplete';
+import { useDebounce } from '@/hooks/useDebounce';
+import { Skeleton } from 'boneyard-js/react';
 import { MapPin } from 'lucide-react';
 import { api } from '@/lib/api';
 
@@ -20,6 +22,39 @@ const BrowsePage = () => {
   const [category, setCategory] = useState(searchParams.get('category') || '');
   const [neighborhood, setNeighborhood] = useState(searchParams.get('neighborhood') || '');
   const [neighborhoods, setNeighborhoods] = useState<Array<{ value: string; label: string; count: number }>>([]);
+
+  // Debounce all search inputs
+  const debouncedQuery = useDebounce(query, 500);
+  const debouncedCategory = useDebounce(category, 300);
+  const debouncedNeighborhood = useDebounce(neighborhood, 300);
+
+  const updateFiltersRef = useRef(updateFilters);
+  const searchServicesRef = useRef(searchServices);
+
+  useEffect(() => {
+    updateFiltersRef.current = updateFilters;
+  }, [updateFilters]);
+
+  useEffect(() => {
+    searchServicesRef.current = searchServices;
+  }, [searchServices]);
+
+  // Auto-search when debounced values change
+  useEffect(() => {
+    const performSearch = async () => {
+      updateFiltersRef.current({
+        query: debouncedQuery,
+        category: debouncedCategory || undefined,
+        neighborhood: debouncedNeighborhood || undefined,
+      });
+      await searchServicesRef.current({
+        query: debouncedQuery,
+        category: debouncedCategory || undefined,
+        neighborhood: debouncedNeighborhood || undefined,
+      });
+    };
+    performSearch();
+  }, [debouncedQuery, debouncedCategory, debouncedNeighborhood]);
 
   // Prefetch Unsplash images for all categories
   useImagePrefetch();
@@ -152,56 +187,56 @@ const BrowsePage = () => {
         </Button>
       </Card>
 
-      {isLoading && <div className="text-sm text-muted-foreground">Loading services...</div>}
+      <Skeleton name="browse-listings" loading={isLoading}>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {listings.map((listing) => {
+            const imageUrl = listing.images[0] || getCategoryImage(listing.category);
+            
+            // Smart location display logic - show actual data or friendly message
+            let locationText = 'Location not specified';
+            if (listing.location.neighborhood && listing.location.city) {
+              locationText = `${listing.location.neighborhood}, ${listing.location.city}`;
+            } else if (listing.location.city) {
+              locationText = listing.location.city;
+            } else if (listing.location.neighborhood) {
+              locationText = listing.location.neighborhood;
+            }
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {listings.map((listing) => {
-          const imageUrl = listing.images[0] || getCategoryImage(listing.category);
-          
-          // Smart location display logic - show actual data or friendly message
-          let locationText = 'Location not specified';
-          if (listing.location.neighborhood && listing.location.city) {
-            locationText = `${listing.location.neighborhood}, ${listing.location.city}`;
-          } else if (listing.location.city) {
-            locationText = listing.location.city;
-          } else if (listing.location.neighborhood) {
-            locationText = listing.location.neighborhood;
-          }
-
-          return (
-            <Card
-              key={listing.id}
-              className="overflow-hidden cursor-pointer hover:shadow-md transition-all"
-              onClick={() => navigate(`/dashboard/listing/${listing.id}`)}
-            >
-              <div className="aspect-video bg-muted">
-                <img 
-                  src={imageUrl} 
-                  alt={listing.title} 
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.src = getCategoryImage('Other');
-                  }}
-                />
-              </div>
-              <div className="p-4 space-y-2">
-                <h3 className="font-semibold line-clamp-1">{listing.title}</h3>
-                <p className="text-sm text-muted-foreground line-clamp-2">{listing.description}</p>
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-muted-foreground flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    {locationText}
+            return (
+              <Card
+                key={listing.id}
+                className="overflow-hidden cursor-pointer hover:shadow-md transition-all"
+                onClick={() => navigate(`/dashboard/listing/${listing.id}`)}
+              >
+                <div className="aspect-video bg-muted">
+                  <img 
+                    src={imageUrl} 
+                    alt={listing.title} 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = getCategoryImage('Other');
+                    }}
+                  />
+                </div>
+                <div className="p-4 space-y-2">
+                  <h3 className="font-semibold line-clamp-1">{listing.title}</h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">{listing.description}</p>
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {locationText}
+                    </div>
+                    <Badge variant="outline">{listing.category}</Badge>
                   </div>
-                  <Badge variant="outline">{listing.category}</Badge>
+                  <div className="font-semibold text-primary">
+                    {formatPrice(listing.price, listing.priceType, listing.currency)}
+                  </div>
                 </div>
-                <div className="font-semibold text-primary">
-                  {formatPrice(listing.price, listing.priceType, listing.currency)}
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+              </Card>
+            );
+          })}
+        </div>
+      </Skeleton>
 
       {!isLoading && listings.length === 0 && (
         <div className="text-sm text-muted-foreground">No services found.</div>

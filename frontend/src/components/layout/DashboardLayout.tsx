@@ -53,7 +53,7 @@ const DashboardLayout = () => {
     return 'Dashboard';
   };
 
-  const baseNavItems = [
+  const baseNavItems: { path: string; icon: React.ElementType; label: string; badge?: number }[] = [
     { path: '/dashboard', icon: Home, label: 'Home' },
     { path: '/dashboard/browse', icon: Search, label: 'Browse' },
     { path: '/dashboard/my-services', icon: Package, label: 'My Services' },

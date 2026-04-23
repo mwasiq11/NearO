@@ -171,6 +171,21 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
+  /* Date picker icon adaptations */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+  }
+  
+  input[type="date"]:hover::-webkit-calendar-picker-indicator {
+    opacity: 1;
+  }
+
+  .dark input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(1.5);
+  }
+
   /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 8px;

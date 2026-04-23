@@ -8,6 +8,7 @@ import { formatDate } from '@/utils/formatters';
 import { getCategoryImage } from '@/utils/categoryImages';
 import { useAppSelector } from '@/store/hooks';
 import { useNavigate } from 'react-router-dom';
+import { Skeleton } from 'boneyard-js/react';
 
 const BookingsPage = () => {
   const { myBookings, receivedBookings, isLoading, acceptBooking, rejectBooking } = useBookings();
@@ -75,9 +76,9 @@ const BookingsPage = () => {
         </div>
       </div>
 
-      {isLoading && <div className="text-sm text-muted-foreground">Loading bookings...</div>}
 
-      <div className="grid gap-4">
+      <Skeleton name="bookings-list" loading={isLoading}>
+        <div className="grid gap-4">
         {bookings.map((booking) => {
           const imageUrl = booking.serviceImageUrl || getCategoryImage(booking.serviceCategory || 'Other');
           
@@ -190,7 +191,8 @@ const BookingsPage = () => {
             </Card>
           );
         })}
-      </div>
+        </div>
+      </Skeleton>
 
       {!isLoading && bookings.length === 0 && (
         <div className="text-sm text-muted-foreground">No bookings yet.</div>
@@ -200,4 +202,3 @@ const BookingsPage = () => {
 };
 
 export default BookingsPage;
-

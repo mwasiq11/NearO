@@ -86,7 +86,7 @@ export const UserDetailModal = ({ userId, isOpen, onClose }: UserDetailProps) =>
                     <Mail className="h-3 w-3" /> {data.user.email}
                   </p>
                   <div className="flex gap-2 pt-1">
-                    <Badge variant={data.user.is_active ? "emerald" : "destructive"}>
+                    <Badge variant={data.user.is_active ? "success" : "destructive"}>
                       {data.user.is_active ? "Active" : "Suspended"}
                     </Badge>
                     <Badge variant="outline" className="capitalize">{data.user.role}</Badge>
@@ -203,7 +203,7 @@ export const ServiceDetailModal = ({ serviceId, isOpen, onClose }: ServiceDetail
               <div className="space-y-2">
                 <div className="flex items-start justify-between">
                   <h3 className="text-2xl font-bold">{data.title}</h3>
-                  <Badge variant={data.moderated_at ? "emerald" : "amber"}>
+                  <Badge variant={data.moderated_at ? "success" : "warning"}>
                     {data.moderated_at ? "Moderated" : "Pending Approval"}
                   </Badge>
                 </div>

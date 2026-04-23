@@ -24,9 +24,10 @@ export const Rating = ({
   reviewCount,
   className,
 }: RatingProps) => {
-  const fullStars = Math.floor(value);
-  const hasHalfStar = value - fullStars >= 0.5;
-  const emptyStars = max - fullStars - (hasHalfStar ? 1 : 0);
+  const safeValue = isNaN(value) ? 0 : Math.max(0, Math.min(max, value));
+  const fullStars = Math.floor(safeValue);
+  const hasHalfStar = safeValue - fullStars >= 0.5;
+  const emptyStars = Math.max(0, max - fullStars - (hasHalfStar ? 1 : 0));
   
   return (
     <div className={cn("flex items-center gap-1", className)}>
@@ -55,7 +56,7 @@ export const Rating = ({
       
       {showValue && (
         <span className="text-sm font-medium text-foreground">
-          {value.toFixed(1)}
+          {safeValue.toFixed(1)}
         </span>
       )}
       

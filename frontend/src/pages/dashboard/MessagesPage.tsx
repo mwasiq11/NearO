@@ -18,6 +18,9 @@ import {
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
+import { useDebounce } from '@/hooks/useDebounce';
+import { Skeleton } from 'boneyard-js/react';
+
 const MessagesPage = () => {
   const { user } = useAuth();
   const {
@@ -28,13 +31,16 @@ const MessagesPage = () => {
     loadMessages,
     isUserOnline,
     startConversation,
+    isLoading: chatLoading,
   } = useChat();
+  
   const { callState, initiateCall, acceptCall, declineCall, endCall } = useCall();
   const { playMessageSent } = useSounds();
   
   const [message, setMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 400);
   const [isSending, setIsSending] = useState(false);
   const [isMobileConversationOpen, setIsMobileConversationOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -54,8 +60,8 @@ const MessagesPage = () => {
   }, [currentMessages.length]);
 
   const filteredConversations = useMemo(() => {
-    if (!searchQuery.trim()) return conversations;
-    const q = searchQuery.toLowerCase();
+    if (!debouncedSearchQuery.trim()) return conversations;
+    const q = debouncedSearchQuery.toLowerCase();
     return conversations.filter((conv: any) => {
       const otherUser = getOtherUser(conv);
       if (!otherUser) return false;
@@ -65,18 +71,18 @@ const MessagesPage = () => {
         (conv.last_message_preview && conv.last_message_preview.toLowerCase().includes(q))
       );
     });
-  }, [conversations, searchQuery]);
+  }, [conversations, debouncedSearchQuery, getOtherUser]);
 
   const [globalUsers, setGlobalUsers] = useState<any[]>([]);
   const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
 
   useEffect(() => {
-    if (searchQuery.trim().length > 1) {
+    if (debouncedSearchQuery.trim().length > 1) {
       const fetchUsers = async () => {
         setIsSearchingGlobal(true);
         try {
           const res = await api.get<any[]>('/users', { auth: true });
-          const q = searchQuery.toLowerCase();
+          const q = debouncedSearchQuery.toLowerCase();
           const matches = res.filter(u => u.id !== user?.id && (u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)));
           setGlobalUsers(matches);
         } catch (e) {
@@ -85,13 +91,11 @@ const MessagesPage = () => {
           setIsSearchingGlobal(false);
         }
       };
-      
-      const timeoutId = setTimeout(fetchUsers, 500);
-      return () => clearTimeout(timeoutId);
+      fetchUsers();
     } else {
       setGlobalUsers([]);
     }
-  }, [searchQuery, user]);
+  }, [debouncedSearchQuery, user]);
 
   function getOtherUser(convo: any) {
     if (!user) return null;
@@ -295,7 +299,8 @@ const MessagesPage = () => {
           </div>
 
           <ScrollArea className="flex-1">
-            <div className="pb-24 md:pb-4">
+            <Skeleton name="conversations-list" loading={chatLoading}>
+              <div className="pb-24 md:pb-4">
               {searchQuery.trim().length > 0 && filteredConversations.length > 0 && (
                 <div className="px-5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.15em]">
                   Recent
@@ -404,7 +409,8 @@ const MessagesPage = () => {
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </Skeleton>
+        </ScrollArea>
         </div>
 
         {/* Chat Detail View */}

@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useBookings } from '@/hooks/useBookings';
 import { useEarnings } from '@/hooks/useEarnings';
+import { Skeleton } from 'boneyard-js/react';
+
 
 const ProviderDashboard = () => {
   const navigate = useNavigate();
@@ -61,52 +63,56 @@ const ProviderDashboard = () => {
       </motion.div>
 
       {/* Stats Grid */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <stat.icon className="h-5 w-5 text-muted-foreground" />
-                <Badge variant="success" className="text-2xs">{stat.change}</Badge>
-              </div>
-              <p className="text-2xl font-bold">{stat.value}</p>
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </motion.div>
+      <Skeleton name="provider-stats" loading={loading}>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {stats.map((stat) => (
+            <Card key={stat.label}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <stat.icon className="h-5 w-5 text-muted-foreground" />
+                  <Badge variant="success" className="text-2xs">{stat.change}</Badge>
+                </div>
+                <p className="text-2xl font-bold">{stat.value}</p>
+                <p className="text-sm text-muted-foreground">{stat.label}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </motion.div>
+      </Skeleton>
 
       {/* Pending Bookings */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Pending Requests ({bookingsByStatus.pending.length})</span>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/bookings')}>View All</Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {bookingsByStatus.pending.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">No pending requests</p>
-            ) : (
-              <div className="space-y-3">
-                {bookingsByStatus.pending.slice(0, 3).map((booking) => (
-                  <div key={booking.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                    <div>
-                      <p className="font-medium">Booking Request</p>
-                      <p className="text-sm text-muted-foreground">{booking.scheduledDate} at {booking.scheduledTime}</p>
+      <Skeleton name="provider-pending" loading={loading}>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Pending Requests ({bookingsByStatus.pending.length})</span>
+                <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/bookings')}>View All</Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {bookingsByStatus.pending.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No pending requests</p>
+              ) : (
+                <div className="space-y-3">
+                  {bookingsByStatus.pending.slice(0, 3).map((booking) => (
+                    <div key={booking.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                      <div>
+                        <p className="font-medium">Booking Request</p>
+                        <p className="text-sm text-muted-foreground">{booking.scheduledDate} at {booking.scheduledTime}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline">Decline</Button>
+                        <Button size="sm" variant="success">Accept</Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline">Decline</Button>
-                      <Button size="sm" variant="success">Accept</Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </Skeleton>
 
       {/* Reputation Card */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>

@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Ban, CheckCircle, Shield } from 'lucide-react';
+import { Search, Ban, CheckCircle, Shield, ArrowRight } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import { UserDetailModal } from '@/components/admin/AdminResourceModals';

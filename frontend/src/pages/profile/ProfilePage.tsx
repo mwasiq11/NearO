@@ -41,7 +41,7 @@ const ProfilePage = () => {
           phone: data.phone ?? user.phone ?? '',
           neighborhood: data.neighborhood ?? user.neighborhood ?? '',
           city: data.city ?? user.city ?? '',
-          profile_picture: data.profile_picture ?? user.profile_picture,
+          avatar: data.profile_picture ?? user.avatar,
           isVerified: Boolean(data.is_verified ?? user.isVerified),
         };
         dispatch(updateUser(updated));
@@ -156,10 +156,10 @@ const ProfilePage = () => {
       console.log('📸 Upload response:', response);
       
       // Force update with new profile picture URL
-      const updated = { ...user!, profile_picture: response.profile_picture };
+      const updated = { ...user!, avatar: response.profile_picture };
       console.log('📸 Updated user object:', updated);
       
-      dispatch(updateUser({ profile_picture: response.profile_picture }));
+      dispatch(updateUser({ avatar: response.profile_picture }));
       authStorage.setUser(updated);
       
       toast.success('Profile picture updated');
@@ -189,8 +189,8 @@ const ProfilePage = () => {
             <div className="h-32 bg-gradient-to-tr from-primary/30 via-primary/10 to-primary/5 dark:from-primary/20 dark:to-zinc-900 w-full" />
             <CardContent className="px-6 pb-6 pt-0 flex flex-col items-center text-center relative">
               <div className="relative -mt-16 mb-4 group rounded-full ring-4 ring-background shadow-lg">
-                <Avatar key={user?.profile_picture || 'default'} className="h-32 w-32 object-cover">
-                  <AvatarImage src={user?.profile_picture} />
+                <Avatar key={user?.avatar || 'default'} className="h-32 w-32 object-cover">
+                  <AvatarImage src={user?.avatar} />
                   <AvatarFallback className="bg-primary text-primary-foreground text-4xl font-semibold">
                     {user?.name?.[0]?.toUpperCase() || 'U'}
                   </AvatarFallback>

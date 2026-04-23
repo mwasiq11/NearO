@@ -9,11 +9,8 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+
+import { useDebounce } from "@/hooks/useDebounce"
 
 interface SearchSuggestion {
   type: 'service' | 'category' | 'tag';
@@ -39,14 +36,18 @@ export function SearchAutocomplete({
 }: SearchAutocompleteProps) {
   const [open, setOpen] = React.useState(false)
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  
+  // Debounce the input value for filtering
+  const debouncedValue = useDebounce(value, 300);
 
-  // Filter suggestions based on input
+  // Filter suggestions based on debounced input
   const filteredSuggestions = React.useMemo(() => {
-    if (!value) return suggestions.slice(0, 8); // Show top 8 when empty
+    if (!debouncedValue) return suggestions.slice(0, 8); // Show top 8 when empty
     return suggestions
-      .filter(s => s.label.toLowerCase().includes(value.toLowerCase()))
+      .filter(s => s.label.toLowerCase().includes(debouncedValue.toLowerCase()))
       .slice(0, 8);
-  }, [suggestions, value]);
+  }, [suggestions, debouncedValue]);
 
   const groupedSuggestions = React.useMemo(() => {
     const grouped: Record<string, SearchSuggestion[]> = {
@@ -68,7 +69,7 @@ export function SearchAutocomplete({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onValueChange(e.target.value);
-    if (!open && filteredSuggestions.length > 0) {
+    if (!open) {
       setOpen(true);
     }
   };
@@ -79,33 +80,43 @@ export function SearchAutocomplete({
     }
   };
 
+  React.useEffect(() => {
+    const onPointerDown = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, []);
+
+  React.useEffect(() => {
+    if (filteredSuggestions.length === 0) {
+      setOpen(false);
+    }
+  }, [filteredSuggestions.length]);
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <div className={cn("relative", className)}>
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-          <Input
-            ref={inputRef}
-            placeholder={placeholder}
-            className="pl-9"
-            value={value}
-            onChange={handleInputChange}
-            onFocus={handleInputFocus}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                setOpen(false);
-                inputRef.current?.blur();
-              }
-            }}
-          />
-        </div>
-      </PopoverTrigger>
-      <PopoverContent 
-        className="w-[var(--radix-popover-trigger-width)] p-0" 
-        align="start"
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        <Command shouldFilter={false}>
+    <div ref={containerRef} className={cn("relative", className)}>
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+      <Input
+        ref={inputRef}
+        placeholder={placeholder}
+        className="pl-9"
+        value={value}
+        onChange={handleInputChange}
+        onFocus={handleInputFocus}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            setOpen(false);
+            inputRef.current?.blur();
+          }
+        }}
+      />
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
+          <Command shouldFilter={false}>
           <CommandList>
             {filteredSuggestions.length === 0 ? (
               <CommandEmpty>No suggestions found.</CommandEmpty>
@@ -164,8 +175,9 @@ export function SearchAutocomplete({
               </>
             )}
           </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+          </Command>
+        </div>
+      )}
+    </div>
   )
 }

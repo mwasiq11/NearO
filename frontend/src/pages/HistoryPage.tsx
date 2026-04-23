@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { apiCall } from '@/lib/api';
 import { ChevronLeft, Clock, User, FileText } from 'lucide-react';
@@ -93,9 +93,8 @@ export default function HistoryPage() {
   if (!user) return null;
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header */}
+    <div className="space-y-6">
+      {/* Header */}
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate(-1)}
@@ -234,6 +233,5 @@ export default function HistoryPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
   );
 }

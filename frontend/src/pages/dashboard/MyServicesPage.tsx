@@ -19,6 +19,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Skeleton } from 'boneyard-js/react';
+
 
 const MyServicesPage = () => {
   const navigate = useNavigate();
@@ -39,8 +41,6 @@ const MyServicesPage = () => {
         </Button>
       </div>
 
-      {isLoading && <div className="text-sm font-medium text-muted-foreground animate-pulse">Loading services...</div>}
-
       <Tabs defaultValue="provided" className="w-full space-y-6">
         <TabsList className="grid w-full max-w-md grid-cols-2 h-12 rounded-xl bg-muted/50 p-1">
           <TabsTrigger value="provided" className="rounded-lg text-base font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">Provided Services</TabsTrigger>
@@ -48,7 +48,8 @@ const MyServicesPage = () => {
         </TabsList>
 
         <TabsContent value="provided" className="space-y-6 mt-6">
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <Skeleton name="provided-services" loading={isLoading}>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {myListings.map((listing) => {
               const imageUrl = listing.images[0] || getCategoryImage(listing.category);
               
@@ -135,8 +136,8 @@ const MyServicesPage = () => {
                 </Card>
               );
             })}
-          </div>
-
+            </div>
+          </Skeleton>
           {!isLoading && myListings.length === 0 && (
             <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed rounded-2xl bg-muted/10">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 text-primary">
@@ -150,7 +151,8 @@ const MyServicesPage = () => {
         </TabsContent>
 
         <TabsContent value="purchased" className="space-y-6 mt-6">
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <Skeleton name="purchased-services" loading={isLoading}>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {myBookings.map((booking) => {
                const imageUrl = booking.serviceImageUrl || getCategoryImage(booking.serviceCategory || 'Other');
                
@@ -202,6 +204,7 @@ const MyServicesPage = () => {
                );
             })}
           </div>
+          </Skeleton>
           {!isLoading && myBookings.length === 0 && (
             <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed rounded-2xl bg-muted/10">
               <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4 text-muted-foreground">
@@ -209,7 +212,7 @@ const MyServicesPage = () => {
               </div>
               <h3 className="text-lg font-bold mb-1">No purchased services</h3>
               <p className="text-muted-foreground mb-4">You haven't booked any services yet. Explore what's available!</p>
-              <Button onClick={() => navigate('/dashboard/explore')} variant="outline" className="font-semibold">Explore services</Button>
+              <Button onClick={() => navigate('/dashboard/browse')} variant="outline" className="font-semibold">Explore services</Button>
             </div>
           )}
         </TabsContent>

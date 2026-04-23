@@ -12,6 +12,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { CallOverlay } from '@/components/common/CallOverlay';
 import { useCall } from '@/hooks/useCall';
 
+
+
 // React Router v7 future flags - suppress warnings and opt-in to v7 behavior
 const routerFutureConfig = {
   v7_startTransition: true,
@@ -210,6 +212,13 @@ const AppRoutes = () => {
         <RoleRoute allowed={['admin']}>
           <AdminModeratorLayout>
             <AdminSystemSettingsPage />
+          </AdminModeratorLayout>
+        </RoleRoute>
+      } />
+      <Route path="/admin/audit" element={
+        <RoleRoute allowed={['admin']}>
+          <AdminModeratorLayout>
+            <AuditLogsPage />
           </AdminModeratorLayout>
         </RoleRoute>
       } />

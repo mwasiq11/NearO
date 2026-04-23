@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import React from 'react';
+import { Skeleton } from 'boneyard-js/react';
 
 const ListingDetailPage = () => {
   const { id } = useParams();
@@ -134,22 +135,51 @@ const ListingDetailPage = () => {
     ];
   }, [listing]);
 
-  if (isLoading || !listing) {
+
+  const imageUrl = listing?.images[0] || getCategoryImage(listing?.category || 'Other');
+  const locationText = listing?.location.neighborhood && listing?.location.city
+    ? `${listing.location.neighborhood}, ${listing.location.city}`
+    : listing?.location.city || listing?.location.neighborhood || 'Location not specified';
+
+  if (!id) {
     return (
-      <div className="p-12 flex flex-col items-center justify-center min-h-[50dvh] space-y-4">
-        <div className="h-10 w-10 border-4 border-primary/20 border-t-primary animate-spin rounded-full" />
-        <p className="text-muted-foreground font-semibold tracking-tight">Accessing service details...</p>
+      <div className="p-6">
+        <Card className="p-6 text-center space-y-4">
+          <p className="text-muted-foreground font-medium">Invalid service link.</p>
+          <Button onClick={() => navigate('/dashboard/browse')} variant="outline" className="font-semibold">
+            Back to Services
+          </Button>
+        </Card>
       </div>
     );
   }
 
-  const imageUrl = listing.images[0] || getCategoryImage(listing.category);
-  const locationText = listing.location.neighborhood && listing.location.city
-    ? `${listing.location.neighborhood}, ${listing.location.city}`
-    : listing.location.city || listing.location.neighborhood || 'Location not specified';
+  if (isLoading && !listing) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="h-10 w-1/3 rounded bg-muted animate-pulse" />
+        <div className="h-72 w-full rounded-2xl bg-muted animate-pulse" />
+        <div className="h-24 w-full rounded-xl bg-muted animate-pulse" />
+      </div>
+    );
+  }
+
+  if (!isLoading && !listing) {
+    return (
+      <div className="p-6">
+        <Card className="p-6 text-center space-y-4">
+          <p className="text-muted-foreground font-medium">Service not found or unavailable.</p>
+          <Button onClick={() => navigate('/dashboard/browse')} variant="outline" className="font-semibold">
+            Back to Services
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col min-h-full bg-background pb-32 md:pb-12">
+    <Skeleton name="listing-detail" loading={isLoading}>
+      <div className="flex flex-col min-h-full bg-background pb-32 md:pb-12">
       {/* Mobile Top Navigation Override */}
       <div className="sticky top-0 z-40 md:hidden bg-background/80 backdrop-blur-md border-b px-4 h-14 flex items-center justify-between">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="-ml-2">
@@ -423,7 +453,8 @@ const ListingDetailPage = () => {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </Skeleton>
   );
 };
 

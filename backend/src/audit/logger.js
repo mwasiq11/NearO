@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import prisma from '../db/prisma.js';
+import { getIO } from '../realtime/socket.js';
 
 async function logAudit({
   actorId = null,
@@ -25,6 +26,23 @@ async function logAudit({
       metadata: metadata ? (typeof metadata === 'string' ? metadata : JSON.stringify(metadata)) : null,
       ip_address: ipAddress,
       user_agent: userAgent
+    },
+    include: {
+      users: {
+        select: { name: true, email: true }
+      }
+    }
+  }).then(log => {
+    const io = getIO();
+    if (io) {
+      const auditEvent = {
+        ...log,
+        actor_name: log.users?.name,
+        actor_email: log.users?.email
+      };
+      // Remove nested users object from emitted event for cleaner payload
+      delete auditEvent.users;
+      io.to('moderation').emit('audit:new_log', auditEvent);
     }
   }).catch(err => {
     console.error(`[Audit Log Failure] Action: ${actionType}, Actor: ${actorId}, Error:`, err.message);

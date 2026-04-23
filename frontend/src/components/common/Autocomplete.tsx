@@ -2,6 +2,7 @@ import * as React from "react"
 import { Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { useDebounce } from "@/hooks/useDebounce"
 import {
   Command,
   CommandEmpty,
@@ -10,11 +11,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 
 interface AutocompleteProps {
   options: Array<{ value: string; label: string; count?: number }>;
@@ -37,14 +33,16 @@ export function Autocomplete({
 }: AutocompleteProps) {
   const [open, setOpen] = React.useState(false)
   const [searchValue, setSearchValue] = React.useState("")
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const debouncedSearchValue = useDebounce(searchValue, 300);
 
-  // Filter options based on search
+  // Filter options based on debounced search
   const filteredOptions = React.useMemo(() => {
-    if (!searchValue) return options;
+    if (!debouncedSearchValue) return options;
     return options.filter(option =>
-      option.label.toLowerCase().includes(searchValue.toLowerCase())
+      option.label.toLowerCase().includes(debouncedSearchValue.toLowerCase())
     );
-  }, [options, searchValue]);
+  }, [options, debouncedSearchValue]);
 
   const selectedOption = options.find(option => option.value === value);
 
@@ -54,14 +52,25 @@ export function Autocomplete({
     setOpen(false);
   };
 
+  React.useEffect(() => {
+    const onPointerDown = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, []);
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <div ref={containerRef} className={cn("relative", className)}>
         <Button
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("justify-between", className)}
+          className="w-full justify-between"
+          onClick={() => setOpen((prev) => !prev)}
         >
           {selectedOption ? (
             <span className="truncate">
@@ -77,13 +86,9 @@ export function Autocomplete({
           )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent 
-        className="w-[var(--radix-popover-trigger-width)] p-0" 
-        align="start"
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        <Command shouldFilter={false}>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
+          <Command shouldFilter={false}>
           <CommandInput 
             placeholder={searchPlaceholder}
             value={searchValue}
@@ -115,8 +120,9 @@ export function Autocomplete({
               ))}
             </CommandGroup>
           </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+          </Command>
+        </div>
+      )}
+    </div>
   )
 }
