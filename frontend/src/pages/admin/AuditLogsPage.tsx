@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   ClipboardList, 
@@ -20,6 +20,8 @@ import { getSocket } from '@/lib/socket';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { SearchAutocomplete } from '@/components/common/SearchAutocomplete';
+import { useMemo } from 'react';
 
 interface AuditLog {
   id: string;
@@ -29,40 +31,161 @@ interface AuditLog {
   action_type: string;
   entity_type: string;
   entity_id: string;
-  old_value: any;
-  new_value: any;
+  old_value: unknown;
+  new_value: unknown;
   ip_address: string;
   user_agent: string;
   created_at: string;
 }
 
+interface SearchOption {
+  group: string;
+  value: string;
+  label: string;
+}
+
+interface AuditFilters {
+  actionType: string;
+  entityType: string;
+  actorId: string;
+  startDate: string;
+  endDate: string;
+}
+
+interface AuditPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+const DEFAULT_FILTERS: AuditFilters = {
+  actionType: '',
+  entityType: '',
+  actorId: '',
+  startDate: '',
+  endDate: ''
+};
+
+const normalizeValue = (value?: string | null) => (value || '').trim().toLowerCase();
+
+const buildDateBoundary = (rawDate: string, boundary: 'start' | 'end') => {
+  if (!rawDate) return null;
+  const parsed = new Date(rawDate);
+  if (Number.isNaN(parsed.getTime())) return null;
+  if (boundary === 'start') {
+    parsed.setHours(0, 0, 0, 0);
+  } else {
+    parsed.setHours(23, 59, 59, 999);
+  }
+  return parsed.getTime();
+};
+
+const matchesRealtimeFilters = (log: AuditLog, activeFilters: AuditFilters) => {
+  const actionNeedle = normalizeValue(activeFilters.actionType);
+  const entityNeedle = normalizeValue(activeFilters.entityType);
+  const actorNeedle = normalizeValue(activeFilters.actorId);
+
+  if (actionNeedle && !normalizeValue(log.action_type).includes(actionNeedle)) {
+    return false;
+  }
+
+  if (entityNeedle && !normalizeValue(log.entity_type).includes(entityNeedle)) {
+    return false;
+  }
+
+  if (actorNeedle) {
+    const matchesActorId = normalizeValue(log.actor_id).includes(actorNeedle);
+    const matchesActorName = normalizeValue(log.actor_name).includes(actorNeedle);
+    const matchesActorEmail = normalizeValue(log.actor_email).includes(actorNeedle);
+    if (!matchesActorId && !matchesActorName && !matchesActorEmail) {
+      return false;
+    }
+  }
+
+  const startBoundary = buildDateBoundary(activeFilters.startDate, 'start');
+  const endBoundary = buildDateBoundary(activeFilters.endDate, 'end');
+  if (startBoundary || endBoundary) {
+    const createdAt = new Date(log.created_at).getTime();
+    if (Number.isNaN(createdAt)) {
+      return false;
+    }
+    if (startBoundary && createdAt < startBoundary) {
+      return false;
+    }
+    if (endBoundary && createdAt > endBoundary) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 const AuditLogsPage = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<AuditPagination>({
     page: 1,
     limit: 20,
     total: 0,
     totalPages: 0
   });
-  const [filters, setFilters] = useState({
-    actionType: '',
-    entityType: '',
-    actorId: '',
-    startDate: '',
-    endDate: ''
-  });
+  const [filters, setFilters] = useState<AuditFilters>(DEFAULT_FILTERS);
+  const filtersRef = useRef<AuditFilters>(DEFAULT_FILTERS);
 
-  const fetchLogs = async (page = 1) => {
+  const actionSuggestions = useMemo<SearchOption[]>(() => {
+    const seen = new Set<string>();
+    return logs.flatMap((log) => {
+      const value = log.action_type?.trim();
+      if (!value || seen.has(value.toLowerCase())) return [];
+      seen.add(value.toLowerCase());
+      return [{ group: 'actions', value, label: value.replace(/_/g, ' ') }];
+    });
+  }, [logs]);
+
+  const entitySuggestions = useMemo<SearchOption[]>(() => {
+    const seen = new Set<string>();
+    return logs.flatMap((log) => {
+      const value = log.entity_type?.trim();
+      if (!value || seen.has(value.toLowerCase())) return [];
+      seen.add(value.toLowerCase());
+      return [{ group: 'entities', value, label: value }];
+    });
+  }, [logs]);
+
+  const actorSuggestions = useMemo<SearchOption[]>(() => {
+    const seen = new Set<string>();
+    const options: SearchOption[] = [];
+
+    logs.forEach((log) => {
+      const candidates = [log.actor_id, log.actor_name, log.actor_email].filter(Boolean) as string[];
+      candidates.forEach((candidate) => {
+        const normalized = candidate.trim().toLowerCase();
+        if (!normalized || seen.has(normalized)) return;
+        seen.add(normalized);
+        options.push({ group: 'actors', value: candidate.trim(), label: candidate.trim() });
+      });
+    });
+
+    return options;
+  }, [logs]);
+
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
+
+  const fetchLogs = useCallback(async (page = 1, activeFilters?: AuditFilters) => {
     setLoading(true);
     try {
+      const effectiveFilters = activeFilters || filtersRef.current;
+      const activeFilterEntries = Object.entries(effectiveFilters).filter(([, value]) => Boolean(value));
       const queryParams = new URLSearchParams({
         page: page.toString(),
         limit: pagination.limit.toString(),
-        ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v))
+        ...Object.fromEntries(activeFilterEntries)
       });
       
-      const response = await api.get<{ logs: AuditLog[], pagination: any }>(`/admin/audit-logs?${queryParams.toString()}`, { auth: true });
+      const response = await api.get<{ logs: AuditLog[]; pagination: AuditPagination }>(`/admin/audit-logs?${queryParams.toString()}`, { auth: true });
       setLogs(response.logs);
       setPagination(response.pagination);
     } catch (error) {
@@ -71,30 +194,37 @@ const AuditLogsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.limit]);
 
   useEffect(() => {
     fetchLogs(pagination.page);
-  }, [pagination.page]);
+  }, [pagination.page, fetchLogs]);
 
   useEffect(() => {
     const socket = getSocket();
     
     const handleNewLog = (newLog: AuditLog) => {
-      setLogs((prev) => {
-        if (pagination.page !== 1) return prev;
-        
-        if (filters.actionType && !newLog.action_type.includes(filters.actionType)) return prev;
-        if (filters.entityType && !newLog.entity_type.includes(filters.entityType)) return prev;
+      if (pagination.page !== 1) {
+        return;
+      }
 
-        const updated = [newLog, ...prev];
-        if (updated.length > pagination.limit) {
-          updated.pop();
+      if (!matchesRealtimeFilters(newLog, filters)) {
+        return;
+      }
+
+      setLogs((prev) => {
+        if (prev.some((item) => item.id === newLog.id)) {
+          return prev;
         }
+
+        const updated = [newLog, ...prev].slice(0, pagination.limit);
+        setPagination((current) => ({
+          ...current,
+          total: current.total + 1,
+          totalPages: Math.max(1, Math.ceil((current.total + 1) / current.limit))
+        }));
         return updated;
       });
-      // Optionally update total count
-      setPagination(p => ({ ...p, total: p.total + 1, totalPages: Math.ceil((p.total + 1) / p.limit) }));
     };
 
     socket.on('audit:new_log', handleNewLog);
@@ -102,7 +232,7 @@ const AuditLogsPage = () => {
     return () => {
       socket.off('audit:new_log', handleNewLog);
     };
-  }, [pagination.page, pagination.limit, filters.actionType, filters.entityType]);
+  }, [pagination.page, pagination.limit, filters]);
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -111,18 +241,13 @@ const AuditLogsPage = () => {
 
   const applyFilters = () => {
     setPagination(prev => ({ ...prev, page: 1 }));
-    fetchLogs(1);
+    fetchLogs(1, filters);
   };
 
   const resetFilters = () => {
-    setFilters({
-      actionType: '',
-      entityType: '',
-      actorId: '',
-      startDate: '',
-      endDate: ''
-    });
+    setFilters(DEFAULT_FILTERS);
     setPagination(prev => ({ ...prev, page: 1 }));
+    fetchLogs(1, DEFAULT_FILTERS);
   };
 
   return (
@@ -148,54 +273,82 @@ const AuditLogsPage = () => {
 
       {/* Filters */}
       <div className="bg-card border rounded-2xl p-4 md:p-6 shadow-sm space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-          <div className="space-y-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-4">
+          <div className="space-y-1.5 xl:col-span-2">
             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Action Type</label>
-            <div className="relative">
-              <Activity className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                name="actionType"
-                placeholder="e.g. user_ban" 
-                className="pl-9 h-11 rounded-xl bg-muted/20 border-none focus-visible:ring-1 focus-visible:ring-primary/20" 
+            <div className="rounded-2xl border border-border/70 bg-muted/20 px-3 py-2.5 shadow-sm focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10 transition-all">
+              <SearchAutocomplete
                 value={filters.actionType}
-                onChange={handleFilterChange}
+                onValueChange={(value) => setFilters(prev => ({ ...prev, actionType: value }))}
+                suggestions={actionSuggestions}
+                placeholder="e.g. user_ban"
+                className="w-full"
+                inputClassName="h-10 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
+                leadingPaddingClassName="pl-11"
+                groupLabels={{ actions: 'Actions' }}
               />
             </div>
+            <p className="ml-1 text-[10px] text-muted-foreground">Type to filter actions from live logs.</p>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 xl:col-span-2">
             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Entity Type</label>
-            <div className="relative">
-              <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                name="entityType"
-                placeholder="e.g. user" 
-                className="pl-9 h-11 rounded-xl bg-muted/20 border-none focus-visible:ring-1 focus-visible:ring-primary/20" 
+            <div className="rounded-2xl border border-border/70 bg-muted/20 px-3 py-2.5 shadow-sm focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10 transition-all">
+              <SearchAutocomplete
                 value={filters.entityType}
+                onValueChange={(value) => setFilters(prev => ({ ...prev, entityType: value }))}
+                suggestions={entitySuggestions}
+                placeholder="e.g. user"
+                className="w-full"
+                inputClassName="h-10 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
+                leadingPaddingClassName="pl-11"
+                groupLabels={{ entities: 'Entities' }}
+              />
+            </div>
+            <p className="ml-1 text-[10px] text-muted-foreground">Search entities like user, service, report, or category.</p>
+          </div>
+          <div className="space-y-1.5 xl:col-span-2">
+            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Actor</label>
+            <div className="rounded-2xl border border-border/70 bg-muted/20 px-3 py-2.5 shadow-sm focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10 transition-all">
+              <SearchAutocomplete
+                value={filters.actorId}
+                onValueChange={(value) => setFilters(prev => ({ ...prev, actorId: value }))}
+                suggestions={actorSuggestions}
+                placeholder="ID, name, or email"
+                className="w-full"
+                inputClassName="h-10 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
+                leadingPaddingClassName="pl-11"
+                groupLabels={{ actors: 'Actors' }}
+              />
+            </div>
+            <p className="ml-1 text-[10px] text-muted-foreground">Search by actor ID, name, or email.</p>
+          </div>
+          <div className="space-y-1.5 flex flex-col xl:col-span-1">
+            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Start Date</label>
+            <div className="rounded-2xl border border-border/70 bg-muted/20 px-3 py-2.5 shadow-sm focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10 transition-all">
+              <Input 
+                name="startDate"
+                type="date" 
+                className="h-10 w-full rounded-none bg-transparent border-0 px-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm font-medium" 
+                value={filters.startDate}
                 onChange={handleFilterChange}
               />
             </div>
+            <p className="ml-1 text-[10px] text-muted-foreground">Show logs from this date onward.</p>
           </div>
-          <div className="space-y-1.5 flex flex-col">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Start Date</label>
-            <Input 
-              name="startDate"
-              type="date" 
-              className="h-11 w-full rounded-xl bg-muted/20 border-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm font-medium px-3 flex-1 flex" 
-              value={filters.startDate}
-              onChange={handleFilterChange}
-            />
-          </div>
-          <div className="space-y-1.5 flex flex-col">
+          <div className="space-y-1.5 flex flex-col xl:col-span-1">
             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">End Date</label>
-            <Input 
-              name="endDate"
-              type="date" 
-              className="h-11 w-full rounded-xl bg-muted/20 border-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm font-medium px-3 flex-1 flex" 
-              value={filters.endDate}
-              onChange={handleFilterChange}
-            />
+            <div className="rounded-2xl border border-border/70 bg-muted/20 px-3 py-2.5 shadow-sm focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10 transition-all">
+              <Input 
+                name="endDate"
+                type="date" 
+                className="h-10 w-full rounded-none bg-transparent border-0 px-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm font-medium" 
+                value={filters.endDate}
+                onChange={handleFilterChange}
+              />
+            </div>
+            <p className="ml-1 text-[10px] text-muted-foreground">Show logs up to this date.</p>
           </div>
-          <div className="sm:col-span-2 lg:col-span-2 flex items-end gap-2">
+          <div className="sm:col-span-2 xl:col-span-7 flex items-end gap-2">
             <Button className="flex-1 h-11 rounded-xl font-bold shadow-lg shadow-primary/10" onClick={applyFilters}>
               <Filter className="h-4 w-4 mr-2" />
               Filter

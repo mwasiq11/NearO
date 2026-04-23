@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api';
+import { getSocket } from '@/lib/socket';
 import { toast } from 'sonner';
 
 interface CategoryItem {
@@ -12,6 +13,18 @@ interface CategoryItem {
   name: string;
   description?: string | null;
   isActive: boolean;
+}
+
+interface CategoryApiItem {
+  id: string;
+  name: string;
+  description?: string | null;
+  is_active?: boolean;
+}
+
+interface CategoryAuditLog {
+  entity_type?: string;
+  action_type?: string;
 }
 
 const AdminCategoriesPage = () => {
@@ -23,7 +36,7 @@ const AdminCategoriesPage = () => {
     const loadCategories = async () => {
       setIsLoading(true);
       try {
-        const data = await api.get<{ categories: any[] }>('/admin/categories', { auth: true });
+        const data = await api.get<{ categories: CategoryApiItem[] }>('/admin/categories', { auth: true });
         const mapped = (data.categories || []).map((c) => ({
           id: c.id,
           name: c.name,
@@ -41,13 +54,45 @@ const AdminCategoriesPage = () => {
     loadCategories();
   }, []);
 
+  useEffect(() => {
+    const socket = getSocket();
+
+    const refreshCategories = async () => {
+      try {
+        const data = await api.get<{ categories: CategoryApiItem[] }>('/admin/categories', { auth: true });
+        const mapped = (data.categories || []).map((c) => ({
+          id: c.id,
+          name: c.name,
+          description: c.description,
+          isActive: Boolean(c.is_active ?? true),
+        }));
+        setCategories(mapped);
+      } catch {
+        // Keep current UI if refresh fails
+      }
+    };
+
+    const handleAuditLog = (log: CategoryAuditLog) => {
+      if (log?.entity_type !== 'category') return;
+      const relevantActions = ['category_create', 'category_update', 'category_deactivate'];
+      if (!relevantActions.includes(log?.action_type)) return;
+      refreshCategories();
+    };
+
+    socket.on('audit:new_log', handleAuditLog);
+
+    return () => {
+      socket.off('audit:new_log', handleAuditLog);
+    };
+  }, []);
+
   const handleCreate = async () => {
     if (!formData.name.trim()) {
       toast.error('Category name is required');
       return;
     }
     try {
-      const created = await api.post<any>('/admin/categories', {
+      const created = await api.post<CategoryApiItem>('/admin/categories', {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
       }, { auth: true });

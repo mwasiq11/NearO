@@ -61,13 +61,25 @@ const ModeratorDashboard = () => {
 
     const socket = getSocket();
     const handleUpdate = () => refreshData();
-    
-    socket.on('service:new', handleUpdate);
-    socket.on('report:new', handleUpdate);
+
+    const moderationEvents = [
+      'service:new',
+      'service:approved',
+      'service:rejected',
+      'report:new',
+      'report:updated',
+      'user:suspended',
+      'user:unsuspended'
+    ];
+
+    moderationEvents.forEach((eventName) => {
+      socket.on(eventName, handleUpdate);
+    });
 
     return () => {
-      socket.off('service:new', handleUpdate);
-      socket.off('report:new', handleUpdate);
+      moderationEvents.forEach((eventName) => {
+        socket.off(eventName, handleUpdate);
+      });
     };
   }, [refreshKey]);
 

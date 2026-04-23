@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, Ban, CheckCircle, Shield, ArrowRight } from 'lucide-react';
 import { api } from '@/lib/api';
+import { getSocket } from '@/lib/socket';
 import { toast } from 'sonner';
 import { UserDetailModal } from '@/components/admin/AdminResourceModals';
 
@@ -40,12 +41,12 @@ const AdminUsersPage = () => {
       setIsLoading(true);
       try {
         const data = await api.get<{ users: any[] }>('/admin/users', { auth: true });
-        const mapped = (data.users || []).map((u) => ({
+        const mapped: AdminUser[] = (data.users || []).map((u) => ({
           id: u.id,
           name: u.name,
           email: u.email,
           role: u.role,
-          status: u.is_active ? 'active' : 'suspended',
+          status: (u.is_active ? 'active' : 'suspended') as AdminUser['status'],
           createdAt: u.created_at ? new Date(u.created_at).toLocaleDateString() : '—',
         }));
         setUsers(mapped);
@@ -58,6 +59,27 @@ const AdminUsersPage = () => {
 
     loadUsers();
   }, [refreshKey]);
+
+  useEffect(() => {
+    const socket = getSocket();
+
+    const handleRefresh = () => refreshUsers();
+    const handleAuditLog = (log: any) => {
+      if (log?.entity_type !== 'user') return;
+      const relevantActions = ['user_suspend', 'user_unsuspend', 'user_ban', 'user_role_update', 'moderator_promote', 'moderator_demote'];
+      if (!relevantActions.includes(log?.action_type)) return;
+      refreshUsers();
+    };
+
+    const events = ['user:suspended', 'user:unsuspended'];
+    events.forEach((eventName) => socket.on(eventName, handleRefresh));
+    socket.on('audit:new_log', handleAuditLog);
+
+    return () => {
+      events.forEach((eventName) => socket.off(eventName, handleRefresh));
+      socket.off('audit:new_log', handleAuditLog);
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     return users.filter((u) => {

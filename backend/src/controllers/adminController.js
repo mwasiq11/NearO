@@ -1182,15 +1182,48 @@ const getAuditLogs = async (req, res) => {
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
 
-    const where = {};
-    if (actionType) where.action_type = actionType;
-    if (actorId) where.actor_id = actorId;
-    if (entityType) where.entity_type = entityType;
-    if (startDate || endDate) {
-      where.created_at = {};
-      if (startDate) where.created_at.gte = new Date(startDate);
-      if (endDate) where.created_at.lte = new Date(endDate);
+    const filters = [];
+    if (actionType) {
+      filters.push({ action_type: { contains: String(actionType).trim() } });
     }
+    if (actorId) {
+      const actorSearch = String(actorId).trim();
+      filters.push({
+        OR: [
+          { actor_id: { contains: actorSearch } },
+          { users: { is: { name: { contains: actorSearch } } } },
+          { users: { is: { email: { contains: actorSearch } } } }
+        ]
+      });
+    }
+    if (entityType) {
+      filters.push({ entity_type: { contains: String(entityType).trim() } });
+    }
+    if (startDate || endDate) {
+      const createdAtFilter = {};
+
+      if (startDate) {
+        const start = new Date(startDate);
+        if (!Number.isNaN(start.getTime())) {
+          start.setHours(0, 0, 0, 0);
+          createdAtFilter.gte = start;
+        }
+      }
+
+      if (endDate) {
+        const end = new Date(endDate);
+        if (!Number.isNaN(end.getTime())) {
+          end.setHours(23, 59, 59, 999);
+          createdAtFilter.lte = end;
+        }
+      }
+
+      if (Object.keys(createdAtFilter).length > 0) {
+        filters.push({ created_at: createdAtFilter });
+      }
+    }
+
+    const where = filters.length > 0 ? { AND: filters } : {};
 
     const [logs, total] = await Promise.all([
       prisma.audit_logs.findMany({

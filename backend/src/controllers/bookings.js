@@ -203,6 +203,17 @@ const acceptBooking = async (req, res) => {
       console.error('Warning: Failed to publish notification:', notifError);
     }
 
+    // Emit real-time booking status update for dashboards and booking views
+    const io = getIO();
+    if (io) {
+      io.emit('booking:status-changed', {
+        bookingId: id,
+        status: 'approved',
+        seekerId: booking.seeker_id,
+        providerId: userId,
+      });
+    }
+
     res.json({ success: true, message: 'Booking accepted' });
 
     const ctx = buildRequestContext(req);
@@ -276,6 +287,7 @@ const rejectBooking = async (req, res) => {
           bookingId: id,
           status: 'rejected',
           seekerId: booking.seeker_id,
+          providerId: booking.services.provider_id,
           notification: {
             id: notificationId,
             type: 'booking_rejected',

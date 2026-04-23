@@ -13,7 +13,8 @@ import {
 import { useDebounce } from "@/hooks/useDebounce"
 
 interface SearchSuggestion {
-  type: 'service' | 'category' | 'tag';
+  type?: string;
+  group?: string;
   value: string;
   label: string;
   count?: number;
@@ -25,6 +26,9 @@ interface SearchAutocompleteProps {
   suggestions: SearchSuggestion[];
   placeholder?: string;
   className?: string;
+  inputClassName?: string;
+  leadingPaddingClassName?: string;
+  groupLabels?: Record<string, string>;
 }
 
 export function SearchAutocomplete({
@@ -33,6 +37,9 @@ export function SearchAutocomplete({
   suggestions,
   placeholder = "Search services",
   className,
+  inputClassName,
+  leadingPaddingClassName = "pl-11",
+  groupLabels,
 }: SearchAutocompleteProps) {
   const [open, setOpen] = React.useState(false)
   const inputRef = React.useRef<HTMLInputElement>(null)
@@ -50,13 +57,13 @@ export function SearchAutocomplete({
   }, [suggestions, debouncedValue]);
 
   const groupedSuggestions = React.useMemo(() => {
-    const grouped: Record<string, SearchSuggestion[]> = {
-      service: [],
-      category: [],
-      tag: [],
-    };
+    const grouped: Record<string, SearchSuggestion[]> = {};
     filteredSuggestions.forEach(s => {
-      grouped[s.type].push(s);
+      const groupKey = s.group || s.type || 'suggestions';
+      if (!grouped[groupKey]) {
+        grouped[groupKey] = [];
+      }
+      grouped[groupKey].push(s);
     });
     return grouped;
   }, [filteredSuggestions]);
@@ -99,11 +106,11 @@ export function SearchAutocomplete({
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+      <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
       <Input
         ref={inputRef}
         placeholder={placeholder}
-        className="pl-9"
+        className={cn(leadingPaddingClassName, inputClassName)}
         value={value}
         onChange={handleInputChange}
         onFocus={handleInputFocus}
@@ -122,31 +129,18 @@ export function SearchAutocomplete({
               <CommandEmpty>No suggestions found.</CommandEmpty>
             ) : (
               <>
-                {groupedSuggestions.service.length > 0 && (
-                  <CommandGroup heading="Services">
-                    {groupedSuggestions.service.map((suggestion) => (
+                {Object.entries(groupedSuggestions).map(([groupKey, groupSuggestions]) => (
+                  <CommandGroup key={groupKey} heading={groupLabels?.[groupKey] || groupKey}>
+                    {groupSuggestions.map((suggestion) => (
                       <CommandItem
-                        key={`service-${suggestion.value}`}
+                        key={`${groupKey}-${suggestion.value}`}
                         value={suggestion.value}
                         onSelect={() => handleSelect(suggestion)}
                         onMouseDown={(e) => e.preventDefault()}
                       >
-                        <Search className="mr-2 h-4 w-4 text-muted-foreground" />
-                        <span className="flex-1">{suggestion.label}</span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                )}
-                {groupedSuggestions.category.length > 0 && (
-                  <CommandGroup heading="Categories">
-                    {groupedSuggestions.category.map((suggestion) => (
-                      <CommandItem
-                        key={`category-${suggestion.value}`}
-                        value={suggestion.value}
-                        onSelect={() => handleSelect(suggestion)}
-                        onMouseDown={(e) => e.preventDefault()}
-                      >
-                        <span className="mr-2">📂</span>
+                        {groupKey === 'service' && <Search className="mr-2 h-4 w-4 text-muted-foreground" />}
+                        {groupKey === 'category' && <span className="mr-2">📂</span>}
+                        {groupKey === 'tag' && <span className="mr-2">#</span>}
                         <span className="flex-1">{suggestion.label}</span>
                         {suggestion.count && (
                           <span className="text-xs text-muted-foreground">
@@ -156,22 +150,7 @@ export function SearchAutocomplete({
                       </CommandItem>
                     ))}
                   </CommandGroup>
-                )}
-                {groupedSuggestions.tag.length > 0 && (
-                  <CommandGroup heading="Tags">
-                    {groupedSuggestions.tag.map((suggestion) => (
-                      <CommandItem
-                        key={`tag-${suggestion.value}`}
-                        value={suggestion.value}
-                        onSelect={() => handleSelect(suggestion)}
-                        onMouseDown={(e) => e.preventDefault()}
-                      >
-                        <span className="mr-2">#</span>
-                        <span className="flex-1">{suggestion.label}</span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                )}
+                ))}
               </>
             )}
           </CommandList>

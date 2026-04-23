@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, Check, XCircle, Eye } from 'lucide-react';
 import { api } from '@/lib/api';
+import { getSocket } from '@/lib/socket';
 import { toast } from 'sonner';
 import { ServiceDetailModal } from '@/components/admin/AdminResourceModals';
 
@@ -59,6 +60,27 @@ const AdminServicesPage = () => {
 
     loadServices();
   }, [refreshKey]);
+
+  useEffect(() => {
+    const socket = getSocket();
+
+    const handleRefresh = () => refreshServices();
+    const handleAuditLog = (log: any) => {
+      if (log?.entity_type !== 'service') return;
+      const relevantActions = ['service_update_any', 'service_delete_any', 'service_approve', 'service_reject'];
+      if (!relevantActions.includes(log?.action_type)) return;
+      refreshServices();
+    };
+
+    const events = ['service:new', 'service:approved', 'service:rejected'];
+    events.forEach((eventName) => socket.on(eventName, handleRefresh));
+    socket.on('audit:new_log', handleAuditLog);
+
+    return () => {
+      events.forEach((eventName) => socket.off(eventName, handleRefresh));
+      socket.off('audit:new_log', handleAuditLog);
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     return services.filter((s) => {

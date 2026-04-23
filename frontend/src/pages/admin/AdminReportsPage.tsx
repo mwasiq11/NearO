@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
 import { api } from '@/lib/api';
+import { getSocket } from '@/lib/socket';
 import { toast } from 'sonner';
 
 interface ReportItem {
@@ -70,6 +71,47 @@ const AdminReportsPage = () => {
     };
 
     loadReports();
+  }, []);
+
+  useEffect(() => {
+    const socket = getSocket();
+
+    const handleRefresh = () => {
+      // Reuse the initial loading effect by reloading via direct fetch path.
+      (async () => {
+        setIsLoading(true);
+        try {
+          const data = await api.get<{ reports: any[] }>('/admin/reports', { auth: true });
+          const mapped = (data.reports || []).map((r) => ({
+            id: r.id,
+            subject: r.reason || 'Report',
+            reporter: r.reporter_name || r.reported_by || 'Unknown',
+            severity: mapSeverity(r.status as ReportItem['status']),
+            status: (r.status || 'pending') as ReportItem['status'],
+            age: formatAge(r.created_at || new Date().toISOString()),
+          }));
+          setReports(mapped);
+        } catch (err) {
+          toast.error('Failed to load reports');
+        } finally {
+          setIsLoading(false);
+        }
+      })();
+    };
+
+    const handleAuditLog = (log: any) => {
+      if (log?.entity_type !== 'report') return;
+      if (!['report_status_update'].includes(log?.action_type)) return;
+      handleRefresh();
+    };
+
+    socket.on('report:updated', handleRefresh);
+    socket.on('audit:new_log', handleAuditLog);
+
+    return () => {
+      socket.off('report:updated', handleRefresh);
+      socket.off('audit:new_log', handleAuditLog);
+    };
   }, []);
 
   const updateStatus = async (id: string, status: ReportItem['status']) => {

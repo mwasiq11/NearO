@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ShieldCheck, Clock } from 'lucide-react';
 import { api } from '@/lib/api';
+import { getSocket } from '@/lib/socket';
 import { toast } from 'sonner';
 
 interface Moderator {
@@ -48,6 +49,27 @@ const AdminModeratorsPage = () => {
 
     loadModerators();
   }, [refreshKey]);
+
+  useEffect(() => {
+    const socket = getSocket();
+
+    const handleRefresh = () => refreshModerators();
+    const handleAuditLog = (log: any) => {
+      if (log?.entity_type !== 'user') return;
+      const relevantActions = ['moderator_create', 'moderator_promote', 'moderator_demote', 'user_role_update'];
+      if (!relevantActions.includes(log?.action_type)) return;
+      refreshModerators();
+    };
+
+    const events = ['user:suspended', 'user:unsuspended'];
+    events.forEach((eventName) => socket.on(eventName, handleRefresh));
+    socket.on('audit:new_log', handleAuditLog);
+
+    return () => {
+      events.forEach((eventName) => socket.off(eventName, handleRefresh));
+      socket.off('audit:new_log', handleAuditLog);
+    };
+  }, []);
 
   const demote = async (id: string) => {
     try {

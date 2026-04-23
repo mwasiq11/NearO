@@ -93,7 +93,7 @@ export default function UserDashboard() {
       if (bookingsResponse.ok) {
         setBookings(bookingsResponse.data.bookings);
       }
-    } catch (err: any) {
+    } catch (err : any) {
       setError(err.message);
     } finally {
       setIsLoading(false);

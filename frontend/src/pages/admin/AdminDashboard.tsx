@@ -104,12 +104,35 @@ const AdminDashboard = () => {
       toast('Moderation update', { description: 'New items pending review' });
     };
 
-    socket.on('service:new', handleModeration);
-    socket.on('report:new', handleModeration);
+    const handleAuditLog = (newLog: ActivityLog) => {
+      setLogs((prev) => {
+        if (prev.some((item) => item.id === newLog.id)) {
+          return prev;
+        }
+        return [newLog, ...prev].slice(0, 10);
+      });
+    };
+
+    const moderationEvents = [
+      'service:new',
+      'service:approved',
+      'service:rejected',
+      'report:new',
+      'report:updated',
+      'user:suspended',
+      'user:unsuspended'
+    ];
+
+    moderationEvents.forEach((eventName) => {
+      socket.on(eventName, handleModeration);
+    });
+    socket.on('audit:new_log', handleAuditLog);
 
     return () => {
-      socket.off('service:new', handleModeration);
-      socket.off('report:new', handleModeration);
+      moderationEvents.forEach((eventName) => {
+        socket.off(eventName, handleModeration);
+      });
+      socket.off('audit:new_log', handleAuditLog);
     };
   }, [refreshKey]);
 

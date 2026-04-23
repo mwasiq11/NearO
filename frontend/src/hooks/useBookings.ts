@@ -13,6 +13,7 @@ import {
 import { Booking, BookingStatus, ServiceListing } from '@/models/types';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { getSocket } from '@/lib/socket';
 
 export const useBookings = () => {
   const dispatch = useAppDispatch();
@@ -72,6 +73,37 @@ export const useBookings = () => {
 
     loadBookings();
   }, [dispatch, mapBooking, user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const socket = getSocket();
+    const handleBookingStatusChanged = (payload: {
+      bookingId?: string;
+      status?: string;
+      seekerId?: string;
+      providerId?: string;
+    }) => {
+      if (!payload?.bookingId || !payload?.status) return;
+
+      const knownBooking = bookings.some((b) => b.id === payload.bookingId);
+      const userIsParticipant = payload.seekerId === user.id || payload.providerId === user.id;
+      if (!knownBooking && !userIsParticipant) {
+        return;
+      }
+
+      dispatch(updateBookingStatus({
+        id: payload.bookingId,
+        status: mapStatus(payload.status),
+      }));
+    };
+
+    socket.on('booking:status-changed', handleBookingStatusChanged);
+
+    return () => {
+      socket.off('booking:status-changed', handleBookingStatusChanged);
+    };
+  }, [bookings, dispatch, user]);
 
   // Get bookings grouped by status
   const bookingsByStatus = useMemo(() => {
