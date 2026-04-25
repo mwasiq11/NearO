@@ -69,7 +69,14 @@ export interface ServiceListing {
   tags: string[];
   rating: number;
   reviewCount: number;
+  average_rating: number;
+  total_reviews: number;
   bookingCount: number;
+  soldCount?: number;
+  pendingCount?: number;
+  stockQuantity?: number | null;
+  remainingQuantity?: number | null;
+  isInStock?: boolean;
   isActive: boolean;
   isTrending: boolean;
   createdAt: string;
@@ -173,11 +180,17 @@ export interface SearchFilters {
 export interface Notification {
   id: string;
   user_id: string;
-  type: 'booking_new' | 'booking_accepted' | 'booking_rejected' | 'new_message' | 'review_posted' | 'system';
+  type: 'booking_new' | 'booking_request' | 'booking_accepted' | 'booking_approved' | 'booking_rejected' | 'new_message' | 'message' | 'review_posted' | 'review' | 'system';
   title: string;
   message: string;
   entity_type?: string;
   entity_id?: string;
+  payload?: {
+    conversationId?: string;
+    bookingId?: string;
+    serviceId?: string;
+    [key: string]: any;
+  };
   is_read: boolean;
   created_at: string;
 }
@@ -228,6 +241,7 @@ export interface ListingForm {
   description: string;
   category: string;
   price: number;
+  quantity: number;
   currency?: string;
   priceType: 'hourly' | 'fixed' | 'negotiable';
   images: File[];

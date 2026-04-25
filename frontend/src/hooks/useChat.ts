@@ -96,20 +96,21 @@ export const useChat = () => {
     } as any;
   }, []);
 
+  const refreshConversations = useCallback(async () => {
+    if (!user) return;
+    try {
+      const data = await api.get<{ conversations: any[] }>('/messages/conversations', { auth: true });
+      dispatch(setConversations(data.conversations.map(mapConversation)));
+    } catch {
+      // Keep UI usable without blocking
+    }
+  }, [dispatch, mapConversation, user]);
+
   useEffect(() => {
     if (!user) return;
 
-    const loadConversations = async () => {
-      try {
-        const data = await api.get<{ conversations: any[] }>('/messages/conversations', { auth: true });
-        dispatch(setConversations(data.conversations.map(mapConversation)));
-      } catch {
-        // Keep UI usable without blocking
-      }
-    };
-
-    loadConversations();
-  }, [dispatch, mapConversation, user]);
+    refreshConversations();
+  }, [refreshConversations, user]);
 
   useEffect(() => {
     if (!user) return;
@@ -118,10 +119,28 @@ export const useChat = () => {
 
     const handleReceived = ({ message }: { message: any }) => {
       dispatch(addMessage(mapMessage(message)));
+      refreshConversations();
       // Play sound if message is incoming (not from self)
       if (message.sender_id !== user.id) {
         playMessageReceived();
       }
+    };
+
+    const handleConversationCreated = (payload: {
+      conversationId?: string;
+      seekerId?: string;
+      providerId?: string;
+    }) => {
+      if (!payload?.conversationId) return;
+      const isParticipant = payload.seekerId === user.id || payload.providerId === user.id;
+      if (!isParticipant) return;
+      refreshConversations();
+    };
+
+    const handleBookingStatusChanged = (payload: { seekerId?: string; providerId?: string }) => {
+      const isParticipant = payload?.seekerId === user.id || payload?.providerId === user.id;
+      if (!isParticipant) return;
+      refreshConversations();
     };
 
     const handleUserStatus = ({ userId, status }: { userId: string; status: 'online' | 'offline' }) => {
@@ -139,13 +158,17 @@ export const useChat = () => {
     socket.on('message:received', handleReceived);
     socket.on('message:sent', handleReceived);
     socket.on('user:status', handleUserStatus);
+    socket.on('conversation:created', handleConversationCreated);
+    socket.on('booking:status-changed', handleBookingStatusChanged);
 
     return () => {
       socket.off('message:received', handleReceived);
       socket.off('message:sent', handleReceived);
       socket.off('user:status', handleUserStatus);
+      socket.off('conversation:created', handleConversationCreated);
+      socket.off('booking:status-changed', handleBookingStatusChanged);
     };
-  }, [dispatch, mapMessage, user]);
+  }, [dispatch, mapMessage, playMessageReceived, refreshConversations, user]);
 
   // Get unread count
   const totalUnread = useMemo(() => {

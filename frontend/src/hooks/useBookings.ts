@@ -41,7 +41,7 @@ export const useBookings = () => {
       scheduledDate: dateStr,
       scheduledTime: timeStr,
       duration: 60,
-      totalPrice: Number(booking.total_price || 0),
+      totalPrice: Number(booking.total_price ?? booking.service_price ?? 0),
       status: mapStatus(booking.status || 'pending'),
       notes: booking.notes || undefined,
       createdAt: booking.created_at || new Date().toISOString(),
@@ -78,6 +78,22 @@ export const useBookings = () => {
     if (!user) return;
 
     const socket = getSocket();
+    const handleBookingCreated = (payload: any) => {
+      if (!payload?.id) return;
+
+      const userIsParticipant = payload.seeker_id === user.id || payload.provider_id === user.id;
+      if (!userIsParticipant) {
+        return;
+      }
+
+      const knownBooking = bookings.some((b) => b.id === payload.id);
+      if (knownBooking) {
+        return;
+      }
+
+      dispatch(addBooking(mapBooking(payload)));
+    };
+
     const handleBookingStatusChanged = (payload: {
       bookingId?: string;
       status?: string;
@@ -98,12 +114,14 @@ export const useBookings = () => {
       }));
     };
 
+    socket.on('booking:created', handleBookingCreated);
     socket.on('booking:status-changed', handleBookingStatusChanged);
 
     return () => {
+      socket.off('booking:created', handleBookingCreated);
       socket.off('booking:status-changed', handleBookingStatusChanged);
     };
-  }, [bookings, dispatch, user]);
+  }, [bookings, dispatch, mapBooking, user]);
 
   // Get bookings grouped by status
   const bookingsByStatus = useMemo(() => {
@@ -162,6 +180,9 @@ export const useBookings = () => {
       const newBooking = mapBooking({
         ...created,
         provider_id: listing.providerId,
+        total_price: listing.price,
+        service_price: listing.price,
+        currency: listing.currency || 'PKR',
       });
 
       dispatch(addBooking({ ...newBooking, listing, seeker: user }));

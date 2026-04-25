@@ -13,12 +13,16 @@ import { api } from '@/lib/api';
 import { ServiceListing } from '@/models/types';
 import { formatPrice, formatDate } from '@/utils/formatters';
 import { getCategoryImage } from '@/utils/categoryImages';
+import { getServiceSalesMetrics } from '@/utils/serviceSales';
+import { parseAvailabilityMetadata } from '@/utils/serviceAvailability';
 import { MapPin, MessageSquare, Star, Clock, Calendar, DollarSign, TrendingUp, Users, ChevronLeft, Share2, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import React from 'react';
 import { Skeleton } from 'boneyard-js/react';
+import { InteractiveRating } from '@/components/dashboard/InteractiveRating';
+import { Rating } from '@/components/common/Rating';
 
 const ListingDetailPage = () => {
   const { id } = useParams();
@@ -34,8 +38,11 @@ const ListingDetailPage = () => {
     date: '',
     time: '',
     duration: '60',
+    durationType: 'timed' as 'timed' | 'permanent',
     notes: '',
   });
+  const [userReview, setUserReview] = useState<{ rating: number; comment: string } | null>(null);
+  const [reviews, setReviews] = useState<any[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -49,6 +56,10 @@ const ListingDetailPage = () => {
       setIsLoading(true);
       try {
         const service = await api.get<any>(`/services/${id}`);
+        const availability = parseAvailabilityMetadata(service.availability);
+        const bookedCount = Number(service.booking_count || 0);
+        const stockQuantity = availability.quantity;
+        const remainingQuantity = stockQuantity === null ? null : Math.max(stockQuantity - bookedCount, 0);
         const mapped: ServiceListing = {
           id: service.id,
           providerId: service.provider_id,
@@ -69,10 +80,13 @@ const ListingDetailPage = () => {
               lng: Number(service.longitude),
             } : undefined,
           },
-          tags: service.tags || [],
+          tags: service.tags?.length ? service.tags : availability.tags,
           rating: Number(service.rating || 0),
           reviewCount: Number(service.review_count || 0),
-          bookingCount: Number(service.booking_count || 0),
+          bookingCount: bookedCount,
+          stockQuantity,
+          remainingQuantity,
+          isInStock: stockQuantity === null ? true : remainingQuantity > 0,
           isActive: Boolean(service.is_active ?? true),
           isTrending: Boolean(service.is_trending ?? false),
           createdAt: service.created_at || new Date().toISOString(),
@@ -89,10 +103,37 @@ const ListingDetailPage = () => {
     load();
   }, [getListingById, id]);
 
+  useEffect(() => {
+    if (!id || !user) return;
+    
+    const fetchUserReview = async () => {
+      try {
+        // We'll use the provider reviews endpoint or a specific one if available
+        // For now, we'll try to find the user's review in the service reviews
+        const response = await api.get<{ reviews: any[] }>(`/reviews/provider/${listing?.providerId}`);
+        const found = response.reviews.find(r => r.reviewer_id === user.id && r.service_id === id);
+        if (found) {
+          setUserReview({ rating: found.rating, comment: found.comment });
+        }
+        setReviews(response.reviews.filter(r => r.service_id === id));
+      } catch (err) {
+        console.error('Failed to fetch user review');
+      }
+    };
+
+    if (listing?.providerId) {
+      fetchUserReview();
+    }
+  }, [id, user, listing?.providerId]);
+
   const canBook = useMemo(() => Boolean(listing), [listing]);
 
   const handleBooking = async () => {
     if (!listing) return;
+    if (!listingAvailability.isInStock) {
+      toast.error('This service is currently out of stock');
+      return;
+    }
     if (!bookingData.date || !bookingData.time) {
       toast.error('Select a date and time');
       return;
@@ -101,8 +142,10 @@ const ListingDetailPage = () => {
       listing,
       bookingData.date,
       bookingData.time,
-      Number(bookingData.duration || 60),
-      bookingData.notes || undefined
+      bookingData.durationType === 'permanent' ? 0 : Number(bookingData.duration || 60),
+      bookingData.durationType === 'permanent'
+        ? `[Permanent] ${bookingData.notes || ''}`.trim()
+        : bookingData.notes || undefined
     );
     if (created) {
       navigate('/dashboard/bookings');
@@ -125,15 +168,41 @@ const ListingDetailPage = () => {
     [receivedBookings, listing?.id]
   );
 
+  const listingBookingStats = useMemo(() => {
+    if (!listing) {
+      return { totalOrders: 0, soldCount: 0, pendingCount: 0, allocatedCount: 0, totalRevenue: 0, isSold: false, remainingQuantity: null, isInStock: true };
+    }
+
+    return getServiceSalesMetrics(listing.id, listingBookings, listing.price, listing.stockQuantity);
+  }, [listing, listingBookings]);
+
+  const listingAvailability = useMemo(() => {
+    if (!listing) {
+      return { isInStock: true, remainingQuantity: null as number | null };
+    }
+
+    if (isOwner) {
+      return {
+        isInStock: listingBookingStats.isInStock,
+        remainingQuantity: listingBookingStats.remainingQuantity,
+      };
+    }
+
+    return {
+      isInStock: listing.isInStock ?? true,
+      remainingQuantity: listing.remainingQuantity ?? null,
+    };
+  }, [isOwner, listing, listingBookingStats]);
+
   const stats = useMemo(() => {
     if (!listing) return null;
     return [
-      { label: 'Total Bookings', value: listing.bookingCount || 0, icon: Calendar },
-      { label: 'Total Revenue', value: formatPrice((listing.bookingCount || 0) * listing.price, listing.priceType, listing.currency), icon: DollarSign },
+      { label: 'Total Bookings', value: Math.max(listing.bookingCount || 0, listingBookingStats.totalOrders), icon: Calendar },
+      { label: 'Total Revenue', value: formatPrice(listingBookingStats.totalRevenue, listing.priceType, listing.currency), icon: DollarSign },
       { label: 'Rating', value: listing.rating.toFixed(1), icon: Star },
       { label: 'Reviews', value: listing.reviewCount, icon: MessageSquare },
     ];
-  }, [listing]);
+  }, [listing, listingBookingStats]);
 
 
   const imageUrl = listing?.images[0] || getCategoryImage(listing?.category || 'Other');
@@ -244,6 +313,13 @@ const ListingDetailPage = () => {
                   {listing.isTrending && (
                     <Badge variant="trending" className="font-bold text-[10px] px-3">🔥 Trending</Badge>
                   )}
+                  <Badge variant={listingAvailability.isInStock ? 'default' : 'destructive'} className="font-bold text-[10px] px-3">
+                    {listingAvailability.isInStock
+                      ? listingAvailability.remainingQuantity === null
+                        ? 'Available'
+                        : `${listingAvailability.remainingQuantity} left`
+                      : 'Out of stock'}
+                  </Badge>
                 </div>
               </div>
 
@@ -263,9 +339,10 @@ const ListingDetailPage = () => {
                       size="lg" 
                       variant="hero" 
                       onClick={() => document.getElementById('booking-section')?.scrollIntoView({ behavior: 'smooth'})} 
+                      disabled={!listingAvailability.isInStock}
                       className="w-full font-semibold text-base rounded-2xl shadow-lg shadow-primary/20"
                     >
-                      Book Appointment
+                      {listingAvailability.isInStock ? 'Book Appointment' : 'Out of Stock'}
                     </Button>
                   )}
                   {!isOwner && (
@@ -283,10 +360,17 @@ const ListingDetailPage = () => {
           <div className="lg:col-span-8 space-y-10">
             {/* Description Section */}
             <section className="space-y-4">
-              <h3 className="text-xl md:text-2xl font-semibold tracking-tight text-foreground flex items-center gap-3">
-                <span className="h-1 w-8 bg-primary rounded-full hidden md:block" />
-                Service Overview
-              </h3>
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <h3 className="text-xl md:text-2xl font-semibold tracking-tight text-foreground flex items-center gap-3">
+                  <span className="h-1 w-8 bg-primary rounded-full hidden md:block" />
+                  Service Overview
+                </h3>
+                {isOwner && (
+                  <Badge variant={listingBookingStats.isSold ? 'success' : 'secondary'}>
+                    {listingBookingStats.isSold ? `Sold Service (${listingBookingStats.soldCount})` : 'Unsold Service'}
+                  </Badge>
+                )}
+              </div>
               <p className="text-muted-foreground font-medium leading-relaxed whitespace-pre-line text-lg">
                 {listing.description}
               </p>
@@ -299,6 +383,58 @@ const ListingDetailPage = () => {
                 </div>
               )}
             </section>
+
+            {/* Reviews & Rating Section */}
+            {!isOwner && (
+              <section className="space-y-6 bg-card border border-border/60 p-6 md:p-8 rounded-[32px] shadow-sm">
+                <div className="space-y-1">
+                  <h3 className="text-xl font-semibold tracking-tight">Rate & Review</h3>
+                  <p className="text-sm text-muted-foreground">Share your experience with the community.</p>
+                </div>
+                
+                <InteractiveRating 
+                  serviceId={id!} 
+                  initialRating={userReview?.rating || 0}
+                  initialComment={userReview?.comment || ''}
+                  onRatingSubmitted={(r) => {
+                    setUserReview(prev => ({ rating: r, comment: prev?.comment || '' }));
+                  }}
+                />
+              </section>
+            )}
+
+            {/* Community Reviews */}
+            {reviews.length > 0 && (
+              <section className="space-y-6">
+                <h3 className="text-xl font-semibold tracking-tight flex items-center gap-2">
+                  Community Reviews
+                  <Badge variant="secondary" className="rounded-full">{reviews.length}</Badge>
+                </h3>
+                <div className="grid gap-4">
+                  {reviews.map((review) => (
+                    <Card key={review.id} className="p-5 border-none bg-muted/20 rounded-2xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                            {review.reviewer_name?.[0] || 'U'}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm">{review.reviewer_name}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">{formatDate(review.created_at)}</p>
+                          </div>
+                        </div>
+                        <Rating value={review.rating} size="sm" showValue={false} />
+                      </div>
+                      {review.comment && (
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {review.comment}
+                        </p>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Sub-content Area */}
             <div id="booking-section" className="pt-4 scroll-mt-24">
@@ -387,16 +523,33 @@ const ListingDetailPage = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em] ml-1">Duration (Min)</label>
-                      <div className="relative">
-                        <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input
-                          type="number"
-                          placeholder="60"
-                          value={bookingData.duration}
-                          className="h-12 md:h-14 pl-12 rounded-2xl bg-muted/30 border-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium"
-                          onChange={(e) => setBookingData(prev => ({ ...prev, duration: e.target.value }))}
-                        />
+                      <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em] ml-1">Duration Type</label>
+                      <div className="space-y-2">
+                        <select
+                          value={bookingData.durationType}
+                          onChange={(e) => setBookingData(prev => ({ ...prev, durationType: e.target.value as 'timed' | 'permanent' }))}
+                          className="h-12 md:h-14 w-full rounded-2xl bg-muted/30 border-none px-4 text-sm font-medium focus:outline-none focus:ring-1 focus:ring-primary/20"
+                        >
+                          <option value="timed">Timed (minutes)</option>
+                          <option value="permanent">Permanent</option>
+                        </select>
+
+                        {bookingData.durationType === 'timed' ? (
+                          <div className="relative">
+                            <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Input
+                              type="number"
+                              placeholder="60"
+                              value={bookingData.duration}
+                              className="h-12 md:h-14 pl-12 rounded-2xl bg-muted/30 border-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium"
+                              onChange={(e) => setBookingData(prev => ({ ...prev, duration: e.target.value }))}
+                            />
+                          </div>
+                        ) : (
+                          <div className="h-12 md:h-14 rounded-2xl bg-primary/10 border border-primary/20 px-4 flex items-center text-sm font-semibold text-primary">
+                            Permanent booking selected
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -416,10 +569,10 @@ const ListingDetailPage = () => {
                       size="lg" 
                       variant="hero" 
                       onClick={handleBooking} 
-                      disabled={!canBook} 
+                      disabled={!canBook || !listingAvailability.isInStock} 
                       className="w-full sm:w-auto px-12 h-14 rounded-2xl font-semibold text-lg shadow-xl shadow-primary/20 transition-transform active:scale-95"
                     >
-                      Confirm Booking
+                      {listingAvailability.isInStock ? 'Confirm Booking' : 'Out of Stock'}
                     </Button>
                   </div>
                 </Card>
@@ -446,9 +599,10 @@ const ListingDetailPage = () => {
               size="lg" 
               variant="hero" 
               onClick={() => document.getElementById('booking-section')?.scrollIntoView({ behavior: 'smooth'})} 
+              disabled={!listingAvailability.isInStock}
               className="px-8 h-12 rounded-2xl font-semibold shadow-lg shadow-primary/20 active:scale-95 transition-transform"
             >
-              Book Now
+              {listingAvailability.isInStock ? 'Book Now' : 'Out of Stock'}
             </Button>
           </div>
         </div>

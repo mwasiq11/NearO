@@ -187,15 +187,16 @@ model reviews {
   provider_id                      String    @db.VarChar(36)
   reviewer_id                      String    @db.VarChar(36)
   service_id                       String    @db.VarChar(36)
-  booking_id                       String    @unique(map: "uniq_review") @db.VarChar(36)
+  booking_id                       String?   @unique(map: "uniq_review") @db.VarChar(36)
   rating                           Int       @db.TinyInt
   comment                          String?   @db.Text
   created_at                       DateTime? @default(now()) @db.Timestamp(0)
   users_reviews_provider_idTousers users     @relation("reviews_provider_idTousers", fields: [provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "reviews_ibfk_1")
   users_reviews_reviewer_idTousers users     @relation("reviews_reviewer_idTousers", fields: [reviewer_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "reviews_ibfk_2")
   services                         services  @relation(fields: [service_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "reviews_ibfk_3")
-  bookings                         bookings  @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "reviews_ibfk_4")
+  bookings                         bookings? @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "reviews_ibfk_4")
 
+  @@unique([reviewer_id, service_id], map: "unique_user_service")
   @@index([created_at], map: "idx_created_at")
   @@index([provider_id], map: "idx_provider")
   @@index([rating], map: "idx_rating")
@@ -232,6 +233,8 @@ model services {
   moderated_by                       String?         @db.VarChar(36)
   created_at                         DateTime?       @default(now()) @db.Timestamp(0)
   currency                           String?         @default("PKR") @db.VarChar(10)
+  average_rating                     Decimal?        @default(0) @db.Decimal(2, 1)
+  total_reviews                      Int?            @default(0)
   bookings                           bookings[]
   conversations                      conversations[]
   reviews                            reviews[]
@@ -247,6 +250,8 @@ model services {
   @@index([provider_id], map: "idx_provider")
   @@index([s2_cell_id], map: "idx_s2_cell")
   @@index([moderated_by], map: "moderated_by")
+  @@index([average_rating], map: "idx_services_rating")
+  @@index([total_reviews], map: "idx_services_reviews")
 }
 
 model system_settings {

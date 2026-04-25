@@ -1,5 +1,77 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { api } from '@/lib/api';
+
+const toNumber = (value: unknown): number => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
+};
+
+const normalizeProviderEarningsData = (data: ProviderEarningsData): ProviderEarningsData => ({
+  ...data,
+  stats: {
+    ...data.stats,
+    totalEarnings: toNumber(data.stats.totalEarnings),
+    pendingEarnings: toNumber(data.stats.pendingEarnings),
+    totalBookings: toNumber(data.stats.totalBookings),
+    completedBookings: toNumber(data.stats.completedBookings),
+    pendingBookings: toNumber(data.stats.pendingBookings),
+    totalClients: toNumber(data.stats.totalClients),
+  },
+  earningsByService: data.earningsByService.map((service) => ({
+    ...service,
+    price: toNumber(service.price),
+    bookingCount: toNumber(service.bookingCount),
+    completedCount: toNumber(service.completedCount),
+    totalEarned: toNumber(service.totalEarned),
+  })),
+  monthlyTrend: data.monthlyTrend.map((entry) => ({
+    ...entry,
+    bookings: toNumber(entry.bookings),
+    earnings: entry.earnings !== undefined ? toNumber(entry.earnings) : undefined,
+    spending: entry.spending !== undefined ? toNumber(entry.spending) : undefined,
+  })),
+  recentBookings: data.recentBookings.map((booking) => ({
+    ...booking,
+    price: toNumber(booking.price),
+  })),
+});
+
+const normalizeSeekerSpendingData = (data: SeekerSpendingData): SeekerSpendingData => ({
+  ...data,
+  stats: {
+    ...data.stats,
+    totalSpent: toNumber(data.stats.totalSpent),
+    pendingAmount: toNumber(data.stats.pendingAmount),
+    totalBookings: toNumber(data.stats.totalBookings),
+    completedBookings: toNumber(data.stats.completedBookings),
+    pendingBookings: toNumber(data.stats.pendingBookings),
+    totalProviders: toNumber(data.stats.totalProviders),
+  },
+  spendingByCategory: data.spendingByCategory.map((category) => ({
+    ...category,
+    bookingCount: toNumber(category.bookingCount),
+    completedCount: toNumber(category.completedCount),
+    totalSpent: toNumber(category.totalSpent),
+  })),
+  monthlyTrend: data.monthlyTrend.map((entry) => ({
+    ...entry,
+    bookings: toNumber(entry.bookings),
+    earnings: entry.earnings !== undefined ? toNumber(entry.earnings) : undefined,
+    spending: entry.spending !== undefined ? toNumber(entry.spending) : undefined,
+  })),
+  recentBookings: data.recentBookings.map((booking) => ({
+    ...booking,
+    price: toNumber(booking.price),
+  })),
+});
 
 interface EarningsStats {
   totalEarnings: number;
@@ -83,8 +155,9 @@ export const useEarnings = () => {
     setError(null);
     try {
       const data = await api.get<ProviderEarningsData>('/earnings/provider', { auth: true });
-      setProviderData(data);
-      return data;
+      const normalizedData = normalizeProviderEarningsData(data);
+      setProviderData(normalizedData);
+      return normalizedData;
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || err.message || 'Failed to fetch earnings';
       setError(errorMessage);
@@ -100,8 +173,9 @@ export const useEarnings = () => {
     setError(null);
     try {
       const data = await api.get<SeekerSpendingData>('/earnings/seeker', { auth: true });
-      setSeekerData(data);
-      return data;
+      const normalizedData = normalizeSeekerSpendingData(data);
+      setSeekerData(normalizedData);
+      return normalizedData;
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || err.message || 'Failed to fetch spending';
       setError(errorMessage);

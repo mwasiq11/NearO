@@ -127,6 +127,11 @@ const BookingsPage = () => {
                             Requested by: <span className="font-medium text-foreground">{booking.seekerName}</span>
                           </p>
                         )}
+                        {view === 'received' && booking.status === 'pending' && (
+                          <Badge variant="destructive" className="mt-2 text-2xs uppercase tracking-wide">
+                            New Request
+                          </Badge>
+                        )}
                       </div>
                       <div className="hidden md:block">
                         <Badge className={`${getStatusColor(booking.status)} px-3 py-1 shadow-sm`}>

@@ -6,6 +6,45 @@ import { logAudit, buildRequestContext } from '../audit/logger.js';
 
 import { getIO } from '../realtime/socket.js';
 
+const enrichServicesWithBookingStats = async (services) => {
+  if (!services || services.length === 0) {
+    return [];
+  }
+
+  const serviceIds = services.map((service) => service.id);
+  const grouped = await prisma.bookings.groupBy({
+    by: ['service_id', 'status'],
+    where: {
+      service_id: { in: serviceIds },
+    },
+    _count: {
+      _all: true,
+    },
+  });
+
+  const statMap = new Map();
+  for (const row of grouped) {
+    const current = statMap.get(row.service_id) || { sold: 0, pending: 0 };
+    if (row.status === 'approved') {
+      current.sold += row._count._all;
+    }
+    if (row.status === 'pending') {
+      current.pending += row._count._all;
+    }
+    statMap.set(row.service_id, current);
+  }
+
+  return services.map((service) => {
+    const stats = statMap.get(service.id) || { sold: 0, pending: 0 };
+    return {
+      ...service,
+      booking_count: stats.sold + stats.pending,
+      sold_count: stats.sold,
+      pending_count: stats.pending,
+    };
+  });
+};
+
 const createService = async (req, res) => {
   try {
     const { 
@@ -166,6 +205,8 @@ const getServices = async (req, res) => {
       orderBy: { created_at: 'desc' }
     });
 
+    services = await enrichServicesWithBookingStats(services);
+
     // If user provides location, filter by 25km radius
     if (isValidLatLng(lat, lng)) {
       services = services.filter(service => {
@@ -193,10 +234,12 @@ const getServices = async (req, res) => {
 
 const getMyServices = async (req, res) => {
   try {
-    const services = await prisma.services.findMany({
+    let services = await prisma.services.findMany({
       where: { provider_id: req.user.id },
       orderBy: { created_at: 'desc' }
     });
+
+    services = await enrichServicesWithBookingStats(services);
     res.json(services);
   } catch (error) {
     console.error('Error getting my services:', error);
@@ -216,7 +259,9 @@ const getServiceById = async (req, res) => {
       return res.status(404).json({ error: 'Service not found' });
     }
 
-    res.json(service);
+    const [enrichedService] = await enrichServicesWithBookingStats([service]);
+
+    res.json(enrichedService);
   } catch (error) {
     console.error('Error getting service:', error);
     res.status(500).json({ error: error.message });

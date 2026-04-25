@@ -20,6 +20,8 @@ interface ServiceCardProps {
     price: number;
     priceType?: string;
     currency?: string;
+    remainingQuantity?: number | null;
+    isInStock?: boolean;
   };
   onClick: (listingId: string) => void;
 }
@@ -27,6 +29,10 @@ interface ServiceCardProps {
 export default function ServiceCard({ listing, onClick }: ServiceCardProps) {
   const imageUrl = listing.images?.[0] || getCategoryImage(listing.category);
   const hasReviews = (listing.reviewCount ?? 0) > 0;
+  const isInStock = listing.isInStock ?? true;
+  const stockLabel = listing.remainingQuantity === null || listing.remainingQuantity === undefined
+    ? 'Available'
+    : `${listing.remainingQuantity} left`;
 
   return (
     <Card
@@ -46,6 +52,14 @@ export default function ServiceCard({ listing, onClick }: ServiceCardProps) {
             className="h-6 rounded-full border border-white/30 bg-white/70 px-2.5 text-[11px] font-semibold text-foreground backdrop-blur-md dark:bg-black/45 dark:text-white"
           >
             {listing.category}
+          </Badge>
+        </div>
+        <div className="absolute right-3 top-3">
+          <Badge
+            variant={isInStock ? 'default' : 'destructive'}
+            className="h-6 rounded-full border border-white/30 bg-white/70 px-2.5 text-[11px] font-semibold text-foreground backdrop-blur-md dark:bg-black/45 dark:text-white"
+          >
+            {isInStock ? stockLabel : 'Out of stock'}
           </Badge>
         </div>
       </div>

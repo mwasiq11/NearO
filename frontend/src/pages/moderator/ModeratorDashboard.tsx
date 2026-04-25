@@ -105,7 +105,7 @@ const ModeratorDashboard = () => {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <p className="text-sm text-muted-foreground">Pending approvals</p>

@@ -33,12 +33,16 @@ const bookingsSlice = createSlice({
       state.receivedBookings = action.payload;
     },
     addBooking: (state, action: PayloadAction<Booking>) => {
-      state.bookings.unshift(action.payload);
-      if (action.payload.seekerId) {
-        state.myBookings.unshift(action.payload);
+      const booking = action.payload;
+
+      if (!state.bookings.some((existing) => existing.id === booking.id)) {
+        state.bookings.unshift(booking);
       }
-      if (action.payload.providerId) {
-        state.receivedBookings.unshift(action.payload);
+      if (booking.seekerId && !state.myBookings.some((existing) => existing.id === booking.id)) {
+        state.myBookings.unshift(booking);
+      }
+      if (booking.providerId && !state.receivedBookings.some((existing) => existing.id === booking.id)) {
+        state.receivedBookings.unshift(booking);
       }
     },
     updateBookingStatus: (state, action: PayloadAction<{ id: string; status: BookingStatus }>) => {

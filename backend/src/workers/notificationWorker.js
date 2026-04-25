@@ -38,7 +38,7 @@ async function processNotification(message) {
 
     switch (type) {
       case 'message':
-        title = otherData.senderName ? otherData.senderName : 'New message';
+        title = `Message from ${otherData.senderName || 'Someone'}`;
         body = `Sent you a message: ${otherData.preview || '...'}`;
         notificationPayload = createNotificationPayload(
           'message',

@@ -26,7 +26,7 @@ import { api } from '@/lib/api';
 export default function NotificationDropdown() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { notifications, unreadCount, loading } = useAppSelector((state) => state.notifications);
+  const { notifications, unreadCount, isLoading } = useAppSelector((state) => state.notifications);
   const { playNotificationSound } = useNotificationSound();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -108,6 +108,8 @@ export default function NotificationDropdown() {
       case 'booking_rejected':
         if (notification.entity_id || notification.payload?.bookingId) {
           navigate(`/dashboard/bookings/${notification.entity_id || notification.payload.bookingId}`);
+        } else if (notification.payload?.serviceId) {
+          navigate(`/dashboard/listing/${notification.payload.serviceId}`);
         } else {
           navigate('/dashboard/bookings');
         }
@@ -129,7 +131,7 @@ export default function NotificationDropdown() {
   };
 
   const getNotificationIcon = (type: string) => {
-    const baseClass = "h-5 w-5 bg-slate-100 text-slate-400 p-1.5 rounded-full";
+    const baseClass = "h-5 w-5 bg-muted text-muted-foreground p-1.5 rounded-full";
     switch (type) {
       case 'booking_new':
       case 'booking_request':
@@ -153,23 +155,23 @@ export default function NotificationDropdown() {
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative hover:bg-slate-50 transition-all duration-200">
-          <Bell className="h-5 w-5 text-slate-600" />
+        <Button variant="ghost" size="icon" className="relative hover:bg-accent transition-all duration-200">
+          <Bell className="h-5 w-5 text-muted-foreground" />
           {unreadCount > 0 && (
-            <div className="absolute top-0 right-0 h-3 w-3 bg-slate-800 rounded-full flex items-center justify-center text-[8px] text-white font-bold border-2 border-white">
+            <div className="absolute top-0 right-0 h-3 w-3 bg-primary rounded-full flex items-center justify-center text-[8px] text-primary-foreground font-bold border-2 border-background">
               {unreadCount > 9 ? '!' : unreadCount}
             </div>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 p-0 overflow-hidden rounded-lg border-slate-200 shadow-lg animate-in fade-in zoom-in-95 duration-150">
-        <div className="p-3 bg-white border-b border-slate-100 flex items-center justify-between">
+      <DropdownMenuContent align="end" className="w-80 p-0 overflow-hidden rounded-lg border-border bg-popover text-popover-foreground shadow-lg animate-in fade-in zoom-in-95 duration-150">
+        <div className="p-3 bg-popover border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="font-bold text-slate-900 text-sm">
+            <h3 className="font-bold text-foreground text-sm">
               Notifications
             </h3>
             {unreadCount > 0 && (
-              <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-1.5 py-0.5 rounded">
+              <span className="bg-muted text-muted-foreground text-[10px] font-bold px-1.5 py-0.5 rounded">
                 NEW
               </span>
             )}
@@ -177,7 +179,7 @@ export default function NotificationDropdown() {
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllAsRead}
-              className="text-[10px] font-bold text-slate-400 hover:text-slate-900 transition-colors uppercase tracking-wider"
+              className="text-[10px] font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider"
             >
               Clear All
             </button>
@@ -185,23 +187,23 @@ export default function NotificationDropdown() {
         </div>
 
         <ScrollArea className="h-[350px]">
-          {loading && notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-[11px] text-slate-400 gap-2">
-              <div className="h-4 w-4 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
+          {isLoading && notifications.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-[11px] text-muted-foreground gap-2">
+                <div className="h-4 w-4 border-2 border-muted border-t-primary rounded-full animate-spin" />
               <p>Syncing...</p>
             </div>
           ) : notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-[11px] text-slate-400 gap-2">
+              <div className="flex flex-col items-center justify-center py-16 text-[11px] text-muted-foreground gap-2">
               <Bell className="h-5 w-5 opacity-20" />
               <p>Nothing here</p>
             </div>
           ) : (
-            <div className="grid divide-y divide-slate-50">
+            <div className="grid divide-y divide-border/40">
               {notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`flex items-start gap-3 p-4 transition-colors cursor-pointer hover:bg-slate-50 relative ${
-                    !notification.is_read ? 'bg-slate-50/50' : ''
+                  className={`flex items-start gap-3 p-4 transition-colors cursor-pointer hover:bg-accent/40 relative ${
+                    !notification.is_read ? 'bg-accent/20' : ''
                   }`}
                   onClick={() => handleAction(notification)}
                 >
@@ -211,18 +213,18 @@ export default function NotificationDropdown() {
                   <div className="flex-1 space-y-0.5 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <p className={`text-[12px] leading-tight truncate ${
-                        !notification.is_read ? 'font-bold text-slate-900' : 'text-slate-600'
+                        !notification.is_read ? 'font-bold text-foreground' : 'text-muted-foreground'
                       }`}>
                         {notification.title}
                       </p>
                       {!notification.is_read && (
-                        <div className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                        <div className="h-1.5 w-1.5 rounded-full bg-primary" />
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                    <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
                       {notification.message}
                     </p>
-                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight pt-1">
+                    <p className="text-[9px] text-muted-foreground/80 font-bold uppercase tracking-tight pt-1">
                       {formatDistanceToNow(new Date(notification.created_at), {
                         addSuffix: true,
                       })}
@@ -234,13 +236,6 @@ export default function NotificationDropdown() {
           )}
         </ScrollArea>
         
-        {notifications.length > 0 && (
-          <div className="p-2 bg-slate-50 border-t border-slate-100 flex justify-center">
-            <span className="text-[9px] text-slate-300 font-bold uppercase tracking-[0.2em]">
-              NearO Update System
-            </span>
-          </div>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

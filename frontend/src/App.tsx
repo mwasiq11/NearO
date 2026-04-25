@@ -38,6 +38,7 @@ import MyServicesPage from "./pages/dashboard/MyServicesPage";
 import CreateServicePage from "./pages/dashboard/CreateServicePage";
 import EditServicePage from "./pages/dashboard/EditServicePage";
 import BookingsPage from "./pages/dashboard/BookingsPage";
+import BookingDetailPage from "./pages/dashboard/BookingDetailPage";
 import MessagesPage from "./pages/dashboard/MessagesPage";
 import ListingDetailPage from "./pages/dashboard/ListingDetailPage";
 import EarningsPage from "./pages/dashboard/EarningsPage";
@@ -148,6 +149,7 @@ const AppRoutes = () => {
         <Route index element={<DashboardHome />} />
         <Route path="browse" element={<BrowsePage />} />
         <Route path="bookings" element={<BookingsPage />} />
+        <Route path="bookings/:id" element={<BookingDetailPage />} />
         <Route path="messages" element={<MessagesPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />

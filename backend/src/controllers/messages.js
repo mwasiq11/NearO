@@ -37,7 +37,7 @@ const listConversations = async (req, res) => {
         provider_name: conv.users_conversations_provider_idTousers.name,
         provider_email: conv.users_conversations_provider_idTousers.email,
         service_title: conv.services?.title,
-        unread_count: isSeeker ? conv.seeker_unread_count : conv.provider_unread_count
+        unread_count: Number(isSeeker ? conv.seeker_unread_count : conv.provider_unread_count) || 0
       };
     });
 

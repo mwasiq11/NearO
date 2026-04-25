@@ -518,6 +518,7 @@ const CreateServicePage = () => {
     description: '',
     category: '',
     price: '',
+    quantity: '1',
     currency: 'PKR',
     priceType: 'fixed' as 'fixed' | 'hourly' | 'negotiable',
     tags: '',
@@ -599,6 +600,7 @@ const CreateServicePage = () => {
         description: formData.description,
         category: formData.category,
         price: Number(formData.price),
+        quantity: Number(formData.quantity || 0),
         currency: formData.currency,
         priceType: formData.priceType,
         images: [],
@@ -696,6 +698,22 @@ const CreateServicePage = () => {
                   className="flex-1"
                 />
               </div>
+            </div>
+            <div className="space-y-2 md:col-span-1">
+              <Label htmlFor="quantity">Quantity *</Label>
+              <Input
+                id="quantity"
+                name="quantity"
+                type="number"
+                placeholder="e.g. 10"
+                value={formData.quantity}
+                onChange={handleChange}
+                disabled={isSubmitting}
+                required
+                min="0"
+                step="1"
+              />
+              <p className="text-xs text-muted-foreground">Remaining stock is tracked in real time from bookings.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="priceType">Price type</Label>

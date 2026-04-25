@@ -59,7 +59,7 @@ export default function UserDashboard() {
     }
 
     loadDashboardData();
-  }, [user]);
+  }, [navigate, user]);
 
   const loadDashboardData = async () => {
     try {
@@ -93,8 +93,8 @@ export default function UserDashboard() {
       if (bookingsResponse.ok) {
         setBookings(bookingsResponse.data.bookings);
       }
-    } catch (err : any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
     } finally {
       setIsLoading(false);
     }
@@ -255,9 +255,14 @@ export default function UserDashboard() {
                         <div>
                           <CardTitle className="text-lg">{service.title}</CardTitle>
                         </div>
-                        <Badge variant={service.is_active ? 'default' : 'secondary'}>
-                          {service.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={service.booking_count > 0 ? 'success' : 'secondary'}>
+                            {service.booking_count > 0 ? 'Sold' : 'Unsold'}
+                          </Badge>
+                          <Badge variant={service.is_active ? 'default' : 'secondary'}>
+                            {service.is_active ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">

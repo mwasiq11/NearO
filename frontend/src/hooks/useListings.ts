@@ -15,6 +15,7 @@ import {
   setLoading,
 } from '@/store/slices/listingsSlice';
 import { ServiceListing, SearchFilters, ListingForm, ServiceCategory } from '@/models/types';
+import { parseAvailabilityMetadata, serializeAvailabilityMetadata } from '@/utils/serviceAvailability';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 
@@ -32,6 +33,10 @@ export const useListings = () => {
     // Process location data - preserve actual values, don't default to 'Unknown'
     const neighborhood = isValidValue(service.neighborhood) ? service.neighborhood : '';
     const city = isValidValue(service.city) ? service.city : '';
+    const availability = parseAvailabilityMetadata(service.availability);
+    const bookedCount = Number(service.booking_count || 0);
+    const stockQuantity = availability.quantity;
+    const remainingQuantity = stockQuantity === null ? null : Math.max(stockQuantity - bookedCount, 0);
     
     return {
       id: service.id,
@@ -53,10 +58,17 @@ export const useListings = () => {
           lng: Number(service.longitude),
         } : undefined,
       },
-      tags: service.tags || [],
-      rating: Number(service.rating || 0),
-      reviewCount: Number(service.review_count || 0),
-      bookingCount: Number(service.booking_count || 0),
+      tags: service.tags?.length ? service.tags : availability.tags,
+      rating: Number(service.average_rating || 0),
+      reviewCount: Number(service.total_reviews || 0),
+      average_rating: Number(service.average_rating || 0),
+      total_reviews: Number(service.total_reviews || 0),
+      bookingCount: bookedCount,
+      soldCount: Number(service.sold_count || 0),
+      pendingCount: Number(service.pending_count || 0),
+      stockQuantity,
+      remainingQuantity,
+      isInStock: stockQuantity === null ? true : remainingQuantity > 0,
       isActive: Boolean(service.is_active ?? true),
       isTrending: Boolean(service.is_trending ?? false),
       createdAt: service.created_at || new Date().toISOString(),
@@ -205,7 +217,7 @@ export const useListings = () => {
         description: form.description,
         category: form.category,
         price: form.price,
-        availability: form.tags?.join(', ') || 'Available',
+        availability: serializeAvailabilityMetadata(form.tags || [], form.quantity),
         neighborhood: form.neighborhood || user.neighborhood,
         city: form.city || user.city,
         latitude: form.latitude,
@@ -260,7 +272,10 @@ export const useListings = () => {
         description: updates.description,
         category: updates.category,
         price: updates.price,
-        availability: (updates.tags && updates.tags.length > 0) ? updates.tags.join(', ') : 'Available',
+        availability: serializeAvailabilityMetadata(
+          updates.tags || existing.tags || [],
+          updates.stockQuantity ?? existing.stockQuantity ?? null,
+        ),
         neighborhood: updates.location?.neighborhood,
         city: updates.location?.city,
         latitude: updates.location?.coordinates?.lat,

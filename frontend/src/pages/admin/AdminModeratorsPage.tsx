@@ -111,7 +111,7 @@ const AdminModeratorsPage = () => {
         <Button onClick={() => setShowInviteDialog(true)}>Invite moderator</Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {moderators.map((m) => (
           <Card key={m.email}>
             <CardHeader className="flex items-center justify-between">

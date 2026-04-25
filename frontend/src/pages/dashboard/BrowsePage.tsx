@@ -208,7 +208,7 @@ const BrowsePage = () => {
                 className="overflow-hidden cursor-pointer hover:shadow-md transition-all"
                 onClick={() => navigate(`/dashboard/listing/${listing.id}`)}
               >
-                <div className="aspect-video bg-muted">
+                <div className="aspect-video bg-muted relative">
                   <img 
                     src={imageUrl} 
                     alt={listing.title} 
@@ -217,6 +217,15 @@ const BrowsePage = () => {
                       e.currentTarget.src = getCategoryImage('Other');
                     }}
                   />
+                  <div className="absolute top-2 right-2">
+                    <Badge variant={listing.isInStock ? 'default' : 'destructive'}>
+                      {listing.isInStock
+                        ? listing.remainingQuantity === null || listing.remainingQuantity === undefined
+                          ? 'Available'
+                          : `${listing.remainingQuantity} left`
+                        : 'Out of stock'}
+                    </Badge>
+                  </div>
                 </div>
                 <div className="p-4 space-y-2">
                   <h3 className="font-semibold line-clamp-1">{listing.title}</h3>

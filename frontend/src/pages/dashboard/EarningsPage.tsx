@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useEarnings } from '@/hooks/useEarnings';
 import { formatDistanceToNow } from 'date-fns';
 import { EarningsSkeleton } from './EarningsSkeleton';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Link } from 'react-router-dom';
 
@@ -124,32 +124,30 @@ const EarningsPage = () => {
                   }}
                   className="h-[300px] w-full"
                 >
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={providerData.monthlyTrend} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
-                      <XAxis 
-                        dataKey="monthLabel" 
-                        stroke="hsl(var(--muted-foreground))"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis 
-                        stroke="hsl(var(--muted-foreground))"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(value) => `$${value}`}
-                      />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar 
-                        dataKey="earnings" 
-                        fill="var(--color-earnings)" 
-                        radius={[4, 4, 0, 0]} 
-                        maxBarSize={50}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <BarChart data={providerData.monthlyTrend} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
+                    <XAxis 
+                      dataKey="monthLabel" 
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis 
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(value) => `$${value}`}
+                    />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar 
+                      dataKey="earnings" 
+                      fill="var(--color-earnings)" 
+                      radius={[4, 4, 0, 0]} 
+                      maxBarSize={50}
+                    />
+                  </BarChart>
                 </ChartContainer>
               </CardContent>
             </Card>
@@ -364,32 +362,30 @@ const EarningsPage = () => {
                   }}
                   className="h-[300px] w-full"
                 >
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={seekerData.monthlyTrend} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
-                      <XAxis 
-                        dataKey="monthLabel" 
-                        stroke="hsl(var(--muted-foreground))"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis 
-                        stroke="hsl(var(--muted-foreground))"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(value) => `$${value}`}
-                      />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar 
-                        dataKey="spending" 
-                        fill="var(--color-spending)" 
-                        radius={[4, 4, 0, 0]} 
-                        maxBarSize={50}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <BarChart data={seekerData.monthlyTrend} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
+                    <XAxis 
+                      dataKey="monthLabel" 
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis 
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(value) => `$${value}`}
+                    />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar 
+                      dataKey="spending" 
+                      fill="var(--color-spending)" 
+                      radius={[4, 4, 0, 0]} 
+                      maxBarSize={50}
+                    />
+                  </BarChart>
                 </ChartContainer>
               </CardContent>
             </Card>

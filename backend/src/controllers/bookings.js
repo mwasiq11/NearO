@@ -16,7 +16,7 @@ const createBooking = async (req, res) => {
     // Check if service exists and get provider_id
     const service = await prisma.services.findUnique({
       where: { id: service_id },
-      select: { id: true, provider_id: true }
+      select: { id: true, provider_id: true, title: true, price: true, currency: true }
     });
 
     if (!service) {
@@ -51,6 +51,20 @@ const createBooking = async (req, res) => {
       }
     });
 
+    const bookingPayload = {
+      ...booking,
+      provider_id: service.provider_id,
+      service_title: service.title,
+      service_price: service.price,
+      total_price: service.price,
+      currency: service.currency || 'PKR',
+    };
+
+    const io = getIO();
+    if (io) {
+      io.emit('booking:created', bookingPayload);
+    }
+
     // Create notification for provider about new booking
     try {
       await publishNotification(service.provider_id, 'booking_request', {
@@ -81,16 +95,28 @@ const createBooking = async (req, res) => {
             seeker_id,
             provider_id: service.provider_id,
             service_id,
-            last_message_at: new Date()
+            last_message_at: new Date(),
+            seeker_unread_count: 0,
+            provider_unread_count: 0
           }
         });
         console.log(`✅ Created conversation ${conversationId} for booking ${id}`);
+
+        if (io) {
+          io.emit('conversation:created', {
+            conversationId,
+            seekerId: seeker_id,
+            providerId: service.provider_id,
+            serviceId: service_id,
+            serviceTitle: service.title,
+          });
+        }
       }
     } catch (convError) {
       console.error('Warning: Failed to create conversation:', convError);
     }
 
-    res.status(201).json(booking);
+    res.status(201).json(bookingPayload);
 
     const ctx = buildRequestContext(req);
     await logAudit({
@@ -134,6 +160,7 @@ const getBookings = async (req, res) => {
             category: true,
             image_url: true,
             provider_id: true,
+            price: true,
             currency: true
           }
         },
@@ -150,6 +177,8 @@ const getBookings = async (req, res) => {
       category: b.services.category,
       service_image_url: b.services.image_url,
       provider_id: b.services.provider_id,
+      service_price: b.services.price,
+      total_price: b.services.price,
       currency: b.services.currency,
       seeker_name: b.users?.name
     }));
@@ -157,6 +186,56 @@ const getBookings = async (req, res) => {
     res.json(mappedBookings);
   } catch (error) {
     console.error('Error getting bookings:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getBookingById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const booking = await prisma.bookings.findUnique({
+      where: { id },
+      include: {
+        services: {
+          select: {
+            title: true,
+            category: true,
+            image_url: true,
+            provider_id: true,
+            price: true,
+            currency: true,
+            description: true
+          }
+        },
+        users: {
+          select: { name: true, email: true, phone: true }
+        }
+      }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    const mappedBooking = {
+      ...booking,
+      service_title: booking.services.title,
+      category: booking.services.category,
+      service_image_url: booking.services.image_url,
+      provider_id: booking.services.provider_id,
+      service_price: booking.services.price,
+      total_price: booking.services.price,
+      currency: booking.services.currency,
+      service_description: booking.services.description,
+      seeker_name: booking.users?.name,
+      seeker_email: booking.users?.email,
+      seeker_phone: booking.users?.phone
+    };
+
+    res.json(mappedBooking);
+  } catch (error) {
+    console.error('Error getting booking by ID:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -174,7 +253,7 @@ const acceptBooking = async (req, res) => {
     const booking = await prisma.bookings.findUnique({
       where: { id },
       include: {
-        services: { select: { provider_id: true } }
+        services: { select: { provider_id: true, title: true, id: true } }
       }
     });
 
@@ -196,7 +275,9 @@ const acceptBooking = async (req, res) => {
     try {
       await publishNotification(booking.seeker_id, 'booking_approved', {
         bookingId: id,
-        providerId: userId
+        providerId: userId,
+        serviceId: booking.services.id,
+        serviceName: booking.services.title,
       });
       console.log(`✅ Notification published for seeker about booking approved`);
     } catch (notifError) {
@@ -245,7 +326,7 @@ const rejectBooking = async (req, res) => {
     const booking = await prisma.bookings.findUnique({
       where: { id },
       include: {
-        services: { select: { provider_id: true } }
+        services: { select: { provider_id: true, title: true, id: true } }
       }
     });
 
@@ -264,20 +345,12 @@ const rejectBooking = async (req, res) => {
     });
 
     // Create notification for seeker
-    const notificationId = uuidv4();
     try {
-      await prisma.notifications.create({
-        data: {
-          id: notificationId,
-          user_id: booking.seeker_id,
-          type: 'booking_rejected',
-          payload: {
-            title: 'Booking Declined',
-            message: 'Your booking has been declined by the provider',
-            entity_type: 'booking',
-            entity_id: id
-          }
-        }
+      await publishNotification(booking.seeker_id, 'booking_rejected', {
+        bookingId: id,
+        providerId: userId,
+        serviceId: booking.services.id,
+        serviceName: booking.services.title,
       });
 
       // Emit real-time notification to seeker via Socket.io
@@ -288,12 +361,6 @@ const rejectBooking = async (req, res) => {
           status: 'rejected',
           seekerId: booking.seeker_id,
           providerId: booking.services.provider_id,
-          notification: {
-            id: notificationId,
-            type: 'booking_rejected',
-            title: 'Booking Declined',
-            message: 'Your booking has been declined by the provider'
-          }
         });
       }
     } catch (notifError) {
@@ -321,6 +388,7 @@ const rejectBooking = async (req, res) => {
 export {
   createBooking,
   getBookings,
+  getBookingById,
   acceptBooking,
   rejectBooking
 };

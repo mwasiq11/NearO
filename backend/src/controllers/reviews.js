@@ -3,71 +3,135 @@ import prisma from '../db/prisma.js';
 import { logAudit, buildRequestContext } from '../audit/logger.js';
 import { publishNotification } from '../services/eventService.js';
 
+/**
+ * Recalculates the average rating and total reviews for a service
+ * @param {string} serviceId 
+ */
+async function updateServiceRating(serviceId) {
+  try {
+    const stats = await prisma.reviews.aggregate({
+      where: { service_id: serviceId },
+      _avg: { rating: true },
+      _count: { _all: true }
+    });
+
+    await prisma.services.update({
+      where: { id: serviceId },
+      data: {
+        average_rating: stats._avg.rating || 0,
+        total_reviews: stats._count._all || 0
+      }
+    });
+    
+    console.log(`✅ Updated rating for service ${serviceId}: ${stats._avg.rating || 0} (${stats._count._all} reviews)`);
+  } catch (error) {
+    console.error(`Error updating service rating for ${serviceId}:`, error);
+  }
+}
+
 const createReview = async (req, res) => {
   try {
-    const { booking_id, rating, comment } = req.body;
+    console.log('📥 Incoming review request:', JSON.stringify(req.body));
+    const { booking_id, service_id, rating, comment } = req.body;
+    const reviewer_id = req.user.id;
 
-    const booking = await prisma.bookings.findUnique({
-      where: { id: booking_id },
-      include: {
-        services: {
-          select: { id: true, provider_id: true }
+    if (!service_id || !rating) {
+        return res.status(400).json({ error: 'service_id and rating are required' });
+    }
+
+    // 1. Verify service exists
+    const service = await prisma.services.findUnique({
+      where: { id: service_id },
+      select: { id: true, provider_id: true }
+    });
+
+    if (!service) {
+      console.log('❌ Service not found:', service_id);
+      return res.status(404).json({ error: 'Service not found' });
+    }
+
+    // 2. Check if a review already exists for this user and service (Create or Update)
+    const existingReview = await prisma.reviews.findFirst({
+      where: {
+        reviewer_id: reviewer_id,
+        service_id: service_id
+      }
+    });
+
+    let review;
+    let reviewId;
+
+    if (existingReview) {
+      console.log('🔄 Updating existing review:', existingReview.id);
+      reviewId = existingReview.id;
+      review = await prisma.reviews.update({
+        where: { id: reviewId },
+        data: {
+          rating,
+          comment: comment !== undefined ? comment : existingReview.comment,
+          booking_id: booking_id || existingReview.booking_id
         }
-      }
-    });
-
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
-    }
-
-    if (booking.seeker_id !== req.user.id) {
-      return res.status(403).json({ error: 'You can only review your own bookings' });
-    }
-
-    if (booking.status !== 'approved') {
-      return res.status(400).json({ error: 'Only approved bookings can be reviewed' });
-    }
-
-    const reviewId = uuidv4();
-    const review = await prisma.reviews.create({
-      data: {
-        id: reviewId,
-        provider_id: booking.services.provider_id,
-        reviewer_id: req.user.id,
-        service_id: booking.service_id,
-        booking_id: booking.id,
-        rating,
-        comment: comment || null
-      }
-    });
-
-    // Create notification for provider about new review
-    try {
-      await publishNotification(booking.services.provider_id, 'review', {
-        reviewId: reviewId,
-        bookingId: booking.id,
-        serviceId: booking.service_id
       });
-      console.log(`✅ Notification published for provider about review`);
+    } else {
+      console.log('🆕 Creating new review');
+      reviewId = uuidv4();
+      
+      // Use raw ID fields (unchecked data) to avoid relation-level validation issues
+      review = await prisma.reviews.create({
+        data: {
+          id: reviewId,
+          rating,
+          comment: comment || null,
+          provider_id: service.provider_id,
+          reviewer_id: reviewer_id,
+          service_id: service_id,
+          booking_id: booking_id || null
+        }
+      });
+    }
+
+    console.log('✅ Review processed successfully:', review.id);
+
+    // 3. Recalculate Service Rating (Asynchronous)
+    updateServiceRating(service_id).catch(err => console.error('Rating update failed:', err));
+
+    // 4. Create notification for provider
+    try {
+      await publishNotification(service.provider_id, 'review', {
+        reviewId: reviewId,
+        serviceId: service_id,
+        isUpdate: !!existingReview,
+        rating
+      });
     } catch (notifError) {
       console.error('Warning: Failed to publish notification:', notifError);
     }
 
-    res.status(201).json(review);
+    // 5. Audit log (Safe)
+    try {
+        const ctx = buildRequestContext(req);
+        await logAudit({
+          actorId: reviewer_id,
+          actionType: existingReview ? 'review_update' : 'review_create',
+          entityType: 'review',
+          entityId: reviewId,
+          newValue: { rating, comment },
+          ipAddress: ctx.ipAddress,
+          userAgent: ctx.userAgent
+        });
+    } catch (auditError) {
+        console.error('Warning: Audit log failed:', auditError);
+    }
 
-    const ctx = buildRequestContext(req);
-    await logAudit({
-      actorId: req.user.id,
-      actionType: 'review_create',
-      entityType: 'review',
-      entityId: reviewId,
-      newValue: { rating, comment },
-      ipAddress: ctx.ipAddress,
-      userAgent: ctx.userAgent
-    });
+    return res.status(existingReview ? 200 : 201).json(review);
+
   } catch (error) {
-    console.error('Error creating review:', error);
-    res.status(500).json({ error: error.message });
+    console.error('🔥 Error in createReview controller:', error);
+    return res.status(500).json({ 
+        error: error.message, 
+        message: 'An internal server error occurred while processing the review.',
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined 
+    });
   }
 };
 
@@ -82,7 +146,7 @@ const listProviderReviews = async (req, res) => {
     const reviews = await prisma.reviews.findMany({
       where: { provider_id: providerId },
       include: {
-        users_reviews_reviewer_idTousers: { select: { name: true } }
+        users_reviews_reviewer_idTousers: { select: { name: true, profile_picture: true } }
       },
       orderBy: { created_at: 'desc' },
       skip: offset,
@@ -91,7 +155,8 @@ const listProviderReviews = async (req, res) => {
 
     const mappedReviews = reviews.map(r => ({
       ...r,
-      reviewer_name: r.users_reviews_reviewer_idTousers.name
+      reviewer_name: r.users_reviews_reviewer_idTousers.name,
+      reviewer_avatar: r.users_reviews_reviewer_idTousers.profile_picture
     }));
 
     res.json({
@@ -112,51 +177,19 @@ const getReputation = async (req, res) => {
   try {
     const { providerId } = req.params;
 
-    const reviews = await prisma.reviews.findMany({
-      where: { provider_id: providerId },
-      select: { rating: true }
-    });
-
     const stats = await prisma.reviews.aggregate({
       where: { provider_id: providerId },
       _avg: { rating: true },
       _count: { _all: true }
     });
 
-    const bookingStats = await prisma.bookings.groupBy({
-      by: ['status'],
-      where: {
-        services: { provider_id: providerId }
-      },
-      _count: { _all: true }
-    });
-
-    const avgRating = stats._avg.rating || 0;
-    const ratingCount = stats._count._all || 0;
-    const approvedCount = bookingStats.find(s => s.status === 'approved')?._count._all || 0;
-    const totalCount = bookingStats.reduce((acc, s) => acc + s._count._all, 0);
-    const completionRate = totalCount > 0 ? approvedCount / totalCount : 0;
-
-    let variance = 0;
-    if (reviews.length > 1) {
-      const mean = avgRating;
-      variance = reviews.reduce((acc, r) => acc + Math.pow(r.rating - mean, 2), 0) / reviews.length;
-    }
-    const stddev = Math.sqrt(variance);
-    const consistencyBonus = Math.max(0, 1 - stddev / 2);
-
-    const score = (avgRating * 0.6) + (completionRate * 5 * 0.3) + (consistencyBonus * 0.1 * 5);
-
     res.json({
       provider_id: providerId,
-      average_rating: avgRating,
-      rating_count: ratingCount,
-      completion_rate: completionRate,
-      consistency_bonus: consistencyBonus,
-      reputation_score: parseFloat(score.toFixed(2))
+      average_rating: stats._avg.rating || 0,
+      total_reviews: stats._count._all || 0
     });
   } catch (error) {
-    console.error('Error calculating reputation:', error);
+    console.error('Error getting reputation:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -166,4 +199,3 @@ export {
   listProviderReviews,
   getReputation
 };
-

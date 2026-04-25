@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -44,7 +45,23 @@ const MessagesPage = () => {
   const [isSending, setIsSending] = useState(false);
   const [isMobileConversationOpen, setIsMobileConversationOpen] = useState(false);
   const isMobile = useIsMobile();
+  const [searchParams, setSearchParams] = useSearchParams();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const targetConversationId = searchParams.get('conversationId');
+
+  useEffect(() => {
+    if (!targetConversationId || conversations.length === 0) return;
+
+    const target = conversations.find((c: any) => c.id === targetConversationId);
+    if (target) {
+      openConversation(target);
+      setIsMobileConversationOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('conversationId');
+      setSearchParams(next, { replace: true });
+    }
+  }, [conversations, openConversation, searchParams, setSearchParams, targetConversationId]);
 
   useEffect(() => {
     if (currentConversation) {

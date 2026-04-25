@@ -10,6 +10,7 @@ import { CurrencySelector } from '@/components/common/CurrencySelector';
 import { useListings } from '@/hooks/useListings';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { parseAvailabilityMetadata } from '@/utils/serviceAvailability';
 import { Upload, X, ArrowLeft } from 'lucide-react';
 
 const EditServicePage = () => {
@@ -24,6 +25,7 @@ const EditServicePage = () => {
     description: '',
     category: '',
     price: '',
+    quantity: '1',
     currency: 'PKR',
     priceType: 'fixed' as 'fixed' | 'hourly' | 'negotiable',
     tags: '',
@@ -49,12 +51,14 @@ const EditServicePage = () => {
         // If not in store, fetch from API
         if (!listing) {
           const service = await api.get<any>(`/services/${id}`);
+          const availability = parseAvailabilityMetadata(service.availability);
           // Simplified mapping for the form
           setFormData({
             title: service.title,
             description: service.description,
             category: service.category,
             price: String(service.price),
+            quantity: String(availability.quantity ?? 1),
             currency: service.currency || 'PKR',
             priceType: (service.price_type || 'fixed') as any,
             tags: service.tags?.join(', ') || service.availability || '',
@@ -71,6 +75,7 @@ const EditServicePage = () => {
             description: listing.description,
             category: listing.category,
             price: String(listing.price),
+            quantity: String(listing.stockQuantity ?? 1),
             currency: listing.currency || 'PKR',
             priceType: listing.priceType as any,
             tags: listing.tags?.join(', ') || '',
@@ -164,6 +169,7 @@ const EditServicePage = () => {
         description: formData.description,
         category: formData.category,
         price: Number(formData.price),
+        stockQuantity: Number(formData.quantity || 0),
         currency: formData.currency,
         priceType: formData.priceType,
         images: formData.image_url ? [formData.image_url] : [],
@@ -323,6 +329,20 @@ const EditServicePage = () => {
                   className="flex-1"
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="quantity">Quantity *</Label>
+              <Input
+                id="quantity"
+                name="quantity"
+                type="number"
+                value={formData.quantity}
+                onChange={handleChange}
+                disabled={isSubmitting}
+                required
+                min="0"
+                step="1"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="priceType">Price type</Label>

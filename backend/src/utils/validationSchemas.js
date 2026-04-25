@@ -57,9 +57,10 @@ const updateOwnServiceSchema = Joi.object({
 
 // Review creation schema
 const createReviewSchema = Joi.object({
-  booking_id: Joi.string().uuid().required(),
+  booking_id: Joi.string().uuid().optional(),
+  service_id: Joi.string().uuid().required(),
   rating: Joi.number().integer().min(1).max(5).required(),
-  comment: Joi.string().max(1000).optional().trim()
+  comment: Joi.string().max(1000).optional().allow('', null).trim()
 });
 
 // Service search schema
