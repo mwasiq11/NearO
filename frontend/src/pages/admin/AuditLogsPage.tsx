@@ -362,7 +362,7 @@ const AuditLogsPage = () => {
 
       {/* Logs View */}
       <div className="bg-card border rounded-2xl overflow-hidden shadow-sm">
-        <div className="hidden md:block overflow-x-auto">
+        <div className="hidden xl:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-muted/30 text-xs font-black uppercase tracking-widest border-b">
@@ -438,7 +438,7 @@ const AuditLogsPage = () => {
         </div>
 
         {/* Mobile View - Cards */}
-        <div className="md:hidden divide-y divide-border/40">
+        <div className="xl:hidden divide-y divide-border/40">
           {loading ? (
              <div className="p-12 text-center text-muted-foreground font-medium italic animate-pulse">Syncing logs...</div>
           ) : logs.length === 0 ? (

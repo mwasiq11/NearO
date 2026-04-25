@@ -29,18 +29,18 @@ const SeekerDashboard = () => {
   const trendingListings = listings.slice(0, 8);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-6 md:space-y-8 md:p-8">
+    <div className="dashboard-tablet-page mx-auto max-w-7xl space-y-5 p-4 md:space-y-8 md:p-8">
       {/* Hero Search Section */}
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full"
       >
-        <div className="relative group w-full rounded-2xl border border-border/70 bg-background shadow-[inset_0_1px_0_hsl(var(--foreground)/0.03)] focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all duration-200 ease-in-out">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
+        <div className="dashboard-tablet-search-shell relative group mt-2 w-full rounded-2xl border border-border/70 bg-background shadow-[inset_0_1px_0_hsl(var(--foreground)/0.03)] focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all duration-200 ease-in-out md:mt-0">
+          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-foreground" />
           <Input 
             placeholder="Search for services..." 
-            className="h-12 w-full rounded-2xl border-0 bg-transparent pl-12 pr-4 text-sm md:text-base font-medium text-foreground placeholder:text-muted-foreground/90 shadow-none transition-all duration-200 ease-in-out focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="h-11 w-full rounded-2xl border-0 bg-transparent pl-12 pr-4 text-sm font-medium text-foreground placeholder:text-muted-foreground/90 shadow-none transition-all duration-200 ease-in-out focus-visible:ring-0 focus-visible:ring-offset-0 md:h-12 md:text-base"
             onClick={() => navigate('/dashboard/browse')}
             readOnly
           />
@@ -63,7 +63,7 @@ const SeekerDashboard = () => {
               </Button>
             }
           />
-          <div className="-mx-6 flex gap-5 overflow-x-auto px-6 pb-4 no-scrollbar md:-mx-8 md:px-8">
+          <div className="-mx-4 flex gap-5 overflow-x-auto px-4 pb-4 no-scrollbar md:-mx-8 md:px-8">
             {upcomingBookings.map((booking) => (
               <Card 
                 key={booking.id} 
@@ -115,7 +115,7 @@ const SeekerDashboard = () => {
         
         <Skeleton name="trending-services" loading={isLoading}>
           {isLoading ? (
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-5 md:gap-6">
+            <div className="dashboard-tablet-grid grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-5 md:gap-6">
               {Array.from({ length: 4 }).map((_, index) => (
                 <Card key={index} className="flex h-full overflow-hidden rounded-2xl border border-border/60 bg-card p-0 shadow-sm">
                   <div className="aspect-[4/3] animate-pulse bg-muted" />
@@ -128,7 +128,7 @@ const SeekerDashboard = () => {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-5 md:gap-6">
+            <div className="dashboard-tablet-grid grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-5 md:gap-6">
               {trendingListings.slice(0, 4).map((listing) => (
                 <ServiceCard
                   key={listing.id}

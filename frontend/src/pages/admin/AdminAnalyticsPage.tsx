@@ -44,7 +44,7 @@ const AdminAnalyticsPage = () => {
         <Button variant="outline" size="sm">Export CSV</Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {metrics.map((m) => (
           <Card key={m.label}>
             <CardHeader className="pb-2">
@@ -67,13 +67,13 @@ const AdminAnalyticsPage = () => {
         )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      <div className="grid gap-6 xl:grid-cols-3">
+        <Card className="xl:col-span-2">
           <CardHeader className="flex items-center justify-between">
             <CardTitle>Role breakdown</CardTitle>
             <Badge variant="outline">Current</Badge>
           </CardHeader>
-          <CardContent className="grid grid-cols-3 gap-4 text-sm text-muted-foreground">
+          <CardContent className="grid grid-cols-2 gap-4 text-sm text-muted-foreground xl:grid-cols-3">
             <div className="rounded-lg border bg-card p-4">
               <p className="text-xs uppercase tracking-wide">Users</p>
               <p className="text-2xl font-semibold text-foreground">{counts?.users.users ?? 0}</p>
@@ -121,7 +121,7 @@ const AdminAnalyticsPage = () => {
           </div>
           <Button size="sm" variant="outline" className="gap-1"><LineChart className="h-4 w-4" /> View logs</Button>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3 text-sm text-muted-foreground">
+        <CardContent className="grid gap-4 md:grid-cols-2 text-sm text-muted-foreground xl:grid-cols-3">
           <div className="rounded-lg border bg-card p-4 space-y-1">
             <div className="flex items-center gap-2 text-emerald-600"><Gauge className="h-4 w-4" /><span>API latency</span></div>
             <p className="text-lg font-semibold text-foreground">182 ms p95</p>

@@ -162,7 +162,7 @@ const AdminUsersPage = () => {
           </div>
         </CardHeader>
         <CardContent className="p-0 sm:p-6">
-          <div className="hidden md:block">
+          <div className="hidden xl:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -222,7 +222,7 @@ const AdminUsersPage = () => {
           </div>
 
           {/* Mobile Card View */}
-          <div className="md:hidden divide-y">
+          <div className="xl:hidden divide-y">
             {filtered.map((u) => (
               <div key={u.id} className="p-4 space-y-4 active:bg-muted/30 transition-colors">
                 <div className="flex items-start justify-between">

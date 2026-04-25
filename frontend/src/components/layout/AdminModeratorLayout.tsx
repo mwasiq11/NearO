@@ -41,11 +41,28 @@ const AdminModeratorLayout = ({ children, dropTitle }: { children: React.ReactNo
   const { user, logout } = useAuth();
   const location = useLocation();
   const isMobile = useIsMobile();
-  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+  const [isTablet, setIsTablet] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const { theme, resolvedTheme, setTheme } = useTheme();
 
   useEffect(() => {
+    const tabletQuery = window.matchMedia('(min-width: 768px) and (max-width: 1024px)');
+
+    const updateTablet = () => setIsTablet(tabletQuery.matches);
+
+    updateTablet();
+    tabletQuery.addEventListener('change', updateTablet);
+
+    return () => tabletQuery.removeEventListener('change', updateTablet);
+  }, []);
+
+  useEffect(() => {
+    if (isTablet) {
+      setSidebarOpen(false);
+      return;
+    }
+
     setSidebarOpen(!isMobile);
   }, [isMobile]);
 
@@ -131,8 +148,8 @@ const AdminModeratorLayout = ({ children, dropTitle }: { children: React.ReactNo
       {!isMobile && (
         <aside
           className={cn(
-            'bg-card text-foreground transition-all duration-300 flex flex-col border-r h-full z-20',
-            sidebarOpen ? 'w-64' : 'w-20'
+            'bg-card text-foreground transition-all duration-300 ease-in-out flex flex-col border-r h-full z-20',
+            isTablet ? (sidebarOpen ? 'w-[220px]' : 'w-[70px]') : sidebarOpen ? 'w-64' : 'w-20'
           )}
         >
           <SidebarContent />
@@ -142,7 +159,7 @@ const AdminModeratorLayout = ({ children, dropTitle }: { children: React.ReactNo
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col overflow-hidden bg-background">
         {/* Header */}
-        <header className="bg-card border-b px-4 md:px-6 py-4 flex items-center justify-between h-[73px] sticky top-0 z-30">
+        <header className="bg-card border-b px-4 md:px-5 lg:px-6 py-4 flex items-center justify-between h-[73px] sticky top-0 z-30 gap-3">
           <div className="flex items-center gap-4">
             {isMobile && (
               <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
@@ -187,7 +204,7 @@ const AdminModeratorLayout = ({ children, dropTitle }: { children: React.ReactNo
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-auto bg-muted/5 relative">
-          <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-full">
+          <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto min-h-full">
             {children}
           </div>
         </div>
