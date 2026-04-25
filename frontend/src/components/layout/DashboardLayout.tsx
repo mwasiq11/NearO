@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Home,
@@ -6,7 +6,6 @@ import {
   Calendar,
   MessageSquare,
   User,
-  Plus,
   LogOut,
   Settings,
   Menu,
@@ -15,12 +14,13 @@ import {
   TrendingUp,
   Moon,
   Sun,
-  Shield
+  Shield,
+  ChevronDown
 } from 'lucide-react';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/common/Avatar';
+import DashboardModeToggle from '@/components/dashboard/DashboardModeToggle';
 import NotificationDropdown from '@/components/common/NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/useAuth';
@@ -28,10 +28,19 @@ import { useChat } from '@/hooks/useChat';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const DashboardLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useIsMobile();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
@@ -40,20 +49,18 @@ const DashboardLayout = () => {
   const { unreadCount } = useNotifications();
   const { theme, resolvedTheme, setTheme } = useTheme();
 
-  const getPageTitle = () => {
-    const path = location.pathname;
-    if (path.includes('/dashboard/earnings')) return 'Earnings & Spending';
-    if (path.includes('/dashboard/bookings')) return 'Bookings';
-    if (path.includes('/dashboard/messages')) return 'Messages';
-    if (path.includes('/dashboard/my-services')) return 'My Services';
-    if (path.includes('/dashboard/settings')) return 'Settings';
-    if (path.includes('/dashboard/profile')) return 'Profile';
-    if (path.includes('/dashboard/browse')) return 'Browse Services';
-    if (path.includes('/dashboard/listing')) return 'Service Details';
-    return 'Dashboard';
+  const isDashboardHome = location.pathname === '/dashboard';
+  const dashboardView = searchParams.get('view') === 'provider' ? 'provider' : 'seeker';
+
+  const handleDashboardViewChange = (view: 'seeker' | 'provider') => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('view', view);
+    setSearchParams(nextParams, { replace: true });
   };
 
-  const baseNavItems: { path: string; icon: React.ElementType; label: string; badge?: number }[] = [
+  type NavItem = { path: string; icon: React.ElementType; label: string; badge?: number };
+
+  const baseNavItems: NavItem[] = [
     { path: '/dashboard', icon: Home, label: 'Home' },
     { path: '/dashboard/browse', icon: Search, label: 'Browse' },
     { path: '/dashboard/my-services', icon: Package, label: 'My Services' },
@@ -63,15 +70,16 @@ const DashboardLayout = () => {
     { path: '/dashboard/profile', icon: User, label: 'Profile' },
   ];
 
-  const adminNavItems = isAdmin 
+  const adminNavItems: NavItem[] = isAdmin 
     ? [{ path: '/admin', icon: Shield, label: 'Admin Panel' }] 
     : [];
     
-  const moderatorNavItems = isModerator || isAdmin
+  const moderatorNavItems: NavItem[] = isModerator || isAdmin
     ? [{ path: '/moderator', icon: Shield, label: 'Moderator Desk' }] 
     : [];
 
   const navItems = [...baseNavItems, ...moderatorNavItems, ...adminNavItems];
+  const profileName = user?.name || 'muhammadwasiq';
 
   const isActive = (path: string) => {
     if (path === '/dashboard') {
@@ -83,95 +91,74 @@ const DashboardLayout = () => {
   return (
     <div className="h-[100dvh] overflow-hidden bg-background flex">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 border-r bg-card">
+      <aside className="hidden h-screen w-64 flex-col overflow-y-auto bg-card lg:flex">
         {/* Logo */}
-        <div className="h-16 flex items-center px-6 border-b">
-          <Link to="/dashboard" className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg overflow-hidden bg-background shadow-sm flex items-center justify-center p-1.5 border">
+        <div className="flex h-16 items-center border-b border-border/60 px-4">
+          <Link to="/dashboard" className="group flex items-center gap-2.5 overflow-hidden">
+            <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border bg-background p-1.5 shadow-sm">
               <img src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" alt="NearO" className="h-full w-full object-contain" />
             </div>
-            <span style={{fontFamily: 'Poppins, sans-serif'}} className="font-bold text-xl bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent tracking-tight">NearO</span>
+            <span style={{fontFamily: 'Poppins, sans-serif'}} className="max-w-0 -translate-x-1 whitespace-nowrap bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-xl font-bold tracking-tight text-transparent opacity-0 transition-[max-width,opacity,transform] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:max-w-28 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:max-w-28 group-focus-visible:translate-x-0 group-focus-visible:opacity-100">NearO</span>
           </Link>
         </div>
 
-        {/* User Info */}
-        <div className="p-4 border-b">
-          <div className="flex items-center gap-3">
-            <Avatar
-              src={user?.avatar}
-              alt={user?.name}
-              size="md"
-              badge={user?.reputation.badge !== 'new' ? user?.reputation.badge : undefined}
-            />
-            <div className="flex-1 min-w-0">
-              <p className="font-medium truncate">{user?.name}</p>
-              <Badge variant="secondary" className="text-2xs capitalize">
-                {user?.role || 'Member'}
-              </Badge>
-            </div>
+        <div className="flex min-h-0 flex-1 flex-col justify-between">
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 pt-4 pb-2">
+            {/* Navigation */}
+            <nav className="space-y-1">
+              {navItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={cn(
+                    'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                    isActive(item.path)
+                      ? 'bg-primary/12 text-foreground shadow-[0_0_0_1px_hsl(var(--primary)/0.25)]'
+                      : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+                  )}
+                >
+                  {isActive(item.path) ? <span className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-primary" /> : null}
+                  <item.icon className={cn('h-5 w-5 transition-colors', isActive(item.path) ? 'text-primary' : 'group-hover:text-primary')} />
+                  <span>{item.label}</span>
+                  {item.badge ? (
+                    <Badge variant="destructive" className="ml-auto flex h-5 w-5 items-center justify-center p-0 text-2xs">
+                      {item.badge > 9 ? '9+' : item.badge}
+                    </Badge>
+                  ) : null}
+                </Link>
+              ))}
+            </nav>
           </div>
-        </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => (
+          <div className="space-y-2 border-t p-3">
             <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                isActive(item.path)
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              )}
+              to="/dashboard/settings"
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors duration-200 ease-in-out hover:bg-muted/70 hover:text-foreground"
             >
-              <item.icon className="h-5 w-5" />
-              <span>{item.label}</span>
-              {item.badge ? (
-                <Badge variant="destructive" className="ml-auto text-2xs h-5 w-5 p-0 flex items-center justify-center">
-                  {item.badge > 9 ? '9+' : item.badge}
-                </Badge>
-              ) : null}
+              <Settings className="h-5 w-5" />
+              Settings
             </Link>
-          ))}
-        </nav>
-
-        {/* Quick Action */}
-        <div className="p-4 border-t">
-          <Button className="w-full" variant="hero" onClick={() => navigate('/dashboard/my-services/new')}>
-            <Plus className="h-4 w-4" />
-            Add Service
-          </Button>
-        </div>
-
-        {/* Settings & Logout */}
-        <div className="p-4 border-t space-y-1">
-          <Link
-            to="/dashboard/settings"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <Settings className="h-5 w-5" />
-            Settings
-          </Link>
-          <button
-            onClick={logout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-          >
-            <LogOut className="h-5 w-5" />
-            Log Out
-          </button>
+            <button
+              onClick={logout}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors duration-200 ease-in-out hover:bg-destructive/10 hover:text-destructive"
+            >
+              <LogOut className="h-5 w-5" />
+              Log Out
+            </button>
+          </div>
         </div>
       </aside>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
-        <header className="h-16 border-b bg-card flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
-          <div className="flex items-center gap-4">
+        <header className="sticky top-0 z-30 border-b border-border/60 bg-card/95 px-6 backdrop-blur">
+          <div className="flex h-16 items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
             {/* Mobile Menu Button - Larger hit target */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden p-2.5 -ml-2 text-muted-foreground hover:text-foreground active:bg-muted rounded-full transition-colors"
+              className="-ml-2 rounded-full p-2.5 text-muted-foreground transition-colors duration-200 ease-in-out hover:bg-muted/70 hover:text-foreground active:scale-95 lg:hidden"
             >
               <Menu className="h-6 w-6" />
             </button>
@@ -182,29 +169,129 @@ const DashboardLayout = () => {
                 <img src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" alt="NearO" className="h-full w-full object-contain" />
               </div>
             </Link>
+
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2">
+            {isDashboardHome && (
+              <DashboardModeToggle
+                value={dashboardView}
+                onChange={handleDashboardViewChange}
+                className="hidden sm:inline-grid"
+              />
+            )}
+
             <button
               onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-              className="p-2.5 rounded-full text-muted-foreground hover:bg-muted focus:outline-none transition-colors active:scale-95"
+              className="rounded-full p-2.5 text-muted-foreground transition-all duration-200 ease-in-out hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-95"
               aria-label="Toggle theme"
             >
               {resolvedTheme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
 
             <NotificationDropdown />
-            
-            {/* Removed extra avatar on small mobile, kept for tablet if needed but unified with menu */}
-            <div className="hidden sm:flex lg:hidden items-center ml-2">
-              <Avatar
-                src={user?.avatar}
-                alt={user?.name}
-                size="sm"
-                badge={user?.reputation.badge !== 'new' ? user?.reputation.badge : undefined}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="rounded-full transition-transform duration-200 ease-in-out hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  aria-label="Open profile menu"
+                >
+                  <Avatar
+                    src={user?.avatar}
+                    alt={profileName}
+                    fallback="M"
+                    size="sm"
+                    className="ring-2 ring-border/60 transition-all duration-200"
+                  />
+                </button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent
+                align="end"
+                sideOffset={10}
+                className="w-72 rounded-xl border border-border/60 bg-card/95 p-2 text-card-foreground shadow-2xl backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2"
+              >
+                <DropdownMenuLabel className="p-0">
+                  <div className="flex items-center gap-3 rounded-lg px-3 py-3">
+                    <Avatar
+                      src={user?.avatar}
+                      alt={profileName}
+                      fallback="M"
+                      size="lg"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-foreground">{profileName}</p>
+                      <Badge variant="secondary" className="mt-1 text-2xs capitalize">
+                        User
+                      </Badge>
+                    </div>
+                  </div>
+                </DropdownMenuLabel>
+
+                <DropdownMenuSeparator className="my-1 bg-border/60" />
+
+                <DropdownMenuItem
+                  onSelect={() => navigate('/dashboard/profile')}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors focus:bg-muted/70"
+                >
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => navigate('/dashboard/my-services')}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors focus:bg-muted/70"
+                >
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                  My Services
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => navigate('/dashboard/bookings')}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors focus:bg-muted/70"
+                >
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  Bookings
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => navigate('/dashboard/earnings')}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors focus:bg-muted/70"
+                >
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  Earnings
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="my-1 bg-border/60" />
+
+                <DropdownMenuItem
+                  onSelect={() => navigate('/dashboard/settings')}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors focus:bg-muted/70"
+                >
+                  <Settings className="h-4 w-4 text-muted-foreground" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => logout()}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-destructive transition-colors focus:bg-destructive/10 focus:text-destructive"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Log Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          </div>
+
+          {isDashboardHome && (
+            <div className="sm:hidden pb-3">
+              <DashboardModeToggle
+                value={dashboardView}
+                onChange={handleDashboardViewChange}
+                size="md"
+                className="w-full"
               />
             </div>
-          </div>
+          )}
         </header>
 
         {/* Page Content */}

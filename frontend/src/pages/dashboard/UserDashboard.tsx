@@ -254,7 +254,6 @@ export default function UserDashboard() {
                       <div className="flex justify-between items-start">
                         <div>
                           <CardTitle className="text-lg">{service.title}</CardTitle>
-                          <Badge className="mt-2">{service.category}</Badge>
                         </div>
                         <Badge variant={service.is_active ? 'default' : 'secondary'}>
                           {service.is_active ? 'Active' : 'Inactive'}
@@ -312,7 +311,6 @@ export default function UserDashboard() {
                         <div>
                           <p className="text-sm text-muted-foreground">Service</p>
                           <p className="font-semibold">{booking.title}</p>
-                          <p className="text-xs text-muted-foreground">{booking.category}</p>
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground">Provider</p>
