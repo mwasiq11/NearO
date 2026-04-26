@@ -218,7 +218,10 @@ const BrowsePage = () => {
                     }}
                   />
                   <div className="absolute top-2 right-2">
-                    <Badge variant={listing.isInStock ? 'default' : 'destructive'}>
+                    <Badge 
+                      variant={listing.isInStock ? 'success' : 'destructive'}
+                      className="shadow-md border-none font-bold"
+                    >
                       {listing.isInStock
                         ? listing.remainingQuantity === null || listing.remainingQuantity === undefined
                           ? 'Available'

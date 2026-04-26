@@ -56,8 +56,8 @@ export default function ServiceCard({ listing, onClick }: ServiceCardProps) {
         </div>
         <div className="absolute right-3 top-3">
           <Badge
-            variant={isInStock ? 'default' : 'destructive'}
-            className="h-6 rounded-full border border-white/30 bg-white/70 px-2.5 text-[11px] font-semibold text-foreground backdrop-blur-md dark:bg-black/45 dark:text-white"
+            variant={isInStock ? 'success' : 'destructive'}
+            className="h-6 rounded-full border border-white/20 px-2.5 text-[11px] font-bold shadow-sm backdrop-blur-sm"
           >
             {isInStock ? stockLabel : 'Out of stock'}
           </Badge>

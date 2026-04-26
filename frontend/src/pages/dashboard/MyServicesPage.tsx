@@ -94,12 +94,12 @@ const MyServicesPage = () => {
             }}
           />
           <div className="absolute top-3 left-3">
-            <Badge variant={isSold ? 'success' : 'secondary'} className="shadow-sm backdrop-blur-md bg-background/85">
+            <Badge variant={isSold ? 'success' : 'secondary'} className="shadow-sm backdrop-blur-md border-none">
               {isSold ? `Sold (${sales?.soldCount || 0})` : 'Unsold'}
             </Badge>
           </div>
           <div className="absolute bottom-3 left-3">
-            <Badge variant={inStock ? 'default' : 'destructive'} className="shadow-sm backdrop-blur-md bg-background/85">
+            <Badge variant={inStock ? 'success' : 'destructive'} className="shadow-sm backdrop-blur-md border-none">
               {inStock
                 ? remainingQuantity === null
                   ? 'Available'
