@@ -47,7 +47,7 @@ export default function DashboardModeToggle({
   return (
     <div
       className={cn(
-        'relative flex items-center justify-center gap-8 sm:gap-10 pb-1.5',
+        'relative flex items-center justify-center gap-4 sm:gap-8 md:gap-10 pb-1',
         className
       )}
       role="tablist"
@@ -65,7 +65,7 @@ export default function DashboardModeToggle({
             aria-selected={isActive}
             onClick={() => onChange(tab.id)}
             className={cn(
-              'relative flex flex-col items-center py-1 text-sm transition-all duration-200 focus-visible:outline-none cursor-pointer group',
+              'relative flex flex-col items-center py-1 text-xs sm:text-sm transition-all duration-200 focus-visible:outline-none cursor-pointer group',
               isActive 
                 ? 'text-foreground font-semibold' 
                 : 'text-muted-foreground font-medium hover:text-foreground/90'

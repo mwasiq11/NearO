@@ -146,7 +146,7 @@ const BrowsePage = () => {
   const listings = useMemo(() => filteredListings, [filteredListings]);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="px-4 pt-3.5 pb-6 space-y-4 md:px-6 md:pt-4 md:space-y-6 lg:px-8 lg:pt-5 lg:space-y-8">
       <div>
         <h2 className="text-2xl font-bold">Browse services</h2>
         <p className="text-muted-foreground">Find trusted local help and book instantly.</p>

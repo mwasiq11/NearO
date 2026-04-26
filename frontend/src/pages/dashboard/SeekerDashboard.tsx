@@ -29,14 +29,14 @@ const SeekerDashboard = () => {
   const trendingListings = listings.slice(0, 8);
 
   return (
-    <div className="dashboard-tablet-page mx-auto max-w-7xl space-y-5 p-4 md:space-y-8 md:p-8">
+    <div className="dashboard-tablet-page mx-auto max-w-7xl space-y-4 px-4 pt-3.5 pb-6 md:space-y-6 md:px-6 md:pt-4 lg:space-y-8 lg:px-8 lg:pt-5">
       {/* Hero Search Section */}
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full"
       >
-        <div className="dashboard-tablet-search-shell relative group mt-2 w-full rounded-2xl border border-border/70 bg-background shadow-[inset_0_1px_0_hsl(var(--foreground)/0.03)] focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all duration-200 ease-in-out md:mt-0">
+        <div className="dashboard-tablet-search-shell relative group w-full rounded-2xl border border-border/70 bg-background shadow-[inset_0_1px_0_hsl(var(--foreground)/0.03)] focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all duration-200 ease-in-out">
           <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-foreground" />
           <Input 
             placeholder="Search for services..." 

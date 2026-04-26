@@ -275,54 +275,57 @@ const DashboardLayout = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
-        <header className="sticky top-0 z-30 border-b border-border/60 bg-card/95 pl-2 pr-10 backdrop-blur">
-          <div className="grid h-16 grid-cols-3 items-center">
+        <header className="sticky top-0 z-30 border-b border-border/60 bg-card/95 backdrop-blur transition-all duration-200">
+          <div className="relative flex h-[56px] items-center justify-between px-3 md:h-16 md:px-4 lg:h-[72px] lg:px-6">
             {/* Left Section */}
-            <div className="flex items-center justify-start gap-3">
-              {/* Mobile Menu Button - Larger hit target */}
+            <div className="flex items-center gap-3">
               <button
                 onClick={handleSidebarToggle}
-                className="-ml-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 ease-in-out hover:bg-muted/70 hover:text-foreground active:scale-95 md:hidden"
-                aria-label={isMobile ? 'Open menu' : isTabletSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-all duration-150 hover:bg-muted/70 hover:text-foreground active:scale-95 md:hidden"
+                aria-label="Open menu"
               >
                 <Menu className="h-6 w-6" />
               </button>
+
             </div>
 
-            {/* Center Section - Perfectly Centered Toggle */}
-            <div className="hidden md:flex items-center justify-center mr-12">
+            {/* Center Section - Strictly Visually Centered */}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
               {isDashboardHome && (
                 <DashboardModeToggle
                   value={dashboardView}
                   onChange={handleDashboardViewChange}
+                  className="scale-[0.85] sm:scale-90 md:scale-100 origin-center"
                 />
               )}
             </div>
 
             {/* Right Section */}
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex items-center gap-2 md:gap-3 lg:gap-4">
               <button
                 onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-                className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-all duration-150 ease-in-out hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-95 md:inline-flex"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-all duration-150 hover:bg-muted/70 hover:text-foreground active:scale-95"
                 aria-label="Toggle theme"
               >
-                {resolvedTheme === 'dark' ? <Sun className="h-[22px] w-[22px]" /> : <Moon className="h-[22px] w-[22px]" />}
+                {resolvedTheme === 'dark' ? <Sun className="h-[20px] w-[20px]" /> : <Moon className="h-[20px] w-[20px]" />}
               </button>
 
-              <NotificationDropdown />
+              <div className="flex h-10 w-10 items-center justify-center shrink-0">
+                <NotificationDropdown />
+              </div>
 
               <button
                 onClick={() => navigate('/dashboard/settings')}
-                className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-all duration-150 ease-in-out hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-95 md:inline-flex lg:hidden"
+                className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-all duration-150 hover:bg-muted/70 hover:text-foreground active:scale-95 md:inline-flex lg:hidden"
                 aria-label="Open settings"
               >
-                <Settings className="h-[22px] w-[22px]" />
+                <Settings className="h-[20px] w-[20px]" />
               </button>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-transform duration-150 ease-in-out hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-transform duration-150 hover:scale-105 focus:outline-none"
                     aria-label="Open profile menu"
                   >
                     <Avatar
@@ -330,7 +333,7 @@ const DashboardLayout = () => {
                       alt={profileName}
                       fallback="M"
                       size="sm"
-                      className="ring-2 ring-border/60 transition-all duration-200"
+                      className="h-9 w-9 md:h-10 md:w-10 ring-2 ring-border/60 transition-all"
                     />
                   </button>
                 </DropdownMenuTrigger>
@@ -409,15 +412,6 @@ const DashboardLayout = () => {
             </div>
           </div>
 
-          {isDashboardHome && (
-            <div className="md:hidden pb-4">
-              <DashboardModeToggle
-                value={dashboardView}
-                onChange={handleDashboardViewChange}
-                className="w-full"
-              />
-            </div>
-          )}
         </header>
 
         {/* Page Content */}
