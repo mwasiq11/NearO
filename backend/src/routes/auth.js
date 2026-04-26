@@ -9,7 +9,8 @@ import {
   verifyEmail,
   forgotPassword,
   resetPassword,
-  changePassword
+  changePassword,
+  googleAuth
 } from '../controllers/authController.js';
 import { passwordResetLimiter, emailVerificationLimiter } from '../middleware/rateLimit.js';
 import { validate } from '../middleware/validation.js';
@@ -37,6 +38,9 @@ router.post('/login', validate(loginSchema), login);
 
 // POST /auth/refresh - Refresh access token
 router.post('/refresh', refresh);
+
+// POST /auth/google - Google authentication
+router.post('/google', googleAuth);
 
 // POST /auth/logout - Logout user
 router.post('/logout', logout);

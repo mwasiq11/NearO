@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { GoogleLogin } from '@react-oauth/google';
 
 const SignupPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -18,7 +19,7 @@ const SignupPage = () => {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   
-  const { signup, isLoading } = useAuth();
+  const { signup, loginWithGoogle, isLoading } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -162,6 +163,31 @@ const SignupPage = () => {
               <ArrowRight className="h-4 w-4" />
             </Button>
           </form>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border/60" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+            </div>
+          </div>
+
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={credentialResponse => {
+                if (credentialResponse.credential) {
+                  loginWithGoogle(credentialResponse.credential);
+                }
+              }}
+              onError={() => {
+                console.error('Google Login Failed');
+              }}
+              theme="outline"
+              width="360"
+              id="google_signup_btn"
+            />
+          </div>
 
           <p className="text-center text-muted-foreground">
             Already have an account?{' '}

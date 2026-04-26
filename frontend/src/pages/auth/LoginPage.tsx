@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { GoogleLogin } from '@react-oauth/google';
 
 const LoginPage = () => {
   const location = useLocation();
@@ -19,7 +20,7 @@ const LoginPage = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
   
-  const { login, isLoading, error } = useAuth();
+  const { login, loginWithGoogle, isLoading, error } = useAuth();
 
   useEffect(() => {
     // Clear success message after 5 seconds
@@ -170,6 +171,31 @@ const LoginPage = () => {
               <ArrowRight className="h-4 w-4" />
             </Button>
           </form>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border/60" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+            </div>
+          </div>
+
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={credentialResponse => {
+                if (credentialResponse.credential) {
+                  loginWithGoogle(credentialResponse.credential);
+                }
+              }}
+              onError={() => {
+                console.error('Google Login Failed');
+              }}
+              theme="outline"
+              width="360"
+              id="google_login_btn"
+            />
+          </div>
 
           <p className="text-center text-muted-foreground">
             Don't have an account?{' '}

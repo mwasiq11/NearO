@@ -8,6 +8,7 @@ import { store } from '@/store/store';
 import { useAppSelector } from '@/store/hooks';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 import { CallOverlay } from '@/components/common/CallOverlay';
 import { useCall } from '@/hooks/useCall';
@@ -241,14 +242,16 @@ const AppRoutes = () => {
 
 const App = () => (
   <Provider store={store}>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Sonner />
-        <BrowserRouter future={routerFutureConfig}>
-          <AppRoutes />
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ""}>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Sonner />
+          <BrowserRouter future={routerFutureConfig}>
+            <AppRoutes />
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </GoogleOAuthProvider>
   </Provider>
 );
 

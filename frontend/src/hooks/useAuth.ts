@@ -109,6 +109,45 @@ export const useAuth = () => {
     }
   }, [dispatch, navigate, normalizeUser]);
 
+  const loginWithGoogle = useCallback(async (googleToken: string): Promise<boolean> => {
+    dispatch(loginStart());
+    
+    try {
+      const data = await api.post<{
+        user: any;
+        accessToken: string;
+        refreshToken: string;
+        message: string;
+      }>('/auth/google', { token: googleToken });
+
+      const normalized = normalizeUser(data.user);
+      
+      authStorage.setTokens(data.accessToken, data.refreshToken);
+      authStorage.setUser(normalized);
+      dispatch(loginSuccess({ 
+        user: normalized, 
+        accessToken: data.accessToken, 
+        refreshToken: data.refreshToken 
+      }));
+
+      toast.success(data.message || 'Login successful!');
+      
+      if (normalized.role === 'admin') {
+        navigate('/admin');
+      } else if (normalized.role === 'moderator') {
+        navigate('/moderator');
+      } else {
+        navigate('/dashboard');
+      }
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Google login failed';
+      dispatch(loginFailure(message));
+      toast.error('Google login failed. Please try again.');
+      return false;
+    }
+  }, [dispatch, navigate, normalizeUser]);
+
   const changePassword = useCallback(async (currentPassword: string, newPassword: string): Promise<boolean> => {
     try {
       await api.post('/auth/change-password', { currentPassword, newPassword }, { auth: true });
@@ -204,6 +243,7 @@ export const useAuth = () => {
     isLoading,
     error,
     login,
+    loginWithGoogle,
     changePassword,
     completeOtpLogin,
     signup,
