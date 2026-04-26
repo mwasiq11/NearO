@@ -325,7 +325,7 @@ const DashboardLayout = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-transform duration-150 hover:scale-105 focus:outline-none"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-transform duration-150 hover:scale-105 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none"
                     aria-label="Open profile menu"
                   >
                     <Avatar
@@ -333,7 +333,7 @@ const DashboardLayout = () => {
                       alt={profileName}
                       fallback="M"
                       size="sm"
-                      className="h-9 w-9 md:h-10 md:w-10 ring-2 ring-border/60 transition-all"
+                      className="h-9 w-9 md:h-10 md:w-10 transition-all"
                     />
                   </button>
                 </DropdownMenuTrigger>
@@ -495,7 +495,7 @@ const DashboardLayout = () => {
                 </button>
               </div>
 
-              <div className="p-4 border-b">
+              <div className="p-4">
                 <div className="flex items-center gap-3">
                   <Avatar
                     src={user?.avatar}

@@ -18,7 +18,7 @@ interface ServiceCardProps {
     rating?: number;
     reviewCount?: number;
     price: number;
-    priceType?: string;
+    priceType?: 'fixed' | 'hourly' | 'negotiable';
     currency?: string;
     remainingQuantity?: number | null;
     isInStock?: boolean;
@@ -85,7 +85,7 @@ export default function ServiceCard({ listing, onClick }: ServiceCardProps) {
           </div>
           <div className="text-right">
             <div className="text-lg font-bold tracking-tight text-primary">
-              {formatPrice(listing.price, listing.priceType, listing.currency)}
+              {formatPrice(listing.price, listing.priceType || 'fixed', listing.currency)}
             </div>
           </div>
         </div>

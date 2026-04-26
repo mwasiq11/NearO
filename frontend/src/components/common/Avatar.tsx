@@ -33,7 +33,7 @@ export const Avatar = ({
     <div className={cn("relative inline-flex", className)}>
       <div
         className={cn(
-          "rounded-full overflow-hidden bg-muted flex items-center justify-center font-medium text-muted-foreground ring-2 ring-background",
+          "rounded-full overflow-hidden bg-muted flex items-center justify-center font-medium text-muted-foreground",
           sizeClasses[size]
         )}
       >
