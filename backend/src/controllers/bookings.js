@@ -82,13 +82,13 @@ const createBooking = async (req, res) => {
       const existingConv = await prisma.conversations.findFirst({
         where: {
           seeker_id,
-          provider_id: service.provider_id,
-          service_id
+          provider_id: service.provider_id
         }
       });
       
+      let conversationId;
       if (!existingConv) {
-        const conversationId = uuidv4();
+        conversationId = uuidv4();
         await prisma.conversations.create({
           data: {
             id: conversationId,
@@ -100,7 +100,7 @@ const createBooking = async (req, res) => {
             provider_unread_count: 0
           }
         });
-        console.log(`✅ Created conversation ${conversationId} for booking ${id}`);
+        console.log(`✅ Created unified conversation ${conversationId} for booking ${id}`);
 
         if (io) {
           io.emit('conversation:created', {
@@ -111,9 +111,32 @@ const createBooking = async (req, res) => {
             serviceTitle: service.title,
           });
         }
+      } else {
+        conversationId = existingConv.id;
+        // If it's the first time a service is being linked to this conversation, update it
+        if (!existingConv.service_id) {
+          await prisma.conversations.update({
+            where: { id: conversationId },
+            data: { service_id }
+          });
+        }
       }
+
+      // Add a system message about the new booking
+      await prisma.messages.create({
+        data: {
+          id: uuidv4(),
+          conversation_id: conversationId,
+          sender_id: seeker_id,
+          receiver_id: service.provider_id,
+          service_id,
+          content: `📅 New booking request for ${service.title}`,
+          message_type: 'text',
+          status: 'sent'
+        }
+      });
     } catch (convError) {
-      console.error('Warning: Failed to create conversation:', convError);
+      console.error('Warning: Failed to create conversation or system message:', convError);
     }
 
     res.status(201).json(bookingPayload);
@@ -284,6 +307,32 @@ const acceptBooking = async (req, res) => {
       console.error('Warning: Failed to publish notification:', notifError);
     }
 
+    // Add system message to conversation
+    try {
+      const conversation = await prisma.conversations.findFirst({
+        where: {
+          seeker_id: booking.seeker_id,
+          provider_id: userId
+        }
+      });
+      if (conversation) {
+        await prisma.messages.create({
+          data: {
+            id: uuidv4(),
+            conversation_id: conversation.id,
+            sender_id: userId,
+            receiver_id: booking.seeker_id,
+            service_id: booking.services.id,
+            content: `✅ Your booking request for ${booking.services.title} has been APPROVED!`,
+            message_type: 'text',
+            status: 'sent'
+          }
+        });
+      }
+    } catch (msgError) {
+      console.error('Warning: Failed to add system message for approved booking:', msgError);
+    }
+
     // Emit real-time booking status update for dashboards and booking views
     const io = getIO();
     if (io) {
@@ -365,6 +414,32 @@ const rejectBooking = async (req, res) => {
       }
     } catch (notifError) {
       console.error('Warning: Failed to create notification:', notifError);
+    }
+
+    // Add system message to conversation
+    try {
+      const conversation = await prisma.conversations.findFirst({
+        where: {
+          seeker_id: booking.seeker_id,
+          provider_id: userId
+        }
+      });
+      if (conversation) {
+        await prisma.messages.create({
+          data: {
+            id: uuidv4(),
+            conversation_id: conversation.id,
+            sender_id: userId,
+            receiver_id: booking.seeker_id,
+            service_id: booking.services.id,
+            content: `❌ Your booking request for ${booking.services.title} has been CANCELED by the provider.`,
+            message_type: 'text',
+            status: 'sent'
+          }
+        });
+      }
+    } catch (msgError) {
+      console.error('Warning: Failed to add system message for rejected booking:', msgError);
     }
 
     res.json({ success: true, message: 'Booking rejected' });

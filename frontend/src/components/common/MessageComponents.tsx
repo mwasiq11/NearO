@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,8 @@ interface MessageBubbleProps {
     isRead?: boolean;
     created_at?: string;
     createdAt?: string;
+    service_title?: string;
+    serviceTitle?: string;
   };
   isOwn: boolean;
 }
@@ -39,6 +42,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
   const fileType = message.file_type || message.fileType;
   const createdAt = message.created_at || message.createdAt || new Date().toISOString();
   const status = message.status || (message.isRead ? 'read' : 'sent');
+  const serviceTitle = message.service_title || message.serviceTitle;
 
   // Audio Playback Logic
   const [isPlaying, setIsPlaying] = useState(false);
@@ -124,6 +128,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
       >
         {/* Actual Content */}
         <div className="flex flex-col">
+          {serviceTitle && (
+            <div className="mb-1">
+              <Badge variant="outline" className="text-[9px] uppercase tracking-tighter py-0 h-4 bg-black/5 border-black/10 dark:bg-white/5 dark:border-white/10 font-bold">
+                Re: {serviceTitle}
+              </Badge>
+            </div>
+          )}
           {messageType === 'text' && (
             <p className="text-[14.5px] leading-relaxed break-words">{message.content}</p>
           )}
@@ -219,32 +230,183 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
   );
 };
 
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { User, Mail, Calendar, Briefcase, CreditCard } from 'lucide-react';
+
+interface PurchasedService {
+  id: string;
+  title: string;
+  image_url?: string;
+  price?: number;
+  currency?: string;
+  category?: string;
+}
+
+export const UserProfileSheet: React.FC<{
+  otherUser: any;
+  purchasedServices?: PurchasedService[];
+  children: React.ReactNode;
+}> = ({ otherUser, purchasedServices, children }) => {
+  const navigate = useNavigate();
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        {children}
+      </SheetTrigger>
+      <SheetContent className="w-full sm:max-w-md border-l border-zinc-200 dark:border-zinc-800 p-0 overflow-hidden flex flex-col">
+        <SheetHeader className="p-6 text-left border-b bg-muted/20">
+          <SheetTitle className="text-xl font-black">User Profile</SheetTitle>
+        </SheetHeader>
+        
+        <ScrollArea className="flex-1">
+          <div className="p-6 space-y-8">
+            {/* User Info Section */}
+            <div className="flex flex-col items-center text-center space-y-4">
+              <Avatar className="h-24 w-24 border-4 border-background shadow-xl">
+                <AvatarImage src={otherUser.profile_picture} />
+                <AvatarFallback className="text-2xl font-bold">{otherUser.name?.[0]}</AvatarFallback>
+              </Avatar>
+              <div className="space-y-1">
+                <h2 className="text-2xl font-bold tracking-tight">{otherUser.name}</h2>
+                <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-sm">
+                  <Mail className="h-3.5 w-3.5" />
+                  <span>{otherUser.email || "No email provided"}</span>
+                </div>
+                {otherUser.status === 'online' && (
+                  <Badge variant="success" className="mt-2 animate-pulse">Online Now</Badge>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Account Details */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <User className="h-4 w-4" /> About
+              </h3>
+              <div className="grid grid-cols-1 gap-3">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-muted/50 border border-border/50">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      <Briefcase className="h-4 w-4" />
+                    </div>
+                    <span className="text-sm font-medium">Services Purchased</span>
+                  </div>
+                  <span className="text-lg font-black">{purchasedServices?.length || 0}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Purchased Services Section */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <CreditCard className="h-4 w-4" /> Purchased Services
+              </h3>
+              
+              {purchasedServices && purchasedServices.length > 0 ? (
+                <div className="space-y-3">
+                  {purchasedServices.map((service) => (
+                    <div 
+                      key={service.id} 
+                      onClick={() => navigate(`/dashboard/listing/${service.id}`)}
+                      className="group relative flex items-center gap-4 p-3 rounded-2xl bg-card border border-border/50 hover:border-primary/50 hover:shadow-md transition-all cursor-pointer active:scale-[0.98]"
+                    >
+                      <div className="h-16 w-16 rounded-xl overflow-hidden bg-muted flex-shrink-0">
+                        {service.image_url ? (
+                          <img src={service.image_url} alt={service.title} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center text-muted-foreground font-bold">
+                            {service.title?.[0]}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-sm truncate group-hover:text-primary transition-colors">{service.title}</h4>
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate mb-1">{service.category || 'General'}</p>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-[10px] py-0 h-4 bg-primary/5 border-primary/20 text-primary font-bold">
+                            {service.price} {service.currency || 'PKR'}
+                          </Badge>
+                          <Badge variant="success" className="text-[10px] py-0 h-4 font-black uppercase tracking-tighter">
+                            Active
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 px-4 rounded-2xl border border-dashed border-border/60 bg-muted/20">
+                  <p className="text-sm text-muted-foreground italic">No services purchased from this user yet.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </ScrollArea>
+        
+        <div className="p-6 bg-muted/20 border-t">
+          <p className="text-[10px] text-center text-muted-foreground font-medium uppercase tracking-[0.2em]">
+            NearO Security Verified
+          </p>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};
+
 export const ConversationHeader: React.FC<{
   otherUser: any, 
   serviceName?: string, 
+  purchasedServices?: PurchasedService[],
   onPhoneClick: () => void, 
   onVideoClick: () => void,
   onBack?: () => void
-}> = ({ otherUser, serviceName, onPhoneClick, onVideoClick, onBack }) => {
+}> = ({ otherUser, serviceName, purchasedServices, onPhoneClick, onVideoClick, onBack }) => {
   return (
-    <div className="h-16 px-4 flex items-center justify-between bg-[#f0f2f5] dark:bg-[#202c33] border-b border-zinc-200 dark:border-zinc-800 shrink-0">
-      <div className="flex items-center gap-3 px-1">
-        {onBack ? (
-          <Button onClick={onBack} size="icon" variant="ghost" className="h-10 w-10 md:hidden text-zinc-600 dark:text-zinc-400">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        ) : null}
-        <Avatar className="h-10 w-10">
-          <AvatarImage src={otherUser.profile_picture} />
-          <AvatarFallback>{otherUser.name?.[0]}</AvatarFallback>
-        </Avatar>
-        <div className="flex flex-col">
-          <h3 className="text-sm font-bold leading-tight">{otherUser.name}</h3>
-          <p className="text-[11px] opacity-60 leading-tight">
-            {otherUser.status === 'online' ? 'online' : (serviceName || 'Active now')}
-          </p>
+    <div className="h-20 px-4 flex items-center justify-between bg-[#f0f2f5] dark:bg-[#202c33] border-b border-zinc-200 dark:border-zinc-800 shrink-0">
+      <UserProfileSheet otherUser={otherUser} purchasedServices={purchasedServices}>
+        <div className="flex items-center gap-3 px-1 cursor-pointer group">
+          {onBack ? (
+            <Button onClick={(e) => { e.stopPropagation(); onBack(); }} size="icon" variant="ghost" className="h-10 w-10 md:hidden text-zinc-600 dark:text-zinc-400">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          ) : null}
+          <div className="relative">
+            <Avatar className="h-10 w-10 group-hover:ring-2 ring-primary/50 transition-all">
+              <AvatarImage src={otherUser.profile_picture} />
+              <AvatarFallback>{otherUser.name?.[0]}</AvatarFallback>
+            </Avatar>
+            {otherUser.status === 'online' && (
+              <span className="absolute bottom-0 right-0 h-3 w-3 bg-emerald-500 border-2 border-background rounded-full" />
+            )}
+          </div>
+          <div className="flex flex-col">
+            <h3 className="text-sm font-bold leading-tight group-hover:text-primary transition-colors">{otherUser.name}</h3>
+            <div className="flex flex-wrap gap-1 mt-1">
+              {purchasedServices && purchasedServices.length > 0 ? (
+                purchasedServices.slice(0, 2).map(s => (
+                  <Badge key={s.id} variant="success" className="text-[9px] px-1.5 py-0 h-4 font-bold uppercase tracking-tighter">
+                    ✓ {s.title}
+                  </Badge>
+                ))
+              ) : (
+                <p className="text-[11px] opacity-60 leading-tight">
+                  {otherUser.status === 'online' ? 'online' : (serviceName || 'Active now')}
+                </p>
+              )}
+              {purchasedServices && purchasedServices.length > 2 && (
+                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 font-bold">+{purchasedServices.length - 2}</Badge>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      </UserProfileSheet>
+
       <div className="flex items-center gap-1">
         <Button onClick={onPhoneClick} size="icon" variant="ghost" className="h-10 w-10 text-zinc-600 dark:text-zinc-400">
           <Phone className="h-5 w-5" />

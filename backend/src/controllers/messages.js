@@ -16,10 +16,10 @@ const listConversations = async (req, res) => {
       },
       include: {
         users_conversations_seeker_idTousers: {
-          select: { name: true, email: true }
+          select: { name: true, email: true, profile_picture: true }
         },
         users_conversations_provider_idTousers: {
-          select: { name: true, email: true }
+          select: { name: true, email: true, profile_picture: true }
         },
         services: {
           select: { title: true }
@@ -28,29 +28,46 @@ const listConversations = async (req, res) => {
       orderBy: { last_message_at: 'desc' }
     });
 
-    const mappedRows = rows.map(conv => {
+    const conversationsWithPurchases = await Promise.all(rows.map(async (conv) => {
       const isSeeker = conv.seeker_id === userId;
+      const otherUserId = isSeeker ? conv.provider_id : conv.seeker_id;
+      
+      // Fetch purchased services (bookings) between these two users
+      const purchasedBookings = await prisma.bookings.findMany({
+        where: {
+          seeker_id: isSeeker ? userId : otherUserId,
+          services: {
+            provider_id: isSeeker ? otherUserId : userId
+          },
+          status: 'approved'
+        },
+        include: {
+          services: {
+            select: { id: true, title: true, image_url: true, price: true, currency: true, category: true }
+          }
+        },
+        orderBy: { updated_at: 'desc' }
+      });
+
+      const uniquePurchasedServices = Array.from(new Set(purchasedBookings.map(b => b.services.id)))
+        .map(id => purchasedBookings.find(b => b.services.id === id).services);
+
       return {
         ...conv,
         seeker_name: conv.users_conversations_seeker_idTousers.name,
         seeker_email: conv.users_conversations_seeker_idTousers.email,
+        seeker_picture: conv.users_conversations_seeker_idTousers.profile_picture,
         provider_name: conv.users_conversations_provider_idTousers.name,
         provider_email: conv.users_conversations_provider_idTousers.email,
+        provider_picture: conv.users_conversations_provider_idTousers.profile_picture,
         service_title: conv.services?.title,
-        unread_count: Number(isSeeker ? conv.seeker_unread_count : conv.provider_unread_count) || 0
+        purchased_services: uniquePurchasedServices,
+        unread_count: Number(isSeeker ? conv.seeker_unread_count : conv.provider_unread_count) || 0,
+        other_user_online: isUserOnline(otherUserId)
       };
-    });
+    }));
 
-    // Add online status for each conversation
-    const conversationsWithStatus = mappedRows.map(conv => {
-      const otherUserId = conv.seeker_id === userId ? conv.provider_id : conv.seeker_id;
-      return {
-        ...conv,
-        other_user_online: isUserOnline(otherUserId),
-      };
-    });
-
-    res.json({ conversations: conversationsWithStatus });
+    res.json({ conversations: conversationsWithPurchases });
   } catch (error) {
     console.error('Error listing conversations:', error);
     res.status(500).json({ error: error.message });
@@ -79,12 +96,14 @@ const listMessages = async (req, res) => {
       return res.status(403).json({ error: 'Access denied to conversation' });
     }
 
-    // Note: LIMIT and OFFSET cannot use placeholders in MySQL prepared statements
     const messages = await prisma.messages.findMany({
       where: { conversation_id: conversationId },
       include: {
         users_messages_sender_idTousers: {
-          select: { name: true }
+          select: { name: true, profile_picture: true }
+        },
+        services: {
+          select: { title: true }
         }
       },
       orderBy: { created_at: 'asc' },
@@ -94,7 +113,9 @@ const listMessages = async (req, res) => {
 
     const mappedMessages = messages.map(m => ({
       ...m,
-      sender_name: m.users_messages_sender_idTousers.name
+      sender_name: m.users_messages_sender_idTousers?.name || 'User',
+      sender_picture: m.users_messages_sender_idTousers?.profile_picture,
+      service_title: m.services?.title
     }));
 
     res.json({
@@ -114,7 +135,7 @@ const listMessages = async (req, res) => {
 const sendMessage = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { conversationId, receiverId, content, messageType = 'text' } = req.body;
+    const { conversationId, receiverId, content, messageType = 'text', serviceId } = req.body;
     const file = req.file;
 
     console.log('Send message request:', { 
@@ -184,6 +205,7 @@ const sendMessage = async (req, res) => {
         conversation_id: conversationId,
         sender_id: userId,
         receiver_id: receiverId,
+        service_id: serviceId,
         message_type: finalMessageType,
         content: content || null,
         file_url: fileUrl,

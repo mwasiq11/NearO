@@ -78,7 +78,7 @@ model conversations {
   services                               services?                        @relation(fields: [service_id], references: [id], onUpdate: NoAction, map: "conversations_ibfk_3")
   messages                               messages[]
 
-  @@unique([seeker_id, provider_id, service_id], map: "uniq_conversation")
+  @@unique([seeker_id, provider_id], map: "uniq_conversation")
   @@index([last_message_at], map: "idx_last_message")
   @@index([provider_id], map: "idx_provider")
   @@index([seeker_id], map: "idx_seeker")
@@ -121,6 +121,7 @@ model messages {
   conversation_id                   String                 @db.VarChar(36)
   sender_id                         String                 @db.VarChar(36)
   receiver_id                       String                 @db.VarChar(36)
+  service_id                        String?                @db.VarChar(36)
   message_type                      messages_message_type? @default(text)
   content                           String?                @db.Text
   file_url                          String?                @db.VarChar(500)
@@ -134,12 +135,14 @@ model messages {
   conversations                     conversations          @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "messages_ibfk_1")
   users_messages_sender_idTousers   users                  @relation("messages_sender_idTousers", fields: [sender_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "messages_ibfk_2")
   users_messages_receiver_idTousers users                  @relation("messages_receiver_idTousers", fields: [receiver_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "messages_ibfk_3")
+  services                          services?              @relation(fields: [service_id], references: [id], onUpdate: NoAction, map: "messages_ibfk_4")
 
   @@index([conversation_id], map: "idx_conversation")
   @@index([created_at], map: "idx_created_at")
   @@index([receiver_id], map: "idx_receiver")
   @@index([sender_id], map: "idx_sender")
   @@index([status], map: "idx_status")
+  @@index([service_id], map: "idx_message_service")
 }
 
 model notification_preferences {
@@ -237,6 +240,7 @@ model services {
   total_reviews                      Int?            @default(0)
   bookings                           bookings[]
   conversations                      conversations[]
+  messages                           messages[]
   reviews                            reviews[]
   users_services_provider_idTousers  users           @relation("services_provider_idTousers", fields: [provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "services_ibfk_1")
   users_services_moderated_byTousers users?          @relation("services_moderated_byTousers", fields: [moderated_by], references: [id], onUpdate: NoAction, map: "services_ibfk_2")

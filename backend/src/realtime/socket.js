@@ -46,12 +46,18 @@ async function createConversation(seekerId, providerId, serviceId = null) {
   const existing = await prisma.conversations.findFirst({
     where: {
       seeker_id: seekerId,
-      provider_id: providerId,
-      service_id: serviceId
+      provider_id: providerId
     }
   });
 
   if (existing) {
+    // If it's the first time a service is being linked to this conversation, update it
+    if (!existing.service_id && serviceId) {
+      await prisma.conversations.update({
+        where: { id: existing.id },
+        data: { service_id: serviceId }
+      });
+    }
     return existing.id;
   }
 
@@ -68,7 +74,7 @@ async function createConversation(seekerId, providerId, serviceId = null) {
   return conversationId;
 }
 
-async function insertMessage(conversationId, senderId, receiverId, content) {
+async function insertMessage(conversationId, senderId, receiverId, content, serviceId = null) {
   const messageId = uuidv4();
   
   // Use a transaction to ensure message and conversation update are atomic
@@ -79,6 +85,7 @@ async function insertMessage(conversationId, senderId, receiverId, content) {
         conversation_id: conversationId,
         sender_id: senderId,
         receiver_id: receiverId,
+        service_id: serviceId,
         content,
         status: 'sent'
       }
@@ -206,7 +213,7 @@ function initSocket(server) {
           }
         }
 
-        const message = await insertMessage(convoId, userId, receiverId, content);
+        const message = await insertMessage(convoId, userId, receiverId, content, serviceId || null);
 
         socket.join(convoId);
         // Emit to sender only

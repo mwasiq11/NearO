@@ -91,7 +91,7 @@ export async function fetchCategoryImage(category: string): Promise<string> {
     const data: UnsplashSearchResponse = await response.json();
     
     if (data.results && data.results.length > 0) {
-      const imageUrl = data.results[0].urls.regular + '&w=800&q=80';
+      const imageUrl = data.results[0].urls.regular + '&w=400&q=80';
       
       // Cache the result
       imageCache.set(cacheKey, imageUrl);

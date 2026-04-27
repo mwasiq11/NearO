@@ -44,6 +44,7 @@ export default function ServiceCard({ listing, onClick }: ServiceCardProps) {
           src={imageUrl}
           alt={listing.title}
           className="h-full w-full object-cover transition-transform duration-200 ease-in-out group-hover:scale-[1.03]"
+          loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
         <div className="absolute left-3 top-3">

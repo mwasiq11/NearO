@@ -69,6 +69,7 @@ export const useChat = () => {
       provider_email: conv.provider_email,
       provider_picture: conv.provider_picture,
       service_title: conv.service_title,
+      purchased_services: conv.purchased_services || [],
       last_message_at: conv.last_message_at,
       last_message_preview: conv.last_message_preview,
     };
@@ -210,7 +211,7 @@ export const useChat = () => {
     dispatch(setCurrentConversation(null));
   }, [dispatch]);
 
-  const sendMessage = useCallback((content: string, type: Message['type'] = 'text') => {
+  const sendMessage = useCallback((content: string, type: Message['type'] = 'text', serviceId?: string) => {
     if (!user || !currentConversation) return;
     const socket = socketRef.current;
     if (!socket) return;
@@ -221,6 +222,7 @@ export const useChat = () => {
       receiverId,
       content,
       type,
+      serviceId, // Pass serviceId context
     });
   }, [currentConversation, user]);
 
@@ -231,7 +233,7 @@ export const useChat = () => {
   ) => {
     if (!user) return null;
     
-    // Check if conversation already exists
+    // Check if conversation already exists (unified by seeker-provider)
     const existing = conversations.find(
       c => c.participants.includes(user.id) && c.participants.includes(otherUserId)
     );
@@ -243,7 +245,8 @@ export const useChat = () => {
         socket.emit('conversation:join', { conversationId: existing.id });
       }
       if (initialMessage) {
-        sendMessage(initialMessage);
+        // Pass the current listing ID to contextualize the message
+        sendMessage(initialMessage, 'text', listing?.id);
       }
       return existing;
     }
@@ -267,6 +270,7 @@ export const useChat = () => {
       listing,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      purchased_services: [] as any
     };
 
     dispatch(createConversation(newConversation));
@@ -282,11 +286,12 @@ export const useChat = () => {
         type: 'text',
         isRead: false,
         createdAt: new Date().toISOString(),
-      }));
+        service_title: listing?.title
+      } as any));
     }
 
     return newConversation;
-  }, [dispatch, user, conversations]);
+  }, [dispatch, user, conversations, sendMessage]);
 
   const getConversationById = useCallback((id: string): Conversation | undefined => {
     return conversations.find(c => c.id === id);

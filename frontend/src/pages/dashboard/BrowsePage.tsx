@@ -22,6 +22,7 @@ const BrowsePage = () => {
   const [category, setCategory] = useState(searchParams.get('category') || '');
   const [neighborhood, setNeighborhood] = useState(searchParams.get('neighborhood') || '');
   const [neighborhoods, setNeighborhoods] = useState<Array<{ value: string; label: string; count: number }>>([]);
+  const [visibleCount, setVisibleCount] = useState(12);
 
   // Debounce all search inputs
   const debouncedQuery = useDebounce(query, 500);
@@ -189,8 +190,15 @@ const BrowsePage = () => {
 
       <Skeleton name="browse-listings" loading={isLoading}>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {listings.map((listing) => {
-            const imageUrl = listing.images[0] || getCategoryImage(listing.category);
+          {listings.slice(0, visibleCount).map((listing) => {
+            let imageUrl = listing.images[0] || getCategoryImage(listing.category);
+            
+            // Ensure we use optimized width if it's an Unsplash URL
+            if (imageUrl.includes('unsplash.com') && !imageUrl.includes('w=')) {
+              imageUrl += '&w=400&q=80';
+            } else if (imageUrl.includes('unsplash.com') && imageUrl.includes('w=800')) {
+              imageUrl = imageUrl.replace('w=800', 'w=400');
+            }
             
             // Smart location display logic - show actual data or friendly message
             let locationText = 'Location not specified';
@@ -213,6 +221,7 @@ const BrowsePage = () => {
                     src={imageUrl} 
                     alt={listing.title} 
                     className="w-full h-full object-cover"
+                    loading="lazy"
                     onError={(e) => {
                       e.currentTarget.src = getCategoryImage('Other');
                     }}
@@ -249,6 +258,18 @@ const BrowsePage = () => {
           })}
         </div>
       </Skeleton>
+
+      {!isLoading && listings.length > visibleCount && (
+        <div className="flex justify-center pt-4">
+          <Button 
+            variant="outline" 
+            onClick={() => setVisibleCount(prev => prev + 12)}
+            className="w-full md:w-auto min-w-[200px]"
+          >
+            Load more services
+          </Button>
+        </div>
+      )}
 
       {!isLoading && listings.length === 0 && (
         <div className="text-sm text-muted-foreground">No services found.</div>

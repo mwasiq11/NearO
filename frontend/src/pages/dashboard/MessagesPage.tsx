@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useChat } from '@/hooks/useChat';
 import { useAuth } from '@/hooks/useAuth';
@@ -157,6 +158,7 @@ const MessagesPage = () => {
           receiverId: otherUser.id,
           content: messageContent,
           messageType: 'text',
+          serviceId: currentConversation.listingId
         }, { auth: true });
         loadMessages(currentConversation.id, true);
       }
@@ -371,11 +373,18 @@ const MessagesPage = () => {
                             </span>
                           )}
                         </div>
-                        {conv.service_title && (
+                        {conv.purchased_services && conv.purchased_services.length > 0 ? (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Badge variant="success" className="text-[9px] px-1 py-0 h-3.5 font-black uppercase tracking-tighter">
+                              ✓ {conv.purchased_services[0].title}
+                              {conv.purchased_services.length > 1 && ` +${conv.purchased_services.length - 1}`}
+                            </Badge>
+                          </div>
+                        ) : conv.service_title ? (
                           <span className="inline-block mt-1 text-[10px] font-medium text-primary/60 truncate max-w-[150px]">
                             Re: {conv.service_title}
                           </span>
-                        )}
+                        ) : null}
                       </div>
                     </button>
                   );
@@ -442,6 +451,7 @@ const MessagesPage = () => {
               <ConversationHeader
                 otherUser={getCurrentOtherUser()!}
                 serviceName={currentConversation.service_title}
+                purchasedServices={(currentConversation as any).purchased_services}
                 onBack={handleBackToList}
                 onPhoneClick={() => {
                   const other = getOtherUser(currentConversation);

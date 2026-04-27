@@ -89,6 +89,7 @@ const MyServicesPage = () => {
             src={imageUrl}
             alt={listing.title}
             className="w-full h-full object-cover origin-center transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
             onError={(e) => {
               e.currentTarget.src = getCategoryImage('Other');
             }}
@@ -281,6 +282,7 @@ const MyServicesPage = () => {
                           src={imageUrl} 
                           alt={booking.serviceTitle} 
                           className="w-full h-full object-cover origin-center transition-transform duration-500 group-hover:scale-105"
+                          loading="lazy"
                           onError={(e) => { e.currentTarget.src = getCategoryImage('Other'); }}
                         />
                         <div className="absolute top-3 left-3">

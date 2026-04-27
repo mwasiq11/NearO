@@ -149,6 +149,14 @@ export interface Conversation {
   last_message_at?: string;
   service_title?: string;
   last_message_preview?: string;
+  purchased_services?: Array<{
+    id: string;
+    title: string;
+    image_url?: string;
+    price?: number;
+    currency?: string;
+    category?: string;
+  }>;
 }
 
 export interface Message {
@@ -161,6 +169,8 @@ export interface Message {
   metadata?: Record<string, any>;
   isRead: boolean;
   createdAt: string;
+  service_title?: string;
+  serviceTitle?: string;
 }
 
 // Filter & Search Types
