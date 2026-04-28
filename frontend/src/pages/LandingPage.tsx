@@ -95,18 +95,18 @@ const LandingPage = () => {
 
 
               <div className="space-y-4">
-                <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight">
+                <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-tight">
                   <span style={{ fontFamily: 'Poppins, sans-serif' }} className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent pb-2 block">
                     NearO
                   </span>
                 </h1>
 
-                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight">
+                <h2 className="text-xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight">
                   Your Community, Your Services
                 </h2>
               </div>
 
-              <p className="text-xl text-muted-foreground max-w-2xl leading-relaxed">
+              <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-[90%] sm:max-w-2xl mx-auto leading-relaxed">
                 Connect with trusted local providers for home repairs, tutoring, pet care, and more.
                 Build relationships with your neighbors while getting things done.
               </p>
@@ -115,7 +115,7 @@ const LandingPage = () => {
                 <Button
                   size="xl"
                   variant="hero"
-                  className="group"
+                  className="group text-sm sm:text-base"
                   onClick={() => navigate('/signup')}
                 >
                   Find Services
@@ -124,6 +124,7 @@ const LandingPage = () => {
                 <Button
                   size="xl"
                   variant="outline"
+                  className="text-sm sm:text-base"
                   onClick={() => navigate('/signup')}
                 >
                   Become a Provider
@@ -150,8 +151,8 @@ const LandingPage = () => {
                 transition={{ delay: index * 0.1 }}
                 className="text-center"
               >
-                <p className="text-3xl md:text-4xl font-bold text-primary">{stat.value}</p>
-                <p className="text-muted-foreground">{stat.label}</p>
+                <p className="text-2xl md:text-3xl lg:text-4xl font-bold text-primary leading-tight">{stat.value}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground font-medium">{stat.label}</p>
               </motion.div>
             ))}
           </div>
@@ -166,8 +167,8 @@ const LandingPage = () => {
               <Sparkles className="h-4 w-4 mr-2 inline-block" />
               Explore Services
             </Badge>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">Popular Categories</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <h2 className="text-xl md:text-4xl lg:text-5xl font-bold mb-4 tracking-tight leading-tight">Popular Categories</h2>
+            <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-[90%] sm:max-w-2xl mx-auto leading-relaxed">
               Discover trusted local providers across a wide range of services
             </p>
           </div>
@@ -206,8 +207,8 @@ const LandingPage = () => {
                     <div className={`relative h-14 w-14 mx-auto mb-4 rounded-xl ${category.color} flex items-center justify-center transition-all duration-500 group-hover/card:scale-110 group-hover/card:-translate-y-1 group-hover/card:shadow-md`}>
                       <Icon className="h-6 w-6 transition-transform duration-500 group-hover/card:scale-110" />
                     </div>
-                    <h3 className="text-base font-semibold mb-1 relative z-10 transition-colors duration-300 group-hover/card:text-primary">{category.name}</h3>
-                    <p className="text-muted-foreground text-sm font-medium relative z-10">{category.count} providers</p>
+                    <h3 className="text-sm sm:text-base font-semibold mb-1 relative z-10 transition-colors duration-300 group-hover/card:text-primary">{category.name}</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground font-medium relative z-10">{category.count} providers</p>
 
                     <div className="absolute top-3 right-3 p-1.5 bg-primary/10 backdrop-blur-sm rounded-full opacity-0 group-hover/card:opacity-100 transition-all duration-300 transform translate-x-4 -translate-y-4 group-hover/card:translate-x-0 group-hover/card:translate-y-0 border border-primary/20">
                       <ArrowRight className="h-3.5 w-3.5 text-primary" />
@@ -290,8 +291,8 @@ const LandingPage = () => {
               <Sparkles className="h-4 w-4 mr-2 inline-block" />
               Simple Process
             </Badge>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">How It Works</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <h2 className="text-xl md:text-4xl lg:text-5xl font-bold mb-4 tracking-tight leading-tight">How It Works</h2>
+            <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-[90%] sm:max-w-2xl mx-auto leading-relaxed">
               Get started in three simple steps
             </p>
           </div>
@@ -350,8 +351,8 @@ const LandingPage = () => {
                   </div>
 
                   <div className="mt-auto relative z-10 text-center">
-                    <h3 className="text-2xl font-bold mb-3">{item.title}</h3>
-                    <p className="text-muted-foreground leading-relaxed text-lg">{item.description}</p>
+                    <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-3 leading-tight">{item.title}</h3>
+                    <p className="text-sm sm:text-base md:text-lg text-muted-foreground leading-relaxed">{item.description}</p>
                   </div>
                 </motion.div>
               );
@@ -380,10 +381,10 @@ const LandingPage = () => {
                 viewport={{ once: true }}
                 className="max-w-3xl mx-auto relative z-10"
               >
-                <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight text-foreground">
+                <h2 className="text-xl md:text-4xl lg:text-5xl font-bold mb-6 tracking-tight text-foreground leading-tight">
                   Ready to Join Your Local Community?
                 </h2>
-                <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+                <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-[90%] sm:max-w-2xl mx-auto mb-10 leading-relaxed">
                   Whether you're looking for help or want to offer your skills,
                   NearO connects you with trusted neighbors.
                 </p>
