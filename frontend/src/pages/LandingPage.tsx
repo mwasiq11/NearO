@@ -48,10 +48,10 @@ const LandingPage = () => {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-1 group">
             <div className="h-10 w-10 flex items-center justify-center -ml-2">
-              <img 
-                src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" 
-                alt="NearO" 
-                className="h-[120%] w-[120%] object-contain mix-blend-multiply dark:invert dark:-hue-rotate-180 dark:mix-blend-screen transform-gpu drop-shadow-sm relative z-10" 
+              <img
+                src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493"
+                alt="NearO"
+                className="h-[120%] w-[120%] object-contain mix-blend-multiply dark:invert dark:-hue-rotate-180 dark:mix-blend-screen transform-gpu drop-shadow-sm relative z-10"
               />
             </div>
             <div className="overflow-hidden transition-all duration-500 ease-in-out w-0 opacity-0 group-hover:w-[90px] group-hover:opacity-100 flex items-center whitespace-nowrap transform-gpu relative -ml-1">
@@ -92,7 +92,7 @@ const LandingPage = () => {
               transition={{ duration: 0.6 }}
               className="flex flex-col items-center space-y-8"
             >
-            
+
 
               <div className="space-y-4">
                 <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight">
@@ -100,7 +100,7 @@ const LandingPage = () => {
                     NearO
                   </span>
                 </h1>
-                
+
                 <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight">
                   Your Community, Your Services
                 </h2>
@@ -131,29 +131,6 @@ const LandingPage = () => {
               </div>
 
               <div className="flex flex-col sm:flex-row items-center gap-6 pt-8 justify-center">
-                <div className="flex -space-x-3">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div
-                      key={i}
-                      className="h-10 w-10 rounded-full border-2 border-background bg-muted overflow-hidden"
-                    >
-                      <img
-                        src={`https://i.pravatar.cc/40?img=${i + 10}`}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                  ))}
-                </div>
-                <div className="text-center sm:text-left">
-                  <div className="flex w-full items-center justify-center sm:justify-start gap-1">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <Star key={i} className="h-4 w-4 fill-accent text-accent" />
-                    ))}
-                    <span className="ml-1 font-medium">4.9</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Based on 2,500+ reviews</p>
-                </div>
               </div>
             </motion.div>
           </div>
@@ -225,7 +202,7 @@ const LandingPage = () => {
                   >
                     {/* Vibrant Theme Hover Sheen */}
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                    
+
                     <div className={`relative h-14 w-14 mx-auto mb-4 rounded-xl ${category.color} flex items-center justify-center transition-all duration-500 group-hover/card:scale-110 group-hover/card:-translate-y-1 group-hover/card:shadow-md`}>
                       <Icon className="h-6 w-6 transition-transform duration-500 group-hover/card:scale-110" />
                     </div>
@@ -252,7 +229,8 @@ const LandingPage = () => {
 
       {/* How It Works */}
       <section className="py-24 px-4 relative overflow-hidden bg-background">
-        <style dangerouslySetInnerHTML={{__html: `
+        <style dangerouslySetInnerHTML={{
+          __html: `
           .three-d-wrapper {
             perspective: 1000px;
           }
@@ -358,7 +336,7 @@ const LandingPage = () => {
                   {/* Subtle inner gradient shift on hover */}
                   <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
-                  <div 
+                  <div
                     className="three-d-wrapper flex items-center justify-center my-10 relative z-10 mx-auto"
                     style={{ '--glow-color': item.glowColor } as React.CSSProperties}
                   >
@@ -370,7 +348,7 @@ const LandingPage = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="mt-auto relative z-10 text-center">
                     <h3 className="text-2xl font-bold mb-3">{item.title}</h3>
                     <p className="text-muted-foreground leading-relaxed text-lg">{item.description}</p>
@@ -386,7 +364,7 @@ const LandingPage = () => {
       <section className="py-24 px-4">
         <div className="container mx-auto">
           <div className="relative w-full rounded-[3rem] overflow-hidden border border-border/50 shadow-2xl bg-card">
-            
+
             {/* Colorful soft lights strictly contained inside the box */}
             <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-emerald-400/30 dark:bg-emerald-500/20 rounded-full blur-[80px] -translate-y-1/2 pointer-events-none" />
             <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-teal-400/30 dark:bg-teal-500/20 rounded-full blur-[80px] translate-y-1/2 pointer-events-none" />
@@ -395,7 +373,7 @@ const LandingPage = () => {
             <div className="relative z-10 bg-background/60 backdrop-blur-2xl p-12 md:p-24 text-center">
               {/* Subtle inner top-edge glare */}
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 dark:via-white/10 to-transparent" />
-              
+
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -440,10 +418,10 @@ const LandingPage = () => {
             <div>
               <div className="flex items-center gap-1 mb-4 group cursor-default">
                 <div className="h-10 w-10 flex items-center justify-center -ml-2">
-                  <img 
-                    src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" 
-                    alt="NearO" 
-                    className="h-[120%] w-[120%] object-contain mix-blend-multiply dark:invert dark:-hue-rotate-180 dark:mix-blend-screen transform-gpu drop-shadow-sm relative z-10" 
+                  <img
+                    src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493"
+                    alt="NearO"
+                    className="h-[120%] w-[120%] object-contain mix-blend-multiply dark:invert dark:-hue-rotate-180 dark:mix-blend-screen transform-gpu drop-shadow-sm relative z-10"
                   />
                 </div>
                 <div className="overflow-hidden transition-all duration-500 ease-in-out w-0 opacity-0 group-hover:w-[80px] group-hover:opacity-100 flex items-center whitespace-nowrap transform-gpu relative -ml-1">

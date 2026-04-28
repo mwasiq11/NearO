@@ -291,13 +291,11 @@ const DashboardLayout = () => {
 
             {/* Center Section - Strictly Visually Centered */}
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
-              {isDashboardHome && (
-                <DashboardModeToggle
-                  value={dashboardView}
-                  onChange={handleDashboardViewChange}
-                  className="scale-[0.85] sm:scale-90 md:scale-100 origin-center"
-                />
-              )}
+              <DashboardModeToggle
+                value={dashboardView}
+                onChange={handleDashboardViewChange}
+                className="scale-[0.85] sm:scale-90 md:scale-100 origin-center"
+              />
             </div>
 
             {/* Right Section */}

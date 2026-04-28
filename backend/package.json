@@ -1,5 +1,5 @@
 {
-  "name": "neighbourly-backend",
+  "name": "nearo-backend",
   "version": "1.0.0",
   "description": "Stage 2: Urban Expansion - Multi-City Network",
   "main": "src/app.js",
