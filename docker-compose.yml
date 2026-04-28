@@ -17,10 +17,7 @@ services:
       REDIS_URL: redis://redis:6379
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      NODE_ENV: development
-    volumes: 
-      - ./backend:/app
-      - /app/node_modules
+      NODE_ENV: production
     ports:
       - "3000:3000"
     depends_on:
@@ -38,22 +35,6 @@ services:
       start_period: 60s
     stdin_open: true
     tty: true
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    ports:
-      - "8080:8080"
-    command: ["npm", "run", "dev", "--", "--host"]
-    networks:
-      - nearo-net
-    depends_on:
-      - api
 
   mysql:
     image: mysql:8.0

@@ -51,10 +51,13 @@ while [ $db_attempt -lt $max_db_attempts ]; do
   if mysql -h "$HOST" -P 3306 -u "$DB_USER" -p"$DB_PASSWORD" --skip-ssl -e "SELECT 1" 2>/dev/null; then
     echo "✓ MySQL is responding!"
     echo ""
-    echo "=========================================="
-    echo "Starting Node.js application..."
-    echo "=========================================="
-    exec npm run dev
+    if [ "$NODE_ENV" = "production" ]; then
+      echo "Starting Node.js application in PRODUCTION mode..."
+      exec npm start
+    else
+      echo "Starting Node.js application in DEVELOPMENT mode..."
+      exec npm run dev
+    fi
   fi
   
   if [ $((db_attempt % 5)) -eq 0 ]; then
