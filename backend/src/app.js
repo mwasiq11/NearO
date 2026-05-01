@@ -44,11 +44,13 @@ app.use(cors({
     'http://localhost:8080',
     'http://127.0.0.1:8080',
     'http://localhost:8081',
-    'http://localhost:8082',
-    'http://localhost:8083',
+    'http://localhost:5173', 
+    'https://nearo-six.vercel.app', // Your Vercel URL
     process.env.FRONTEND_URL
   ].filter(Boolean),
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Body parsing middleware
@@ -57,7 +59,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Serve static files for uploads (no rate limiting on static files)
 app.use('/uploads', (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:8080');
+  res.header('Access-Control-Allow-Origin', 'https://nearo-six.vercel.app'); // Update this
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
