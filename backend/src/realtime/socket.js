@@ -117,13 +117,15 @@ function initSocket(server) {
     cors: {
       origin: [
         'http://localhost:8080',
-        'http://localhost:8081',
-        'http://localhost:8082',
-        'http://localhost:8083',
+        'http://localhost:5173', // Added common Vite local port
+        'https://nearo-six.vercel.app', // Explicitly add your Vercel URL
         process.env.FRONTEND_URL
       ].filter(Boolean),
-      credentials: true
-    }
+      credentials: true,
+      methods: ["GET", "POST"]
+    },
+    // Adding transparency for the transport upgrade
+    transports: ['websocket', 'polling'] 
   });
 
   ioInstance = io;
