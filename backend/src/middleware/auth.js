@@ -27,7 +27,7 @@ async function authenticate(req, res, next) {
 
     // Check for restricted scope (Forced Password Change phase)
     // Only allow /auth/change-password if token has PASSWORD_CHANGE_ONLY scope
-    const isChangePasswordRoute = req.originalUrl === '/auth/change-password' || req.originalUrl.startsWith('/auth/change-password?');
+    const isChangePasswordRoute = req.originalUrl.endsWith('/auth/change-password') || req.originalUrl.includes('/auth/change-password?');
     if (decoded.scope === 'PASSWORD_CHANGE_ONLY' && !isChangePasswordRoute) {
       return res.status(403).json({
         error: 'Password change required',
