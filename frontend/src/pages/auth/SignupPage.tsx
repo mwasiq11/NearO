@@ -18,7 +18,7 @@ const SignupPage = () => {
     confirmPassword: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   const { signup, loginWithGoogle, isLoading } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -31,7 +31,7 @@ const SignupPage = () => {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.name) newErrors.name = 'Name is required';
     if (!formData.email) newErrors.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -51,7 +51,7 @@ const SignupPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    
+
     await signup(formData);
   };
 
@@ -164,9 +164,9 @@ const SignupPage = () => {
               </p>
             )}
 
-            <Button 
-              type="submit" 
-              className="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all active:scale-[0.98] mt-2" 
+            <Button
+              type="submit"
+              className="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all active:scale-[0.98] mt-2"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -197,9 +197,11 @@ const SignupPage = () => {
             <div className="w-full flex justify-center group">
               <div className="w-full max-w-[360px] overflow-hidden rounded-full border border-input shadow-sm transition-all duration-300 hover:shadow-md hover:border-emerald-200 active:scale-[0.98] flex items-center justify-center bg-white">
                 <GoogleLogin
-                ux_mode="redirect"
-                login_uri="https://nearo-six.vercel.app/login"
+                  ux_mode="redirect"
+                  login_uri="https://codedevchat.me/api/auth/google/callback"
                   onSuccess={credentialResponse => {
+                    // Note: In redirect mode, the response is usually handled by the backend 
+                    // redirecting the user back to your dashboard with a token.
                     if (credentialResponse.credential) {
                       loginWithGoogle(credentialResponse.credential);
                     }
@@ -231,8 +233,8 @@ const SignupPage = () => {
       {/* Right Panel - Image with refined overlay */}
       <div className="hidden lg:block lg:w-1/2 relative overflow-hidden order-1 lg:order-2">
         <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/40 to-teal-900/60 z-10" />
-        <div 
-          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1200')] bg-cover bg-center transition-transform duration-10000 hover:scale-110" 
+        <div
+          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1200')] bg-cover bg-center transition-transform duration-10000 hover:scale-110"
         />
         <div className="relative z-20 h-full flex flex-col items-center justify-center p-16 text-center">
           <motion.div

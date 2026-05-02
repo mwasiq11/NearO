@@ -19,7 +19,7 @@ const LoginPage = () => {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
-  
+
   const { login, loginWithGoogle, isLoading, error } = useAuth();
 
   useEffect(() => {
@@ -40,10 +40,10 @@ const LoginPage = () => {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.email) newErrors.email = 'Email is required';
     if (!formData.password) newErrors.password = 'Password is required';
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -59,8 +59,8 @@ const LoginPage = () => {
       {/* Left Panel - Image with refined overlay */}
       <div className="hidden lg:block lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/40 to-teal-900/60 z-10" />
-        <div 
-          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=1200')] bg-cover bg-center transition-transform duration-10000 hover:scale-110" 
+        <div
+          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=1200')] bg-cover bg-center transition-transform duration-10000 hover:scale-110"
         />
         <div className="relative z-20 h-full flex flex-col items-center justify-center p-16 text-center">
           <motion.div
@@ -138,7 +138,7 @@ const LoginPage = () => {
             <div className="space-y-2">
               <div className="flex items-center justify-between px-1">
                 <Label htmlFor="password" className="text-sm font-semibold text-foreground">Password</Label>
-                <Link to="/forgot-password" className="text-xs font-medium text-emerald-600 hover:text-emerald-50" style={{color: '#10b981'}}>
+                <Link to="/forgot-password" className="text-xs font-medium text-emerald-600 hover:text-emerald-50" style={{ color: '#10b981' }}>
                   Forgot password?
                 </Link>
               </div>
@@ -167,9 +167,9 @@ const LoginPage = () => {
               {errors.password && <p className="text-xs font-medium text-destructive ml-1">{errors.password}</p>}
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all active:scale-[0.98]" 
+            <Button
+              type="submit"
+              className="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all active:scale-[0.98]"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -200,9 +200,11 @@ const LoginPage = () => {
             <div className="w-full flex justify-center group">
               <div className="w-full max-w-[360px] overflow-hidden rounded-full border border-input shadow-sm transition-all duration-300 hover:shadow-md hover:border-emerald-200 active:scale-[0.98] flex items-center justify-center bg-white">
                 <GoogleLogin
-                ux_mode="redirect"
-  login_uri="https://nearo-six.vercel.app/login"
+                  ux_mode="redirect"
+                  login_uri="https://codedevchat.me/api/auth/google/callback"
                   onSuccess={credentialResponse => {
+                    // Note: In redirect mode, the response is usually handled by the backend 
+                    // redirecting the user back to your dashboard with a token.
                     if (credentialResponse.credential) {
                       loginWithGoogle(credentialResponse.credential);
                     }
