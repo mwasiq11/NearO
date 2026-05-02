@@ -276,12 +276,12 @@ const DashboardLayout = () => {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
         <header className="sticky top-0 z-30 border-b border-border/60 bg-card/95 backdrop-blur transition-all duration-200">
-          <div className="relative flex h-[56px] items-center justify-between px-3 md:h-16 md:px-4 lg:h-[72px] lg:px-6">
+          <div className="relative flex h-[56px] items-center justify-between px-2.5 md:h-16 md:px-4 lg:h-[72px] lg:px-6">
             {/* Left Section */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
               <button
                 onClick={handleSidebarToggle}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-all duration-150 hover:bg-muted/70 hover:text-foreground active:scale-95 md:hidden"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-all duration-150 hover:bg-muted/70 hover:text-foreground active:scale-95 md:h-10 md:w-10 md:hidden"
                 aria-label="Open menu"
               >
                 <Menu className="h-6 w-6" />
@@ -294,21 +294,21 @@ const DashboardLayout = () => {
               <DashboardModeToggle
                 value={dashboardView}
                 onChange={handleDashboardViewChange}
-                className="scale-[0.85] sm:scale-90 md:scale-100 origin-center"
+                className="scale-[0.72] sm:scale-90 md:scale-100 origin-center"
               />
             </div>
 
             {/* Right Section */}
-            <div className="flex items-center gap-2 md:gap-3 lg:gap-4">
+            <div className="flex items-center gap-1.5 md:gap-3 lg:gap-4">
               <button
                 onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-all duration-150 hover:bg-muted/70 hover:text-foreground active:scale-95"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-all duration-150 hover:bg-muted/70 hover:text-foreground active:scale-95 md:h-10 md:w-10"
                 aria-label="Toggle theme"
               >
                 {resolvedTheme === 'dark' ? <Sun className="h-[20px] w-[20px]" /> : <Moon className="h-[20px] w-[20px]" />}
               </button>
 
-              <div className="flex h-10 w-10 items-center justify-center shrink-0">
+              <div className="flex h-9 w-9 items-center justify-center shrink-0 md:h-10 md:w-10">
                 <NotificationDropdown />
               </div>
 
