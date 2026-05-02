@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { GoogleLogin } from '@react-oauth/google';
 
 const LoginPage = () => {
+  const navigate = useNavigate();
   const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -21,6 +22,26 @@ const LoginPage = () => {
   const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
 
   const { login, loginWithGoogle, isLoading, error } = useAuth();
+
+  useEffect(() => {
+    // 1. Check if the URL has tokens from the Google Redirect
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    const refreshToken = params.get('refreshToken');
+
+    if (token) {
+      // 2. Save them exactly how your app expects them
+      localStorage.setItem('accessToken', token);
+      if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
+
+      // 3. Clean the URL bar and push to dashboard
+      window.history.replaceState({}, document.title, "/login");
+      navigate('/dashboard', { replace: true });
+      
+      // Force a reload if needed or just let React state handle it
+      // window.location.reload(); 
+    }
+  }, [location, navigate]);
 
   useEffect(() => {
     // Clear success message after 5 seconds
