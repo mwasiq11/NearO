@@ -906,46 +906,41 @@ const changePassword = async (req, res) => {
 /**
  * Google Authentication (Login/Signup)
  */
-const googleAuth = async (req, res) => {
+export const googleAuth = async (req, res) => {
   try {
-    const { token } = req.body;
+    // 1. Redirect mode uses 'credential' in req.body, not 'token'
+    const { credential } = req.body;
 
-    if (!token) {
-      return res.status(400).json({ error: 'Google token is required' });
+    if (!credential) {
+      // In redirect mode, if we error, we should redirect back to login with an error param
+      return res.redirect('https://nearo-six.vercel.app/login?error=no_credential');
     }
 
-    // 1. Verify token with Google
-    const googleUser = await verifyGoogleToken(token);
+    // 2. Verify token with Google (Ensure verifyGoogleToken accepts the credential string)
+    const googleUser = await verifyGoogleToken(credential);
     const { email, name, picture, googleId } = googleUser;
     const normalizedEmail = email.toLowerCase();
 
-    // 2. Check if user exists
+    // 3. Check if user exists
     let user = await prisma.users.findUnique({
       where: { email: normalizedEmail }
     });
 
     if (user) {
-      // CASE 1: USER EXISTS
-      // Link Google account if not already linked or if provider is local
       if (!user.google_id || user.auth_provider === 'local') {
         user = await prisma.users.update({
           where: { id: user.id },
           data: { 
             google_id: googleId,
             auth_provider: 'google',
-            // Update profile picture if missing
             profile_picture: user.profile_picture || picture,
-            is_verified: true, // Google emails are already verified
+            is_verified: true,
             email_verified_at: user.email_verified_at || new Date()
           }
         });
       }
     } else {
-      // CASE 2: NEW USER
       const id = uuidv4();
-      
-      // We generate a random password because the field is likely required in the schema/existing logic
-      // But they will primarily use Google. They can reset it later if they want to use local login.
       const randomPassword = crypto.randomBytes(32).toString('hex');
       const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
@@ -954,7 +949,7 @@ const googleAuth = async (req, res) => {
           id,
           name,
           email: normalizedEmail,
-          password: hashedPassword, // Dummy password for Google-only users
+          password: hashedPassword,
           google_id: googleId,
           auth_provider: 'google',
           profile_picture: picture,
@@ -964,48 +959,44 @@ const googleAuth = async (req, res) => {
         }
       });
 
-      // Send welcome email for new Google users
       try {
         await sendWelcomeEmail(normalizedEmail, name);
       } catch (emailError) {
-        console.warn('Welcome email failed for Google user:', emailError);
+        console.warn('Welcome email failed:', emailError);
       }
     }
 
-    // 3. Check if account is active
     if (!user.is_active) {
-      return res.status(403).json({ error: 'Account is suspended' });
+      return res.redirect('https://nearo-six.vercel.app/login?error=suspended');
     }
 
-    // 4. Update last login
     await prisma.users.update({
       where: { id: user.id },
       data: { last_login_at: new Date() }
     });
 
-    // 5. Generate JWT tokens
+    // 4. Generate JWT tokens
     const tokens = generateTokenPair({
       id: user.id,
       email: user.email,
       role: user.role
     });
 
-    // 6. Store refresh token in database (Session Management)
+    // 5. Session Management (Store refresh token)
     const tokenHash = await bcrypt.hash(tokens.refreshToken, 10);
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
+    expiresAt.setDate(expiresAt.getDate() + 30);
 
-    const sessionId = uuidv4();
     await prisma.user_sessions.create({
       data: {
-        id: sessionId,
+        id: uuidv4(),
         user_id: user.id,
         token_hash: tokenHash,
         expires_at: expiresAt
       }
     });
 
-    // 7. Log audit trail
+    // 6. Audit Trail
     const ctx = buildRequestContext(req);
     await logAudit({
       actorId: user.id,
@@ -1017,27 +1008,15 @@ const googleAuth = async (req, res) => {
       userAgent: ctx.userAgent
     });
 
-    // 8. Return tokens and user
-    res.json({
-      message: 'Google login successful',
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        is_verified: user.is_verified,
-        profile_picture: user.profile_picture
-      },
-      ...tokens
-    });
+    // 7. FINAL STEP: Redirect back to the frontend
+    // We pass the accessToken in the URL so the frontend can capture it and log the user in.
+    // For production, you might prefer setting a Secure HTTP-Only Cookie.
+    const redirectUrl = `https://nearo-six.vercel.app/dashboard?token=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
+    return res.redirect(redirectUrl);
 
   } catch (error) {
-    console.error('Google Auth Error Details:', {
-      message: error.message,
-      stack: error.stack,
-      code: error.code
-    });
-    res.status(500).json({ error: 'Google authentication failed', message: error.message });
+    console.error('Google Auth Error:', error.message);
+    return res.redirect('https://nearo-six.vercel.app/login?error=auth_failed');
   }
 };
 

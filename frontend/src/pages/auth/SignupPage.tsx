@@ -198,10 +198,8 @@ const SignupPage = () => {
               <div className="w-full max-w-[360px] overflow-hidden rounded-full border border-input shadow-sm transition-all duration-300 hover:shadow-md hover:border-emerald-200 active:scale-[0.98] flex items-center justify-center bg-white">
                 <GoogleLogin
                   ux_mode="redirect"
-                  login_uri="https://codedevchat.me/api/auth/google/callback"
+                  login_uri="https://codedevchat.me/api/auth/google"
                   onSuccess={credentialResponse => {
-                    // Note: In redirect mode, the response is usually handled by the backend 
-                    // redirecting the user back to your dashboard with a token.
                     if (credentialResponse.credential) {
                       loginWithGoogle(credentialResponse.credential);
                     }
