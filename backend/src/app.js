@@ -97,31 +97,32 @@ app.get('/health', (req, res) => {
 app.use(globalLimiter);
 
 // API Routes
-app.use('/auth', authRoutes);
-app.use('/search', searchRoutes);
-app.use('/users', userRoutes);
-app.use('/services', serviceRoutes);
-app.use('/bookings', bookingRoutes);
-app.use('/admin', adminRoutes);
-app.use('/messages', messageRoutes);
-app.use('/reviews', reviewRoutes);
-app.use('/discover', discoveryRoutes);
-app.use('/notifications', notificationRoutes);
-app.use('/history', historyRoutes);
-app.use('/earnings', earningsRoutes);
+// API Routes - Updated to include /api prefix
+app.use('/api/auth', authRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/services', serviceRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/discover', discoveryRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/history', historyRoutes);
+app.use('/api/earnings', earningsRoutes);
 
-// 404 handler
+// 404 handler - Update the available endpoints text to match
 app.use((req, res) => {
   res.status(404).json({
     error: 'Not Found',
     message: `Route ${req.method} ${req.path} not found`,
     availableEndpoints: {
-      auth: '/auth',
-      search: '/search',
-      users: '/users',
-      services: '/services',
-      bookings: '/bookings',
-      admin: '/admin'
+      auth: '/api/auth',
+      search: '/api/search',
+      users: '/api/users',
+      services: '/api/services',
+      bookings: '/api/bookings',
+      admin: '/api/admin'
     }
   });
 });
