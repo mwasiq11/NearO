@@ -176,6 +176,30 @@ export const useAuth = () => {
     navigate('/dashboard');
   }, [dispatch, navigate, normalizeUser]);
 
+  const loginWithTokens = useCallback(async (accessToken: string, refreshToken: string): Promise<boolean> => {
+    dispatch(loginStart());
+    authStorage.setTokens(accessToken, refreshToken);
+    
+    try {
+      const data = await api.get<any>('/users/me', { auth: true });
+      const normalized = normalizeUser(data);
+      
+      authStorage.setUser(normalized);
+      dispatch(loginSuccess({ 
+        user: normalized, 
+        accessToken, 
+        refreshToken 
+      }));
+
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch user profile';
+      dispatch(loginFailure(message));
+      authStorage.clearTokens();
+      return false;
+    }
+  }, [dispatch, normalizeUser]);
+
   const signup = useCallback(async (data: SignupForm): Promise<boolean> => {
     dispatch(loginStart());
     
@@ -244,6 +268,7 @@ export const useAuth = () => {
     error,
     login,
     loginWithGoogle,
+    loginWithTokens,
     changePassword,
     completeOtpLogin,
     signup,

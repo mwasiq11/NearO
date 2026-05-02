@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { GoogleLogin } from '@react-oauth/google';
+import { authStorage } from '@/lib/api';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ const LoginPage = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
 
-  const { login, loginWithGoogle, isLoading, error } = useAuth();
+  const { login, loginWithGoogle, loginWithTokens, isLoading, error } = useAuth();
 
   useEffect(() => {
     // 1. Check if the URL has tokens from the Google Redirect
@@ -30,18 +31,20 @@ const LoginPage = () => {
     const refreshToken = params.get('refreshToken');
 
     if (token) {
-      // 2. Save them exactly how your app expects them
-      localStorage.setItem('accessToken', token);
-      if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
-
-      // 3. Clean the URL bar and push to dashboard
-      window.history.replaceState({}, document.title, "/login");
-      navigate('/dashboard', { replace: true });
+      const handleTokenLogin = async () => {
+        // 2. Use the new loginWithTokens method to fetch user data and update Redux
+        const success = await loginWithTokens(token, refreshToken || '');
+        
+        if (success) {
+          // 3. Clean the URL bar and push to dashboard
+          window.history.replaceState({}, document.title, "/login");
+          navigate('/dashboard', { replace: true });
+        }
+      };
       
-      // Force a reload if needed or just let React state handle it
-      // window.location.reload(); 
+      handleTokenLogin();
     }
-  }, [location, navigate]);
+  }, [location, navigate, loginWithTokens]);
 
   useEffect(() => {
     // Clear success message after 5 seconds
