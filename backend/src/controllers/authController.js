@@ -906,7 +906,7 @@ const changePassword = async (req, res) => {
 /**
  * Google Authentication (Login/Signup)
  */
-export const googleAuth = async (req, res) => {
+const googleAuth = async (req, res) => {
   try {
     // 1. Redirect mode uses 'credential' in req.body, not 'token'
     const { credential } = req.body;
