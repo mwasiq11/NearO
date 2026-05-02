@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '');
+const API_BASE_URL = `${baseUrl}/api`;
 
 const ACCESS_TOKEN_KEY = 'nearo_access_token';
 const REFRESH_TOKEN_KEY = 'nearo_refresh_token';

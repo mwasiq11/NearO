@@ -31,14 +31,18 @@ const LoginPage = () => {
     const refreshToken = params.get('refreshToken');
 
     if (token) {
+      console.log("Google tokens detected in URL, starting auth process...");
       const handleTokenLogin = async () => {
         // 2. Use the new loginWithTokens method to fetch user data and update Redux
         const success = await loginWithTokens(token, refreshToken || '');
         
         if (success) {
+          console.log("Auth success! Redirecting to dashboard...");
           // 3. Clean the URL bar and push to dashboard
           window.history.replaceState({}, document.title, "/login");
           navigate('/dashboard', { replace: true });
+        } else {
+          console.error("Auth failed with the provided tokens.");
         }
       };
       
@@ -225,7 +229,7 @@ const LoginPage = () => {
               <div className="w-full max-w-[360px] overflow-hidden rounded-full border border-input shadow-sm transition-all duration-300 hover:shadow-md hover:border-emerald-200 active:scale-[0.98] flex items-center justify-center bg-white">
                 <GoogleLogin
                   ux_mode="redirect"
-                  login_uri="https://codedevchat.me/api/auth/google"
+                  login_uri={`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/google`}
                   onSuccess={credentialResponse => {
                     if (credentialResponse.credential) {
                       loginWithGoogle(credentialResponse.credential);

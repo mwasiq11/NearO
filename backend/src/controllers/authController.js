@@ -1010,8 +1010,8 @@ const googleAuth = async (req, res) => {
 
     // 7. FINAL STEP: Redirect back to the frontend
     // We pass the accessToken in the URL so the frontend can capture it and log the user in.
-    // For production, you might prefer setting a Secure HTTP-Only Cookie.
-    const redirectUrl = `https://nearo-six.vercel.app/login?token=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+    const redirectUrl = `${frontendUrl}/login?token=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
     return res.redirect(redirectUrl);
 
   } catch (error) {
