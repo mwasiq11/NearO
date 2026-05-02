@@ -197,6 +197,8 @@ const SignupPage = () => {
             <div className="w-full flex justify-center group">
               <div className="w-full max-w-[360px] overflow-hidden rounded-full border border-input shadow-sm transition-all duration-300 hover:shadow-md hover:border-emerald-200 active:scale-[0.98] flex items-center justify-center bg-white">
                 <GoogleLogin
+                ux_mode="redirect"
+                login_uri="https://nearo-six.vercel.app/login"
                   onSuccess={credentialResponse => {
                     if (credentialResponse.credential) {
                       loginWithGoogle(credentialResponse.credential);
