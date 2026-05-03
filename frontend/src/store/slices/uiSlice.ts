@@ -22,7 +22,7 @@ const getInitialTheme = (): Theme => {
   } catch (e) {
     // Ignore error
   }
-  return 'system';
+  return 'dark';
 };
 
 const initialState: UiState = {

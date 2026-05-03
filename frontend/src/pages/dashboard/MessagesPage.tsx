@@ -30,6 +30,7 @@ const MessagesPage = () => {
     currentConversation,
     currentMessages,
     openConversation,
+    closeConversation,
     loadMessages,
     isUserOnline,
     startConversation,
@@ -52,6 +53,13 @@ const MessagesPage = () => {
   const targetConversationId = searchParams.get('conversationId');
 
   useEffect(() => {
+    if (!targetConversationId) {
+      closeConversation();
+      setIsMobileConversationOpen(false);
+    }
+  }, []); // Run only on initial mount to clear previous state
+
+  useEffect(() => {
     if (!targetConversationId || conversations.length === 0) return;
 
     const target = conversations.find((c: any) => c.id === targetConversationId);
@@ -67,7 +75,6 @@ const MessagesPage = () => {
   useEffect(() => {
     if (currentConversation) {
       loadMessages(currentConversation.id);
-      setIsMobileConversationOpen(true);
     }
   }, [currentConversation, loadMessages]);
 

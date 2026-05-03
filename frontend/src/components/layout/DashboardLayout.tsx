@@ -15,6 +15,7 @@ import {
   Moon,
   Sun,
   Shield,
+  PlusCircle,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -56,9 +57,13 @@ const DashboardLayout = () => {
   const dashboardView = searchParams.get('view') === 'provider' ? 'provider' : 'seeker';
 
   const handleDashboardViewChange = (view: 'seeker' | 'provider') => {
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.set('view', view);
-    setSearchParams(nextParams, { replace: true });
+    if (location.pathname !== '/dashboard') {
+      navigate(`/dashboard?view=${view}`);
+    } else {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set('view', view);
+      setSearchParams(nextParams, { replace: true });
+    }
   };
 
   useEffect(() => {
@@ -190,7 +195,7 @@ const DashboardLayout = () => {
       <aside
         data-collapsed={isTabletSidebarCollapsed}
         className={cn(
-          'hidden min-h-0 flex-col overflow-hidden border-r bg-card md:flex lg:hidden',
+          'hidden h-[100dvh] min-h-0 flex-col overflow-hidden border-r bg-card md:flex lg:hidden',
           isTabletSidebarCollapsed ? 'w-[70px]' : 'w-[220px]'
         )}
       >
@@ -217,7 +222,7 @@ const DashboardLayout = () => {
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col justify-between">
-          <div className="min-h-0 flex-1 overflow-y-auto px-2 pt-3 pb-2">
+          <div className="min-h-0 flex-1 overflow-y-auto px-2 pt-3 pb-2 scrollbar-hide">
             <nav className="space-y-1">
               {navItems.map((item) => (
                 <Link
@@ -290,7 +295,7 @@ const DashboardLayout = () => {
             </div>
 
             {/* Center Section - Strictly Visually Centered */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex items-center justify-center">
               <DashboardModeToggle
                 value={dashboardView}
                 onChange={handleDashboardViewChange}
@@ -422,31 +427,40 @@ const DashboardLayout = () => {
 
         {/* Mobile Bottom Navigation - Enhanced for touch UX */}
         <nav className="dashboard-mobile-bottom-nav lg:hidden fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-lg border-t z-40 safe-bottom">
-          <div className="flex items-center justify-around h-16 px-2">
-            {navItems.slice(0, 5).map((item) => {
-              const active = isActive(item.path);
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={cn(
-                    "flex flex-col items-center justify-center flex-1 min-w-[50px] min-h-[50px] gap-0.5 rounded-xl transition-all relative active:scale-95",
-                    active
-                      ? "text-primary"
-                      : "text-muted-foreground"
-                  )}
-                >
+          <div className="flex items-center justify-around h-16 px-1 sm:px-2">
+            {[
+              { id: 'home', path: '/dashboard', icon: Home, label: 'Home', active: isActive('/dashboard') && !location.search.includes('view=') },
+              { 
+                id: 'seeker', 
+                onClick: () => handleDashboardViewChange('seeker'), 
+                icon: Search, 
+                label: 'Find', 
+                active: dashboardView === 'seeker' && location.search.includes('view=seeker')
+              },
+              { 
+                id: 'provider', 
+                onClick: () => handleDashboardViewChange('provider'), 
+                icon: PlusCircle, 
+                label: 'Provide', 
+                active: dashboardView === 'provider' && location.search.includes('view=provider')
+              },
+              { id: 'bookings', path: '/dashboard/bookings', icon: Calendar, label: 'Bookings', active: isActive('/dashboard/bookings'), badge: pendingReceivedCount },
+              { id: 'messages', path: '/dashboard/messages', icon: MessageSquare, label: 'Messages', active: isActive('/dashboard/messages'), badge: totalUnread },
+            ].map((item) => {
+              const active = item.active;
+              const content = (
+                <>
                   <div className={cn(
                     "p-1.5 rounded-xl transition-colors",
                     active && "bg-primary/10"
                   )}>
-                    <item.icon className={cn("h-6 w-6", active && "stroke-[2.5px]")} />
+                    <item.icon className={cn("h-5 w-5 sm:h-6 sm:w-6", active && "stroke-[2.5px]")} />
                   </div>
-                  <span className={cn("text-[10px] font-medium transition-transform", active && "scale-105")}>
+                  <span className={cn("text-[9px] sm:text-[10px] font-medium transition-transform whitespace-nowrap", active && "scale-105")}>
                     {item.label}
                   </span>
-                  {item.badge ? (
-                    <span className="absolute top-2 right-[calc(50%-18px)] h-4 w-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-card">
+                  {'badge' in item && item.badge ? (
+                    <span className="absolute top-1 right-[calc(50%-16px)] sm:top-2 sm:right-[calc(50%-18px)] h-4 w-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-card">
                       {item.badge > 9 ? '9+' : item.badge}
                     </span>
                   ) : null}
@@ -456,7 +470,28 @@ const DashboardLayout = () => {
                       className="absolute -top-[1px] w-8 h-1 bg-primary rounded-full"
                     />
                   )}
-                </Link>
+                </>
+              );
+
+              const className = cn(
+                "flex flex-col items-center justify-center flex-1 min-w-[45px] sm:min-w-[50px] min-h-[50px] gap-0.5 rounded-xl transition-all relative active:scale-95",
+                active
+                  ? "text-primary"
+                  : "text-muted-foreground"
+              );
+
+              if ('path' in item && item.path) {
+                return (
+                  <Link key={item.id} to={item.path} className={className}>
+                    {content}
+                  </Link>
+                );
+              }
+
+              return (
+                <button key={item.id} onClick={item.onClick} className={className}>
+                  {content}
+                </button>
               );
             })}
           </div>
@@ -481,7 +516,7 @@ const DashboardLayout = () => {
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
               className="lg:hidden fixed left-0 top-0 bottom-0 z-50 flex w-[82vw] max-w-sm flex-col bg-card border-r"
             >
-              <div className="h-16 flex items-center justify-between px-4 border-b">
+              <div className="h-16 flex items-center justify-between px-4 border-b shrink-0">
                 <Link to="/dashboard" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
                   <div className="h-9 w-9 rounded-lg overflow-hidden bg-background shadow-sm flex items-center justify-center p-1.5 border">
                     <img src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" alt="NearO" className="h-full w-full object-contain" />
@@ -493,7 +528,7 @@ const DashboardLayout = () => {
                 </button>
               </div>
 
-              <div className="p-4">
+              <div className="p-4 shrink-0">
                 <div className="flex items-center gap-3">
                   <Avatar
                     src={user?.avatar}
@@ -508,31 +543,61 @@ const DashboardLayout = () => {
                 </div>
               </div>
 
-              <nav className="flex-1 p-4 space-y-1">
+              <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1">
                 {navItems.map((item) => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors",
-                      isActive(item.path)
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  <div key={item.path} className="space-y-1">
+                    <Link
+                      to={item.path}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors",
+                        isActive(item.path) && (item.path !== '/dashboard' || !location.search.includes('view='))
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      <span>{item.label}</span>
+                      {item.badge ? (
+                        <Badge variant="destructive" className="ml-auto">
+                          {item.badge}
+                        </Badge>
+                      ) : null}
+                    </Link>
+
+                    {item.path === '/dashboard/my-services' && (
+                      <div className="space-y-1 pt-1">
+                        <button
+                          onClick={() => { handleDashboardViewChange('seeker'); setIsMobileMenuOpen(false); }}
+                          className={cn(
+                            "w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors",
+                            dashboardView === 'seeker' && location.search.includes('view=seeker')
+                              ? "bg-primary text-primary-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                          )}
+                        >
+                          <Search className="h-5 w-5" />
+                          <span>Find Service</span>
+                        </button>
+                        <button
+                          onClick={() => { handleDashboardViewChange('provider'); setIsMobileMenuOpen(false); }}
+                          className={cn(
+                            "w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors",
+                            dashboardView === 'provider' && location.search.includes('view=provider')
+                              ? "bg-primary text-primary-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                          )}
+                        >
+                          <PlusCircle className="h-5 w-5" />
+                          <span>Provide Service</span>
+                        </button>
+                      </div>
                     )}
-                  >
-                    <item.icon className="h-5 w-5" />
-                    <span>{item.label}</span>
-                    {item.badge ? (
-                      <Badge variant="destructive" className="ml-auto">
-                        {item.badge}
-                      </Badge>
-                    ) : null}
-                  </Link>
+                  </div>
                 ))}
               </nav>
 
-              <div className="p-4 border-t">
+              <div className="p-4 border-t shrink-0">
                 <button
                   onClick={() => { logout(); setIsMobileMenuOpen(false); }}
                   className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
