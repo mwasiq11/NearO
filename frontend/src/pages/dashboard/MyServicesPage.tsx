@@ -136,19 +136,18 @@ const MyServicesPage = () => {
             <div className="text-muted-foreground col-span-2">Available: <span className="text-foreground">{remainingQuantity === null ? 'Unlimited' : remainingQuantity}</span></div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between pt-4 border-t border-border mt-auto gap-2">
-            <div className="text-primary font-semibold text-lg md:text-xl drop-shadow-sm truncate min-w-0">
+          <div className="flex items-center justify-between pt-4 border-t border-border mt-auto gap-2">
+            <div className="text-primary font-bold text-lg md:text-xl truncate min-w-0 flex-1">
               {formatPrice(listing.price, listing.priceType, listing.currency)}
             </div>
-            <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-              <Button size="sm" variant="outline" className="font-semibold shadow-sm hover:bg-secondary/20 h-9 px-3" onClick={() => navigate(`/dashboard/listing/${listing.id}`)}>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button size="sm" variant="outline" className="font-semibold shadow-sm h-9 px-3 rounded-xl hover:bg-secondary/20" onClick={() => navigate(`/dashboard/listing/${listing.id}`)}>
                 View
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="destructive" className="font-semibold shadow-sm gap-1.5 rounded-xl h-9 px-2 md:px-3">
-                    <Trash2 className="h-4 w-4" />
-                    <span className="hidden sm:inline lg:hidden xl:hidden 2xl:inline">Delete</span>
+                  <Button size="sm" variant="destructive" className="h-9 w-9 p-0 rounded-xl shadow-sm flex items-center justify-center">
+                    <Trash2 className="h-4.5 w-4.5" />
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
@@ -242,7 +241,7 @@ const MyServicesPage = () => {
               {filteredProvidedListings.length > 0 ? (
                 <div className="space-y-3">
                   <h3 className="text-lg font-semibold capitalize">{providedFilter === 'all' ? 'All Services' : `${providedFilter} Services`}</h3>
-                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">
                     {filteredProvidedListings.map(renderProvidedCard)}
                   </div>
                 </div>
@@ -269,7 +268,7 @@ const MyServicesPage = () => {
         <TabsContent value="purchased" className="space-y-6 mt-6">
           <Skeleton name="purchased-services" loading={isLoading}>
             <div className="space-y-6">
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">
                 {myBookings.map((booking) => {
                   const imageUrl = booking.serviceImageUrl || getCategoryImage(booking.serviceCategory || 'Other');
                   
