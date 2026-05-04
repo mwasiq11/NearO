@@ -136,18 +136,19 @@ const MyServicesPage = () => {
             <div className="text-muted-foreground col-span-2">Available: <span className="text-foreground">{remainingQuantity === null ? 'Unlimited' : remainingQuantity}</span></div>
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t border-border mt-auto">
-            <div className="text-primary font-semibold text-xl drop-shadow-sm">{formatPrice(listing.price, listing.priceType, listing.currency)}</div>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="font-semibold shadow-sm hover:bg-secondary/20" onClick={() => navigate(`/dashboard/listing/${listing.id}`)}>
+          <div className="flex flex-wrap items-center justify-between pt-4 border-t border-border mt-auto gap-2">
+            <div className="text-primary font-semibold text-lg md:text-xl drop-shadow-sm truncate min-w-0">
+              {formatPrice(listing.price, listing.priceType, listing.currency)}
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+              <Button size="sm" variant="outline" className="font-semibold shadow-sm hover:bg-secondary/20 h-9 px-3" onClick={() => navigate(`/dashboard/listing/${listing.id}`)}>
                 View
               </Button>
-
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="destructive" className="font-semibold shadow-sm gap-1.5 rounded-xl">
+                  <Button size="sm" variant="destructive" className="font-semibold shadow-sm gap-1.5 rounded-xl h-9 px-2 md:px-3">
                     <Trash2 className="h-4 w-4" />
-                    Delete
+                    <span className="hidden sm:inline lg:hidden xl:hidden 2xl:inline">Delete</span>
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
@@ -310,9 +311,11 @@ const MyServicesPage = () => {
                           </div>
                         </div>
                         
-                        <div className="flex items-center justify-between pt-4 border-t border-border mt-auto">
-                           <div className="text-primary font-semibold text-xl drop-shadow-sm">{formatPrice(booking.totalPrice, 'fixed', booking.serviceCurrency)}</div>
-                          <Button size="sm" variant="hero" className="font-semibold shadow-sm" onClick={() => navigate(`/dashboard/bookings/${booking.id}`)}>
+                        <div className="flex flex-wrap items-center justify-between pt-4 border-t border-border mt-auto gap-2">
+                           <div className="text-primary font-semibold text-lg md:text-xl drop-shadow-sm truncate min-w-0">
+                             {formatPrice(booking.totalPrice, 'fixed', booking.serviceCurrency)}
+                           </div>
+                          <Button size="sm" variant="hero" className="font-semibold shadow-sm h-9 px-4 shrink-0 ml-auto" onClick={() => navigate(`/dashboard/bookings/${booking.id}`)}>
                             Manage
                           </Button>
                         </div>
