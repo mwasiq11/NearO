@@ -196,32 +196,70 @@ const getServices = async (req, res) => {
     const lat = parseFloat(latitude);
     const lng = parseFloat(longitude);
     const radiusKm = 25; // Mandatory 25km radius
+    let requestLat = lat;
+    let requestLng = lng;
+
+    if (!isValidLatLng(requestLat, requestLng) && req.user?.latitude && req.user?.longitude) {
+      requestLat = parseFloat(req.user.latitude);
+      requestLng = parseFloat(req.user.longitude);
+    }
+
+    // ─── PRIORITY: GPS > Profile Neighborhood > Profile City ───
+    const hasValidCoords = isValidLatLng(requestLat, requestLng);
+    const hasProfileNeighborhood = !!req.user?.neighborhood;
+    const hasProfileCity = !!req.user?.city;
+
+    if (!hasValidCoords && !hasProfileNeighborhood && !hasProfileCity) {
+      return res.json([]);
+    }
+
+    // Build location-aware query
+    let locationFilter = {};
+    if (!hasValidCoords) {
+      if (hasProfileNeighborhood) {
+        // ▶ PRIORITY 2: Neighborhood — show services in neighborhood + broader city
+        const orConditions = [
+          { neighborhood: { contains: req.user.neighborhood } }
+        ];
+        if (hasProfileCity) {
+          orConditions.push({ city: { contains: req.user.city } });
+        }
+        locationFilter = { OR: orConditions };
+      } else if (hasProfileCity) {
+        // ▶ PRIORITY 3: City — show all city services
+        locationFilter = {
+          OR: [
+            { city: { contains: req.user.city } },
+            { neighborhood: { contains: req.user.city } }
+          ]
+        };
+      }
+    }
 
     let services = await prisma.services.findMany({
       where: {
         is_active: true,
-        ...(category ? { category } : {})
+        ...(category ? { category } : {}),
+        ...locationFilter
       },
       orderBy: { created_at: 'desc' }
     });
 
     services = await enrichServicesWithBookingStats(services);
 
-    // If user provides location, filter by 25km radius
-    if (isValidLatLng(lat, lng)) {
+    // ▶ PRIORITY 1: GPS — filter by 25km radius (HIGHEST PRIORITY)
+    if (hasValidCoords) {
       services = services.filter(service => {
         if (!service.latitude || !service.longitude) return false;
-        
         const distance = calculateDistance(
-          lat,
-          lng,
+          requestLat,
+          requestLng,
           parseFloat(service.latitude),
           parseFloat(service.longitude)
         );
         service.distance = distance;
         return distance <= radiusKm;
       });
-      // Sort by distance if location provided
       services.sort((a, b) => a.distance - b.distance);
     }
 

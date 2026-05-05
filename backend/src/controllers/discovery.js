@@ -1,8 +1,9 @@
 import prisma from '../db/prisma.js';
+import { calculateDistance, isValidLatLng } from '../utils/location.js';
 
 const getTrendingServices = async (req, res) => {
   try {
-    const { city, neighborhood, limit = 20 } = req.query;
+    const { city, neighborhood, latitude, longitude, limit = 20 } = req.query;
     
     // Sanitize inputs
     const limitNum = parseInt(limit, 10) || 20;
@@ -11,13 +12,55 @@ const getTrendingServices = async (req, res) => {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Prisma doesn't support complex weighting in orderBy easily with joins
-    // We'll use findMany with includes and then sort in memory, or use a raw query if it's too complex.
-    // However, let's try to stick to Prisma as much as possible.
-    
     const where = { is_active: true };
-    if (city) where.city = city;
-    if (neighborhood) where.neighborhood = neighborhood;
+
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+    const radiusKm = 25;
+    
+    const hasValidCoords = isValidLatLng(lat, lng);
+    const hasProfileNeighborhood = !!req.user?.neighborhood;
+    const hasProfileCity = !!req.user?.city;
+
+    // ─── PRIORITY: GPS > Profile Neighborhood > Profile City ───
+    // If NOTHING is available, return empty
+    if (!hasValidCoords && !hasProfileNeighborhood && !hasProfileCity && !city && !neighborhood) {
+      return res.json({ services: [] });
+    }
+
+    let locationSource = 'none';
+
+    if (hasValidCoords) {
+      // ▶ PRIORITY 1: GPS (Live Location) — 25km bounding box
+      locationSource = 'gps';
+      const latDelta = 0.225;
+      const lngDelta = 0.225 / Math.cos(lat * Math.PI / 180);
+      where.latitude = { gte: lat - latDelta, lte: lat + latDelta };
+      where.longitude = { gte: lng - lngDelta, lte: lng + lngDelta };
+    } else if (neighborhood || hasProfileNeighborhood) {
+      // ▶ PRIORITY 2: Neighborhood (from query or profile) — match services in/near that neighborhood
+      locationSource = 'neighborhood';
+      const targetNeighborhood = neighborhood || req.user.neighborhood;
+      const targetCity = city || req.user?.city;
+
+      // Search services whose neighborhood or city contains the target neighborhood
+      const orConditions = [
+        { neighborhood: { contains: targetNeighborhood } }
+      ];
+      // Also include services from the same city (neighborhoods are part of a city)
+      if (targetCity) {
+        orConditions.push({ city: { contains: targetCity } });
+      }
+      where.OR = orConditions;
+    } else if (city || hasProfileCity) {
+      // ▶ PRIORITY 3: City (from query or profile) — show all services in that city
+      locationSource = 'city';
+      const targetCity = city || req.user.city;
+      where.OR = [
+        { city: { contains: targetCity } },
+        { neighborhood: { contains: targetCity } }
+      ];
+    }
 
     const services = await prisma.services.findMany({
       where,
@@ -32,7 +75,7 @@ const getTrendingServices = async (req, res) => {
           select: { rating: true }
         }
       },
-      take: 100 // Get a larger set to sort by trending weight
+      take: 200 // Get a larger set to sort by trending weight
     });
 
     const mappedServices = services.map(s => {
@@ -51,9 +94,29 @@ const getTrendingServices = async (req, res) => {
       };
     });
 
-    mappedServices.sort((a, b) => b.trending_weight - a.trending_weight);
+    // Exact distance filtering for GPS-based queries
+    let filteredServices = mappedServices;
+    if (hasValidCoords) {
+      filteredServices = filteredServices.filter(s => {
+        if (!s.latitude || !s.longitude) return false;
+        
+        // Haversine distance
+        const R = 6371;
+        const dLat = (parseFloat(s.latitude) - lat) * Math.PI / 180;
+        const dLon = (parseFloat(s.longitude) - lng) * Math.PI / 180;
+        const a = 
+          Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(lat * Math.PI / 180) * Math.cos(parseFloat(s.latitude) * Math.PI / 180) * 
+          Math.sin(dLon/2) * Math.sin(dLon/2);
+        const distance = R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+        
+        return distance <= radiusKm;
+      });
+    }
+
+    filteredServices.sort((a, b) => b.trending_weight - a.trending_weight);
     
-    res.json({ services: mappedServices.slice(0, safeLimit) });
+    res.json({ services: filteredServices.slice(0, safeLimit), locationSource });
   } catch (error) {
     console.error('Error getting trending services:', error);
     res.status(500).json({ error: error.message });
@@ -180,4 +243,3 @@ export {
   getTrendingServices,
   getRecommendedServices
 };
-

@@ -103,6 +103,12 @@ const updateMyProfile = async (req, res) => {
       const saltRounds = 10;
       updateData.password = await bcrypt.hash(password, saltRounds);
     }
+    const { phone, city, neighborhood, latitude, longitude } = req.body;
+    if (phone !== undefined) updateData.phone = phone;
+    if (city !== undefined) updateData.city = city;
+    if (neighborhood !== undefined) updateData.neighborhood = neighborhood;
+    if (latitude !== undefined) updateData.latitude = latitude;
+    if (longitude !== undefined) updateData.longitude = longitude;
 
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' });

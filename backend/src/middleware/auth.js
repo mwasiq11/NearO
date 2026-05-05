@@ -45,7 +45,11 @@ async function authenticate(req, res, next) {
         role: true,
         is_active: true,
         is_verified: true,
-        suspended_until: true
+        suspended_until: true,
+        latitude: true,
+        longitude: true,
+        city: true,
+        neighborhood: true
       }
     });
 
@@ -77,7 +81,11 @@ async function authenticate(req, res, next) {
       id: user.id,
       email: user.email,
       role: user.role,
-      is_verified: user.is_verified
+      is_verified: user.is_verified,
+      latitude: user.latitude,
+      longitude: user.longitude,
+      city: user.city,
+      neighborhood: user.neighborhood
     };
 
     next();
@@ -105,7 +113,7 @@ async function optionalAuthenticate(req, res, next) {
       if (decoded) {
         const user = await prisma.users.findUnique({
           where: { id: decoded.id, is_active: true },
-          select: { id: true, email: true, role: true, is_verified: true }
+          select: { id: true, email: true, role: true, is_verified: true, latitude: true, longitude: true, city: true, neighborhood: true }
         });
 
         if (user) {
@@ -113,7 +121,11 @@ async function optionalAuthenticate(req, res, next) {
             id: user.id,
             email: user.email,
             role: user.role,
-            is_verified: user.is_verified
+            is_verified: user.is_verified,
+            latitude: user.latitude,
+            longitude: user.longitude,
+            city: user.city,
+            neighborhood: user.neighborhood
           };
         }
       }

@@ -37,8 +37,13 @@ const createServiceSchema = Joi.object({
 const updateProfileSchema = Joi.object({
   name: Joi.string().min(2).max(255).optional().trim(),
   email: Joi.string().email().optional().lowercase().trim(),
-  password: Joi.string().min(6).max(100).optional()
-}).or('name', 'email', 'password');
+  password: Joi.string().min(6).max(100).optional(),
+  phone: Joi.string().max(50).optional().allow('', null).trim(),
+  city: Joi.string().max(255).optional().allow('', null).trim(),
+  neighborhood: Joi.string().max(255).optional().allow('', null).trim(),
+  latitude: Joi.number().min(-90).max(90).optional().allow(null),
+  longitude: Joi.number().min(-180).max(180).optional().allow(null)
+});
 
 // Update own service schema
 const updateOwnServiceSchema = Joi.object({

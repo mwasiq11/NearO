@@ -39,21 +39,56 @@ const searchServices = async (req, res) => {
       if (price_max) where.price.lte = parseFloat(price_max);
     }
 
-    // Mandatory 25km radius if location provided
+    let requestLat = lat ? parseFloat(lat) : null;
+    let requestLng = lng ? parseFloat(lng) : null;
+
+    // Fallback to user profile location if not provided in query
+    if ((!requestLat || !requestLng) && req.user?.latitude && req.user?.longitude) {
+      requestLat = parseFloat(req.user.latitude);
+      requestLng = parseFloat(req.user.longitude);
+    }
+
+    const hasValidCoords = isValidLatLng(requestLat, requestLng);
+    const hasProfileNeighborhood = !!req.user?.neighborhood;
+    const hasProfileCity = !!req.user?.city;
+
+    // ─── PRIORITY: GPS > Profile Neighborhood > Profile City ───
+    if (!hasValidCoords && !city && !neighborhood && !hasProfileNeighborhood && !hasProfileCity) {
+      return res.json({ services: [], total: 0 });
+    }
+
+    // Mandatory 25km radius if location is known
     let locationFiltered = false;
     let radiusKm = 25; // Default hard limit
-    
-    if (lat && lng && isValidLatLng(parseFloat(lat), parseFloat(lng))) {
+
+    // ▶ PRIORITY 1: GPS (Live) — 25km bounding box
+    if (hasValidCoords && !city && !neighborhood) {
       radiusKm = parseRadius(radius || '25');
-      // Enforce hard 25km limit unless user is admin
       if (req.user?.role !== 'admin' && radiusKm > 25) {
         radiusKm = 25;
       }
-      
-      const bbox = getBoundingBox(parseFloat(lat), parseFloat(lng), radiusKm);
+      const bbox = getBoundingBox(requestLat, requestLng, radiusKm);
       where.latitude = { gte: bbox.minLat, lte: bbox.maxLat };
       where.longitude = { gte: bbox.minLng, lte: bbox.maxLng };
       locationFiltered = true;
+    } else if (!city && !neighborhood && !hasValidCoords) {
+      // Profile fallback when no GPS and no explicit search params
+      if (hasProfileNeighborhood) {
+        // ▶ PRIORITY 2: Neighborhood
+        const orConditions = [
+          { neighborhood: { contains: req.user.neighborhood } }
+        ];
+        if (hasProfileCity) {
+          orConditions.push({ city: { contains: req.user.city } });
+        }
+        where.OR = orConditions;
+      } else if (hasProfileCity) {
+        // ▶ PRIORITY 3: City
+        where.OR = [
+          { city: { contains: req.user.city } },
+          { neighborhood: { contains: req.user.city } }
+        ];
+      }
     }
 
     const sortField = ['created_at', 'price', 'title'].includes(sort) ? sort : 'created_at';
@@ -82,11 +117,11 @@ const searchServices = async (req, res) => {
 
     // Apply exact distance filtering if location was provided
     let filteredServices = mappedServices;
-    if (locationFiltered && lat && lng) {
+    if (locationFiltered && requestLat && requestLng) {
       filteredServices = filterByDistance(
         mappedServices,
-        parseFloat(lat),
-        parseFloat(lng),
+        requestLat,
+        requestLng,
         radiusKm
       );
     }
@@ -98,8 +133,8 @@ const searchServices = async (req, res) => {
           price_min: price_min ? parseFloat(price_min) : null,
           price_max: price_max ? parseFloat(price_max) : null,
           radius: radiusKm,
-          lat: lat ? parseFloat(lat) : null,
-          lng: lng ? parseFloat(lng) : null
+          lat: requestLat,
+          lng: requestLng
         };
         
         await prisma.user_search_history.create({

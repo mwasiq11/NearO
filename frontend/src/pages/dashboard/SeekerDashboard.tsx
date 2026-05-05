@@ -17,7 +17,7 @@ import React from 'react';
 const SeekerDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { listings, isLoading: listingsLoading } = useListings();
+  const { listings, trendingListings: reduxTrending, isLoading: listingsLoading } = useListings();
   const { myBookings, isLoading: bookingsLoading } = useBookings();
 
   const isLoading = listingsLoading || bookingsLoading;
@@ -26,7 +26,7 @@ const SeekerDashboard = () => {
     .filter(b => b.status === 'confirmed' || b.status === 'pending')
     .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
 
-  const trendingListings = listings.slice(0, 8);
+  const trendingListings = (reduxTrending || []).slice(0, 8);
 
   return (
     <div className="dashboard-tablet-page mx-auto max-w-7xl space-y-4 px-4 pt-3.5 pb-6 md:space-y-6 md:px-6 md:pt-4 lg:space-y-8 lg:px-8 lg:pt-5">
@@ -105,9 +105,9 @@ const SeekerDashboard = () => {
         <SectionHeader
           title="Trending Services"
           rightContent={
-            user?.neighborhood ? (
+            (user?.neighborhood || user?.city) ? (
               <Badge variant="outline" className="h-7 rounded-full border-primary/20 bg-primary/5 px-3 text-[11px] font-medium text-primary">
-                Near {user.neighborhood}
+                Near {user.neighborhood || user.city}
               </Badge>
             ) : null
           }
@@ -127,6 +127,25 @@ const SeekerDashboard = () => {
                 </Card>
               ))}
             </div>
+          ) : trendingListings.length === 0 ? (
+            <Card className="flex flex-col items-center justify-center p-8 text-center border-dashed bg-muted/30">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <MapPin className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-lg font-bold">No services found nearby</h3>
+              <p className="text-muted-foreground text-sm max-w-md mt-2 mb-4">
+                We couldn't find any services based on your current location settings.
+              </p>
+              <div className="text-xs text-muted-foreground max-w-sm space-y-1.5 mb-6 text-left">
+                <p className="font-semibold text-foreground text-center mb-2">How we find services for you:</p>
+                <p>🟢 <strong>GPS / Live Location</strong> — Enable GPS to see services within 25km (auto-updates as you move)</p>
+                <p>🔵 <strong>Neighborhood</strong> — Set your neighborhood in Profile to see nearby services</p>
+                <p>⚪ <strong>City</strong> — Set your city in Profile to see all city-wide services</p>
+              </div>
+              <Button onClick={() => navigate('/dashboard/profile')}>
+                Update Location
+              </Button>
+            </Card>
           ) : (
             <div className="dashboard-tablet-grid grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-5 md:gap-6">
               {trendingListings.slice(0, 4).map((listing) => (

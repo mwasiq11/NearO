@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   setListings,
@@ -85,32 +85,21 @@ export const useListings = () => {
     };
   }, []);
 
+  const lastFetchedLocation = useRef<{ lat: number; lng: number } | null>(null);
+
   useEffect(() => {
-    const loadInitialData = async () => {
+    let watchId: number;
+
+    const loadInitialData = async (latitude?: number, longitude?: number) => {
       dispatch(setLoading(true));
       try {
-        // Automatically detect location for 25km radius filtering
-        let latitude: number | undefined;
-        let longitude: number | undefined;
-
-        if (navigator.geolocation) {
-          const position = await new Promise<GeolocationPosition | null>((resolve) => {
-            navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), { timeout: 5000 });
-          });
-          if (position) {
-            latitude = position.coords.latitude;
-            longitude = position.coords.longitude;
-            console.log('📍 Live location detected for filtering:', { latitude, longitude });
-          }
-        }
-
         const params = new URLSearchParams();
         if (latitude) params.append('latitude', latitude.toString());
         if (longitude) params.append('longitude', longitude.toString());
 
         const [services, trending, categoryData] = await Promise.all([
-          api.get<any[]>(`/services?${params.toString()}`),
-          api.get<{ services: any[] }>('/discover/trending').catch(() => ({ services: [] })),
+          api.get<any[]>(`/services?${params.toString()}`, { auth: true }),
+          api.get<{ services: any[] }>(`/discover/trending?${params.toString()}`, { auth: true }).catch(() => ({ services: [] })),
           api.get<{ categories: any[] }>('/search/categories').catch(() => ({ categories: [] })),
         ]);
 
@@ -139,7 +128,84 @@ export const useListings = () => {
       }
     };
 
-    loadInitialData();
+    const fetchServicesByLocation = async (lat: number, lng: number) => {
+      try {
+        const params = new URLSearchParams();
+        params.append('latitude', lat.toString());
+        params.append('longitude', lng.toString());
+        
+        const [services, trending] = await Promise.all([
+          api.get<any[]>(`/services?${params.toString()}`, { auth: true }),
+          api.get<{ services: any[] }>(`/discover/trending?${params.toString()}`, { auth: true }).catch(() => ({ services: [] }))
+        ]);
+        dispatch(setListings(services.map(mapService)));
+        dispatch(setTrendingListings((trending.services || []).map(mapService)));
+      } catch (err) {
+        console.error('Failed to update services by location', err);
+      }
+    };
+
+    // Calculate distance between two lat/lng points in km
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+      const R = 6371; // Earth's radius in km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    };
+
+    let isInitialLoadDone = false;
+
+    if (navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          if (!isInitialLoadDone) {
+            isInitialLoadDone = true;
+            lastFetchedLocation.current = { lat, lng };
+            loadInitialData(lat, lng);
+            return;
+          }
+
+          if (lastFetchedLocation.current) {
+            const distance = calculateDistance(
+              lastFetchedLocation.current.lat, 
+              lastFetchedLocation.current.lng, 
+              lat, 
+              lng
+            );
+            // Refresh if user moved more than 500 meters (0.5 km)
+            if (distance > 0.5) {
+              console.log(`📍 Live location updated (moved ${distance.toFixed(2)}km), refreshing services:`, { lat, lng });
+              lastFetchedLocation.current = { lat, lng };
+              fetchServicesByLocation(lat, lng);
+            }
+          }
+        },
+        (error) => {
+          console.log('Location tracking error or denied, loading without location');
+          if (!isInitialLoadDone) {
+            isInitialLoadDone = true;
+            loadInitialData(); // Fallback to user profile location in backend
+          }
+        },
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+      );
+    } else {
+      loadInitialData();
+    }
+
+    return () => {
+      if (watchId !== undefined && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
   }, [dispatch, mapCategory, mapService]);
 
   // Filter listings based on current filters

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +9,35 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { updateUser } from '@/store/slices/authSlice';
 import { api, authStorage } from '@/lib/api';
 import { toast } from 'sonner';
-import { Camera, Loader2, MapPin, Mail, Phone, User } from 'lucide-react';
+import { Camera, Loader2, MapPin, Mail, Phone, User, Search, Navigation } from 'lucide-react';
+
+/* ------------------------------------------------------------------ */
+/*  Nominatim (OpenStreetMap) search — free, no API key needed        */
+/* ------------------------------------------------------------------ */
+interface NominatimResult {
+  display_name: string;
+  lat: string;
+  lon: string;
+  address?: {
+    neighbourhood?: string;
+    suburb?: string;
+    city?: string;
+    town?: string;
+    village?: string;
+    county?: string;
+    state?: string;
+    country?: string;
+  };
+}
+
+async function searchPlaces(query: string): Promise<NominatimResult[]> {
+  if (!query || query.length < 2) return [];
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=6&addressdetails=1`,
+    { headers: { 'Accept-Language': 'en' } },
+  );
+  return res.json();
+}
 
 const ProfilePage = () => {
   const dispatch = useAppDispatch();
@@ -29,6 +57,25 @@ const ProfilePage = () => {
     newPassword: '',
     confirmPassword: '',
   });
+
+  // Neighborhood autocomplete state
+  const [neighborhoodQuery, setNeighborhoodQuery] = useState('');
+  const [neighborhoodResults, setNeighborhoodResults] = useState<NominatimResult[]>([]);
+  const [isSearchingNeighborhood, setIsSearchingNeighborhood] = useState(false);
+  const [showNeighborhoodResults, setShowNeighborhoodResults] = useState(false);
+  const neighborhoodSearchTimeout = useRef<any>(null);
+  const neighborhoodResultsRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (neighborhoodResultsRef.current && !neighborhoodResultsRef.current.contains(e.target as Node)) {
+        setShowNeighborhoodResults(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -70,6 +117,57 @@ const ProfilePage = () => {
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setPasswordData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Debounced neighborhood search (400ms debounce)
+  const handleNeighborhoodSearch = useCallback((value: string) => {
+    setNeighborhoodQuery(value);
+    setFormData(prev => ({ ...prev, neighborhood: value }));
+
+    if (neighborhoodSearchTimeout.current) clearTimeout(neighborhoodSearchTimeout.current);
+
+    if (value.length < 2) {
+      setNeighborhoodResults([]);
+      setShowNeighborhoodResults(false);
+      return;
+    }
+
+    setIsSearchingNeighborhood(true);
+    neighborhoodSearchTimeout.current = setTimeout(async () => {
+      try {
+        const results = await searchPlaces(value);
+        setNeighborhoodResults(results);
+        setShowNeighborhoodResults(results.length > 0);
+      } catch {
+        setNeighborhoodResults([]);
+      } finally {
+        setIsSearchingNeighborhood(false);
+      }
+    }, 400);
+  }, []);
+
+  // Select a neighborhood from the dropdown
+  const selectNeighborhood = (result: NominatimResult) => {
+    const placeName = result.display_name.split(',')[0].trim();
+    const nbh =
+      result.address?.neighbourhood ||
+      result.address?.suburb ||
+      placeName;
+    const cty =
+      result.address?.city ||
+      result.address?.town ||
+      result.address?.village ||
+      result.address?.state ||
+      '';
+
+    setFormData(prev => ({
+      ...prev,
+      neighborhood: nbh,
+      city: cty || prev.city,
+    }));
+    setNeighborhoodQuery(nbh);
+    setShowNeighborhoodResults(false);
+    toast.success(`📍 Location set: ${nbh}${cty ? ', ' + cty : ''}`);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -242,6 +340,30 @@ const ProfilePage = () => {
               <p className="text-[11px] text-muted-foreground mt-3 font-medium">JPEG, PNG or GIF. Max 5MB.</p>
             </CardContent>
           </Card>
+
+          {/* Location Priority Info Card */}
+          <Card className="border-zinc-200/60 dark:border-zinc-800/80 shadow-sm">
+            <CardContent className="p-5 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+                <Navigation className="h-4 w-4" />
+                Service Discovery Priority
+              </div>
+              <div className="space-y-2 text-xs text-muted-foreground">
+                <div className="flex items-start gap-2">
+                  <span className="shrink-0 font-bold text-primary bg-primary/10 rounded-full w-5 h-5 flex items-center justify-center text-[10px]">1</span>
+                  <span><strong className="text-foreground">GPS / Live Location</strong> — Shows services within 25km of your real-time position. Updates dynamically as you move.</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="shrink-0 font-bold text-primary bg-primary/10 rounded-full w-5 h-5 flex items-center justify-center text-[10px]">2</span>
+                  <span><strong className="text-foreground">Neighborhood</strong> — If GPS is off, shows services matching your saved neighborhood + city.</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="shrink-0 font-bold text-primary bg-primary/10 rounded-full w-5 h-5 flex items-center justify-center text-[10px]">3</span>
+                  <span><strong className="text-foreground">City</strong> — If no neighborhood is set, shows all services in your saved city.</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Right Column: Information & Security */}
@@ -312,18 +434,58 @@ const ProfilePage = () => {
                       className="h-11 rounded-lg bg-zinc-50 dark:bg-[#1a2328] focus-visible:ring-primary shadow-inner-sm transition-all"
                     />
                   </div>
-                  <div className="space-y-2.5 md:col-span-2">
-                    <Label htmlFor="neighborhood" className="text-[13px] font-semibold text-zinc-600 dark:text-zinc-300">
+
+                  {/* Neighborhood with Autocomplete */}
+                  <div className="space-y-2.5 md:col-span-2" ref={neighborhoodResultsRef}>
+                    <Label htmlFor="neighborhood" className="text-[13px] font-semibold text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 text-primary" />
                       Local Neighborhood
+                      <span className="text-[10px] font-normal text-primary/70 bg-primary/10 px-1.5 py-0.5 rounded-full ml-1">Higher Priority</span>
                     </Label>
-                    <Input 
-                      id="neighborhood" 
-                      name="neighborhood" 
-                      value={formData.neighborhood} 
-                      onChange={handleChange}
-                      placeholder="Specify your residential area or borough"
-                      className="h-11 rounded-lg bg-zinc-50 dark:bg-[#1a2328] focus-visible:ring-primary shadow-inner-sm transition-all"
-                    />
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+                      {isSearchingNeighborhood && (
+                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground z-10" />
+                      )}
+                      <input
+                        id="neighborhood"
+                        type="text"
+                        value={formData.neighborhood}
+                        onChange={(e) => handleNeighborhoodSearch(e.target.value)}
+                        onFocus={() => neighborhoodResults.length > 0 && setShowNeighborhoodResults(true)}
+                        placeholder="Search neighborhood (e.g. DHA Phase 5, Gulshan-e-Iqbal)…"
+                        className="h-11 w-full rounded-lg border bg-zinc-50 dark:bg-[#1a2328] pl-10 pr-10 text-sm
+                                   focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                      />
+
+                      {/* Autocomplete dropdown */}
+                      {showNeighborhoodResults && neighborhoodResults.length > 0 && (
+                        <div className="absolute z-[1000] w-full mt-1 bg-background border rounded-lg shadow-xl max-h-64 overflow-y-auto">
+                          {neighborhoodResults.map((r, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => selectNeighborhood(r)}
+                              className="w-full text-left px-4 py-3 hover:bg-muted/60 transition-colors flex items-start gap-3 border-b last:border-b-0"
+                            >
+                              <MapPin className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {r.display_name.split(',')[0]}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {r.display_name.split(',').slice(1, 4).join(',')}
+                                </p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                      <MapPin className="h-3 w-3 text-primary/60" />
+                      Setting your neighborhood helps us show nearby services when GPS is unavailable.
+                    </p>
                   </div>
                 </div>
                 <Separator className="my-6" />
@@ -407,4 +569,3 @@ const ProfilePage = () => {
 };
 
 export default ProfilePage;
-
