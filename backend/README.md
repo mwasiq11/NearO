@@ -1,4 +1,4 @@
-# Neighborly Backend - Stage 3: National Scale Up - High Scale & Real Time
+# NearO Backend - Stage 3: National Scale Up - High Scale & Real Time
 
 ## ✅ Stage 2 Completed
 ## ✅ Stage 3 Completed
