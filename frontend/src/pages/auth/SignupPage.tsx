@@ -8,9 +8,14 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { GoogleLogin } from '@react-oauth/google';
+import Iridescence from '@/components/animations/Iridescence';
 
 const SignupPage = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const googleButtonWidth = Math.min(
+    360,
+    Math.max(240, (typeof window !== 'undefined' ? window.innerWidth : 360) - 96)
+  ).toString();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -51,83 +56,98 @@ const SignupPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-
     await signup(formData);
   };
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Left Panel - Form Container Refined */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 md:p-20 order-2 lg:order-1">
+    <div className="min-h-screen flex bg-slate-950 relative overflow-hidden text-white">
+      {/* Global Background Animation */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <Iridescence
+          color={[0.0, 0.68, 0.4]}
+          mouseReact={true}
+          amplitude={0.1}
+          speed={0.5}
+          className="opacity-40"
+        />
+      </div>
+
+      <header className="absolute top-6 left-6 z-20">
+        <Link to="/" className="inline-flex items-center justify-center" aria-label="Go to landing page">
+          <img
+            src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493"
+            alt="NearO"
+            className="h-10 w-10 object-contain brightness-0 invert transition-transform hover:scale-105"
+          />
+        </Link>
+      </header>
+
+      {/* Centered Form Container */}
+      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-12 md:p-20 relative z-10">
         <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
+          initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4 }}
-          className="w-full max-w-[400px] flex flex-col"
+          className="w-full max-w-[480px] bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-5 sm:p-8 md:p-10 shadow-2xl"
         >
-          {/* Logo Alignment */}
-          <div className="mb-8 text-center sm:text-left">
-            <Link to="/" className="inline-flex items-center gap-3 group">
-              <div className="h-10 w-10 rounded-xl overflow-hidden bg-white shadow-sm flex items-center justify-center p-1.5 border border-emerald-100 transition-all group-hover:scale-110 group-hover:shadow-md">
-                <img src="https://companieslogo.com/img/orig/NBLY.TO-63e791bf.png?t=1720244493" alt="NearO" className="h-full w-full object-contain" />
-              </div>
-              <span className="font-bold text-2xl bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent tracking-tighter">NearO</span>
-            </Link>
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-bold text-white tracking-tight">Create Account</h1>
+            <p className="text-white/50 mt-2">Join your local community today</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-semibold text-foreground ml-1">Full Name</Label>
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground transition-colors group-focus-within:text-emerald-500" />
+              <Label htmlFor="name" className="text-sm font-medium text-white/70 ml-1">Full Name</Label>
+              <div className="relative group">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/30 group-focus-within:text-emerald-400 transition-colors" />
                 <Input
                   id="name"
                   name="name"
                   placeholder="John Doe"
                   className={cn(
-                    "h-12 pl-12 bg-background border-input transition-all focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500",
-                    errors.name && "border-destructive focus:ring-destructive/20"
+                    "h-12 pl-12 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-xl focus:ring-emerald-500/20 focus:border-emerald-500/50 transition-all",
+                    errors.name && "border-rose-500/50 focus:ring-rose-500/20"
                   )}
                   value={formData.name}
                   onChange={handleChange}
                 />
               </div>
-              {errors.name && <p className="text-xs font-medium text-destructive ml-1">{errors.name}</p>}
+              {errors.name && <p className="text-xs font-medium text-rose-400 ml-1">{errors.name}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-semibold text-foreground ml-1">Email address</Label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground transition-colors group-focus-within:text-emerald-500" />
+              <Label htmlFor="email" className="text-sm font-medium text-white/70 ml-1">Email Address</Label>
+              <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/30 group-focus-within:text-emerald-400 transition-colors" />
                 <Input
                   id="email"
                   name="email"
                   type="email"
                   placeholder="name@example.com"
                   className={cn(
-                    "h-12 pl-12 bg-background border-input transition-all focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500",
-                    errors.email && "border-destructive focus:ring-destructive/20"
+                    "h-12 pl-12 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-xl focus:ring-emerald-500/20 focus:border-emerald-500/50 transition-all",
+                    errors.email && "border-rose-500/50 focus:ring-rose-500/20"
                   )}
                   value={formData.email}
                   onChange={handleChange}
                 />
               </div>
-              {errors.email && <p className="text-xs font-medium text-destructive ml-1">{errors.email}</p>}
+              {errors.email && <p className="text-xs font-medium text-rose-400 ml-1">{errors.email}</p>}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-semibold text-foreground ml-1">Password</Label>
+                <Label htmlFor="password" className="text-sm font-medium text-white/70 ml-1">Password</Label>
                 <div className="relative group">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-emerald-500" />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/30 group-focus-within:text-emerald-400 transition-colors" />
                   <Input
                     id="password"
                     name="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     className={cn(
-                      "h-12 pl-12 pr-12 bg-background border-input transition-all focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500",
-                      errors.password && "border-destructive focus:ring-destructive/20"
+                      "h-12 pl-12 pr-12 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-xl focus:ring-emerald-500/20 focus:border-emerald-500/50 transition-all",
+                      errors.password && "border-rose-500/50 focus:ring-rose-500/20"
                     )}
                     value={formData.password}
                     onChange={handleChange}
@@ -135,7 +155,7 @@ const SignupPage = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -143,15 +163,15 @@ const SignupPage = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-sm font-semibold text-foreground ml-1">Confirm</Label>
+                <Label htmlFor="confirmPassword" className="text-sm font-medium text-white/70 ml-1">Confirm</Label>
                 <Input
                   id="confirmPassword"
                   name="confirmPassword"
                   type="password"
                   placeholder="••••••••"
                   className={cn(
-                    "h-12 bg-background border-input transition-all focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500",
-                    errors.confirmPassword && "border-destructive focus:ring-destructive/20"
+                    "h-12 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-xl focus:ring-emerald-500/20 focus:border-emerald-500/50 transition-all",
+                    errors.confirmPassword && "border-rose-500/50 focus:ring-rose-500/20"
                   )}
                   value={formData.confirmPassword}
                   onChange={handleChange}
@@ -159,14 +179,15 @@ const SignupPage = () => {
               </div>
             </div>
             {(errors.password || errors.confirmPassword) && (
-              <p className="text-xs font-medium text-destructive ml-1">
+              <p className="text-xs font-medium text-rose-400 ml-1">
                 {errors.password || errors.confirmPassword}
               </p>
             )}
 
             <Button
               type="submit"
-              className="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all active:scale-[0.98] mt-2"
+              size="xl"
+              className="w-full h-14 text-lg font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-xl shadow-xl transition-all active:scale-[0.98] mt-2"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -176,26 +197,24 @@ const SignupPage = () => {
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
-                  Create Account <ArrowRight className="h-4 w-4" />
+                  Create Account <ArrowRight className="h-5 w-5" />
                 </span>
               )}
             </Button>
           </form>
 
-          {/* Polished Divider */}
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border/60" />
+              <span className="w-full border-t border-white/10" />
             </div>
             <div className="relative flex justify-center text-xs uppercase tracking-widest font-bold">
-              <span className="bg-background px-4 text-muted-foreground/60">OR CONTINUE WITH</span>
+              <span className="bg-[#0f172a] px-4 text-white/30">OR CONTINUE WITH</span>
             </div>
           </div>
 
-          {/* Google Button - Perfectly Aligned & Enhanced */}
           <div className="flex flex-col items-center w-full">
-            <div className="w-full flex justify-center group">
-              <div className="w-full max-w-[360px] overflow-hidden rounded-full border border-input shadow-sm transition-all duration-300 hover:shadow-md hover:border-emerald-200 active:scale-[0.98] flex items-center justify-center bg-white">
+            <div className="w-full flex justify-center">
+              <div className="w-full max-w-[360px] overflow-hidden rounded-full border border-white/10 shadow-lg transition-all duration-300 hover:border-emerald-500/50 active:scale-[0.98] flex items-center justify-center bg-white">
                 <GoogleLogin
                   ux_mode="redirect"
                   login_uri="https://codedevchat.me/api/auth/google"
@@ -204,54 +223,29 @@ const SignupPage = () => {
                       loginWithGoogle(credentialResponse.credential);
                     }
                   }}
-                  onError={() => {
-                    console.error('Google Login Failed');
-                  }}
+                  onError={() => console.error('Google Login Failed')}
                   theme="outline"
                   shape="pill"
-                  width="360"
+                  width={googleButtonWidth}
                   text="continue_with"
                 />
               </div>
             </div>
           </div>
 
-          {/* Footer Alignment */}
           <div className="mt-10 text-center">
-            <p className="text-muted-foreground text-sm font-medium">
+            <p className="text-white/50 text-sm font-medium">
               Already have an account?{' '}
-              <Link to="/login" className="text-emerald-600 font-bold hover:underline transition-all">
-                Log in
+              <Link to="/login" className="text-emerald-400 font-bold hover:text-emerald-300 transition-all hover:underline underline-offset-4">
+                Log In
               </Link>
             </p>
           </div>
         </motion.div>
-      </div>
-
-      {/* Right Panel - Image with refined overlay */}
-      <div className="hidden lg:block lg:w-1/2 relative overflow-hidden order-1 lg:order-2">
-        <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/40 to-teal-900/60 z-10" />
-        <div
-          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1200')] bg-cover bg-center transition-transform duration-10000 hover:scale-110"
-        />
-        <div className="relative z-20 h-full flex flex-col items-center justify-center p-16 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="max-w-md"
-          >
-            <h2 className="text-5xl font-extrabold mb-6 text-white tracking-tight drop-shadow-lg">
-              Find trusted help
-            </h2>
-            <p className="text-white/90 text-xl font-medium leading-relaxed drop-shadow-md">
-              Connect with verified local providers for all your home and personal service needs.
-            </p>
-          </motion.div>
-        </div>
       </div>
     </div>
   );
 };
 
 export default SignupPage;
+
