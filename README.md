@@ -40,7 +40,7 @@ The platform supports multi-city operations, intelligent discovery engines, repu
 
 ## ✨ Features
 
-### Core Features
+### Core features
 - 🔐 **Authentication & Authorization**: JWT-based auth with role-based access control (User, Moderator, Admin)
 - 📍 **Location-Based Services**: S2 Geometry-powered geospatial indexing for fast proximity search
 - 🔍 **Advanced Search**: Multi-criteria search with category, location, price, and rating filters
