@@ -4,7 +4,7 @@
 
 A full-stack hyperlocal service marketplace platform connecting service providers with seekers in their neighborhood. Built with Node.js, Express, MySQL, React, TypeScript, and Socket.io for real-time features.
 
-## 📋 Table of Contents
+### 📋 Table of Contents
 
 - [Overview](#overview)
 - [Features](#features)
